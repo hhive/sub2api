@@ -23,13 +23,33 @@ func NewChatHandler(chatService *service.ChatService, subscriptionService *servi
 }
 
 func (h *ChatHandler) ListModels(c *gin.Context) {
+	h.ListChatModels(c)
+}
+
+func (h *ChatHandler) ListChatModels(c *gin.Context) {
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
 		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	models, err := h.chatService.ListModels(c.Request.Context(), subject.UserID)
+	models, err := h.chatService.ListChatModels(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"models": dto.ChatModelsFromService(models)})
+}
+
+func (h *ChatHandler) ListImageModels(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	models, err := h.chatService.ListImageModels(c.Request.Context(), subject.UserID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -51,6 +71,21 @@ func (h *ChatHandler) CreateCompletion(c *gin.Context) {
 	}
 
 	h.openAIGateway.ChatCompletions(c)
+}
+
+func (h *ChatHandler) CreateImageGeneration(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	if err := h.prepareGatewayContext(c, subject.UserID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	h.openAIGateway.Images(c)
 }
 
 func (h *ChatHandler) prepareGatewayContext(c *gin.Context, userID int64) error {

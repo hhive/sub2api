@@ -70,6 +70,36 @@ func TestChatServiceListModelsFallsBackToOpenAIDefaultModels(t *testing.T) {
 	require.NotEqual(t, "gpt-4o-mini", models[0].ID)
 }
 
+func TestChatServiceListChatModelsExcludesOpenAIImageModelsFromDefaultFallback(t *testing.T) {
+	groupID := int64(9)
+	repo := &chatAPIKeyRepoStub{
+		list: []APIKey{
+			{ID: 3, UserID: 42, Key: "sk-chat", Status: StatusAPIKeyActive, GroupID: &groupID},
+		},
+		byKey: map[string]*APIKey{
+			"sk-chat": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-chat",
+				Status:  StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &User{ID: 42, Status: StatusActive, Balance: 10, Concurrency: 1},
+				Group:   &Group{ID: groupID, Name: "default", Platform: PlatformOpenAI, Status: StatusActive},
+			},
+		},
+	}
+
+	svc := NewChatService(NewAPIKeyService(repo, nil, nil, nil, nil, nil, nil), nil)
+
+	models, err := svc.ListChatModels(context.Background(), 42)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, models)
+	for _, model := range models {
+		require.NotContains(t, model.ID, "gpt-image-")
+	}
+}
+
 func TestChatServiceListModelsUsesAvailableModelsFromGroupAccounts(t *testing.T) {
 	groupID := int64(9)
 	apiKeyRepo := &chatAPIKeyRepoStub{
@@ -112,6 +142,127 @@ func TestChatServiceListModelsUsesAvailableModelsFromGroupAccounts(t *testing.T)
 
 	require.NoError(t, err)
 	require.Equal(t, []ChatModel{{ID: "gpt-5.4-mini", Name: "gpt-5.4-mini", Provider: PlatformOpenAI}}, models)
+}
+
+func TestChatServiceListChatModelsExcludesOpenAIImageModelsFromMappedAccounts(t *testing.T) {
+	groupID := int64(9)
+	apiKeyRepo := &chatAPIKeyRepoStub{
+		list: []APIKey{
+			{ID: 3, UserID: 42, Key: "sk-chat", Status: StatusAPIKeyActive, GroupID: &groupID},
+		},
+		byKey: map[string]*APIKey{
+			"sk-chat": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-chat",
+				Status:  StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &User{ID: 42, Status: StatusActive, Balance: 10, Concurrency: 1},
+				Group:   &Group{ID: groupID, Name: "default", Platform: PlatformOpenAI, Status: StatusActive},
+			},
+		},
+	}
+	accountRepo := &modelsListAccountRepoStub{
+		byGroup: map[int64][]Account{
+			groupID: {
+				{
+					ID:       8,
+					Platform: PlatformOpenAI,
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{
+							"gpt-5.4-mini": "gpt-5.4-mini",
+							"gpt-image-2":  "gpt-image-2",
+						},
+					},
+				},
+			},
+		},
+	}
+	svc := NewChatService(
+		NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, nil),
+		&GatewayService{accountRepo: accountRepo},
+	)
+
+	models, err := svc.ListChatModels(context.Background(), 42)
+
+	require.NoError(t, err)
+	require.Equal(t, []ChatModel{{ID: "gpt-5.4-mini", Name: "gpt-5.4-mini", Provider: PlatformOpenAI}}, models)
+}
+
+func TestChatServiceListImageModelsUsesOpenAIImageModelsFromDefaultFallback(t *testing.T) {
+	groupID := int64(9)
+	repo := &chatAPIKeyRepoStub{
+		list: []APIKey{
+			{ID: 3, UserID: 42, Key: "sk-chat", Status: StatusAPIKeyActive, GroupID: &groupID},
+		},
+		byKey: map[string]*APIKey{
+			"sk-chat": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-chat",
+				Status:  StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &User{ID: 42, Status: StatusActive, Balance: 10, Concurrency: 1},
+				Group:   &Group{ID: groupID, Name: "default", Platform: PlatformOpenAI, Status: StatusActive},
+			},
+		},
+	}
+
+	svc := NewChatService(NewAPIKeyService(repo, nil, nil, nil, nil, nil, nil), nil)
+
+	models, err := svc.ListImageModels(context.Background(), 42)
+
+	require.NoError(t, err)
+	require.Equal(t, []ChatModel{
+		{ID: "gpt-image-1", Name: "GPT Image 1", Provider: PlatformOpenAI},
+		{ID: "gpt-image-1.5", Name: "GPT Image 1.5", Provider: PlatformOpenAI},
+		{ID: "gpt-image-2", Name: "GPT Image 2", Provider: PlatformOpenAI},
+	}, models)
+}
+
+func TestChatServiceListImageModelsUsesImageModelsFromMappedAccounts(t *testing.T) {
+	groupID := int64(9)
+	apiKeyRepo := &chatAPIKeyRepoStub{
+		list: []APIKey{
+			{ID: 3, UserID: 42, Key: "sk-chat", Status: StatusAPIKeyActive, GroupID: &groupID},
+		},
+		byKey: map[string]*APIKey{
+			"sk-chat": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-chat",
+				Status:  StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &User{ID: 42, Status: StatusActive, Balance: 10, Concurrency: 1},
+				Group:   &Group{ID: groupID, Name: "default", Platform: PlatformOpenAI, Status: StatusActive},
+			},
+		},
+	}
+	accountRepo := &modelsListAccountRepoStub{
+		byGroup: map[int64][]Account{
+			groupID: {
+				{
+					ID:       8,
+					Platform: PlatformOpenAI,
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{
+							"gpt-5.4-mini": "gpt-5.4-mini",
+							"gpt-image-2":  "gpt-image-2",
+						},
+					},
+				},
+			},
+		},
+	}
+	svc := NewChatService(
+		NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, nil),
+		&GatewayService{accountRepo: accountRepo},
+	)
+
+	models, err := svc.ListImageModels(context.Background(), 42)
+
+	require.NoError(t, err)
+	require.Equal(t, []ChatModel{{ID: "gpt-image-2", Name: "gpt-image-2", Provider: PlatformOpenAI}}, models)
 }
 
 func TestChatServiceReturnsNotFoundWhenUserHasNoUsableAPIKey(t *testing.T) {

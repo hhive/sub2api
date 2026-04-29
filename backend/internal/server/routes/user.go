@@ -80,7 +80,10 @@ func RegisterUserRoutes(
 		chat := authenticated.Group("/chat")
 		{
 			chat.GET("/models", h.Chat.ListModels)
+			chat.GET("/models/chat", h.Chat.ListChatModels)
+			chat.GET("/models/images", h.Chat.ListImageModels)
 			chat.POST("/completions", h.Chat.CreateCompletion)
+			chat.POST("/images/generations", h.Chat.CreateImageGeneration)
 		}
 
 		// Usage records

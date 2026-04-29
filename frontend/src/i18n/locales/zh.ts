@@ -341,7 +341,11 @@ export default {
 
   chat: {
     title: '聊天台',
-    subtitle: '直接使用你的可用 API Key 与大模型对话',
+    subtitle: '直接使用你的可用 API Key 与大模型对话或生成图片',
+    modes: {
+      chat: '聊天',
+      image: '图片生成'
+    },
     newChat: '新对话',
     emptyTitle: '开始一次对话',
     emptyDescription: '输入问题后，系统会自动使用你的可用分组和默认模型完成回答。',
@@ -351,7 +355,13 @@ export default {
     thinking: '模型正在思考...',
     loadModelsFailed: '加载模型失败，请先创建并绑定可用分组的 API Key。',
     sendFailed: '发送失败，请检查 API Key、余额或上游渠道状态。',
-    emptyReply: '模型没有返回内容'
+    emptyReply: '模型没有返回内容',
+    imagePromptPlaceholder: '描述你想生成的图片',
+    generateImage: '生成图片',
+    generatingImage: '生成中...',
+    imageModelsLoadFailed: '加载图片模型失败，请先创建并绑定可用分组的 API Key。',
+    imageGenerationFailed: '图片生成失败，请检查图片模型、API Key、余额或上游渠道状态。',
+    noImageResult: '没有返回图片'
   },
 
   // Navigation

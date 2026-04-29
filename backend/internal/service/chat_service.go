@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -46,6 +47,10 @@ func (s *ChatService) SelectDefaultAPIKey(ctx context.Context, userID int64) (*A
 }
 
 func (s *ChatService) ListModels(ctx context.Context, userID int64) ([]ChatModel, error) {
+	return s.ListChatModels(ctx, userID)
+}
+
+func (s *ChatService) ListChatModels(ctx context.Context, userID int64) ([]ChatModel, error) {
 	key, err := s.SelectDefaultAPIKey(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -54,14 +59,14 @@ func (s *ChatService) ListModels(ctx context.Context, userID int64) ([]ChatModel
 	if key.Group != nil && s.gatewayService != nil {
 		groupID := key.Group.ID
 		if models := s.gatewayService.GetAvailableModels(ctx, &groupID, ""); len(models) > 0 {
-			return chatModelsFromIDs(models, key.Group.Platform), nil
+			return chatModelsFromIDs(models, key.Group.Platform, false), nil
 		}
 	}
 
 	if key.Group != nil {
 		switch key.Group.Platform {
 		case PlatformOpenAI:
-			return chatModelsFromOpenAI(openai.DefaultModels), nil
+			return chatModelsFromOpenAI(openai.DefaultModels, false), nil
 		case PlatformAnthropic:
 			return chatModelsFromClaude(claude.DefaultModels), nil
 		}
@@ -70,20 +75,46 @@ func (s *ChatService) ListModels(ctx context.Context, userID int64) ([]ChatModel
 		}
 	}
 
-	return chatModelsFromOpenAI(openai.DefaultModels), nil
+	return chatModelsFromOpenAI(openai.DefaultModels, false), nil
 }
 
-func chatModelsFromIDs(ids []string, provider string) []ChatModel {
+func (s *ChatService) ListImageModels(ctx context.Context, userID int64) ([]ChatModel, error) {
+	key, err := s.SelectDefaultAPIKey(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if key.Group != nil && s.gatewayService != nil {
+		groupID := key.Group.ID
+		if models := s.gatewayService.GetAvailableModels(ctx, &groupID, ""); len(models) > 0 {
+			return chatModelsFromIDs(models, key.Group.Platform, true), nil
+		}
+	}
+
+	if key.Group != nil && key.Group.Platform == PlatformOpenAI {
+		return chatModelsFromOpenAI(openai.DefaultModels, true), nil
+	}
+
+	return nil, nil
+}
+
+func chatModelsFromIDs(ids []string, provider string, imageModels bool) []ChatModel {
 	models := make([]ChatModel, 0, len(ids))
 	for _, id := range ids {
+		if provider == PlatformOpenAI && isOpenAIImageModelID(id) != imageModels {
+			continue
+		}
 		models = append(models, ChatModel{ID: id, Name: id, Provider: provider})
 	}
 	return models
 }
 
-func chatModelsFromOpenAI(models []openai.Model) []ChatModel {
+func chatModelsFromOpenAI(models []openai.Model, imageModels bool) []ChatModel {
 	out := make([]ChatModel, 0, len(models))
 	for _, model := range models {
+		if isOpenAIImageModelID(model.ID) != imageModels {
+			continue
+		}
 		name := model.DisplayName
 		if name == "" {
 			name = model.ID
@@ -91,6 +122,10 @@ func chatModelsFromOpenAI(models []openai.Model) []ChatModel {
 		out = append(out, ChatModel{ID: model.ID, Name: name, Provider: PlatformOpenAI})
 	}
 	return out
+}
+
+func isOpenAIImageModelID(modelID string) bool {
+	return strings.HasPrefix(strings.ToLower(modelID), "gpt-image-")
 }
 
 func chatModelsFromClaude(models []claude.Model) []ChatModel {

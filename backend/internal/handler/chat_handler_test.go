@@ -81,6 +81,54 @@ func TestChatHandlerPrepareGatewayContextInjectsSubscriptionForSubscriptionGroup
 	require.Equal(t, groupID, group.ID)
 }
 
+func TestChatHandlerPrepareGatewayContextSupportsImageGeneration(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(7)
+	apiKeyRepo := &chatHandlerAPIKeyRepoStub{
+		list: []service.APIKey{{ID: 3, UserID: 42, Key: "sk-chat", Status: service.StatusAPIKeyActive, GroupID: &groupID}},
+		byKey: map[string]*service.APIKey{
+			"sk-chat": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-chat",
+				Status:  service.StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &service.User{ID: 42, Role: service.RoleUser, Status: service.StatusActive, Concurrency: 2},
+				Group: &service.Group{
+					ID:       groupID,
+					Name:     "images",
+					Platform: service.PlatformOpenAI,
+					Status:   service.StatusActive,
+					Hydrated: true,
+				},
+			},
+		},
+	}
+	h := NewChatHandler(
+		service.NewChatService(service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, nil), nil),
+		service.NewSubscriptionService(nil, nil, nil, nil, nil),
+		nil,
+	)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/chat/images/generations", nil)
+
+	err := h.prepareGatewayContext(c, 42)
+
+	require.NoError(t, err)
+	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
+	require.True(t, ok)
+	require.Equal(t, int64(3), apiKey.ID)
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	require.True(t, ok)
+	require.Equal(t, int64(42), subject.UserID)
+	group, ok := c.Request.Context().Value(ctxkey.Group).(*service.Group)
+	require.True(t, ok)
+	require.Equal(t, groupID, group.ID)
+}
+
 type chatHandlerAPIKeyRepoStub struct {
 	service.APIKeyRepository
 	list  []service.APIKey

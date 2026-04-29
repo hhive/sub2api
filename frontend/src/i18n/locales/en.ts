@@ -341,7 +341,11 @@ export default {
 
   chat: {
     title: 'Chat',
-    subtitle: 'Chat with models through your available API key',
+    subtitle: 'Chat with models or generate images through your available API key',
+    modes: {
+      chat: 'Chat',
+      image: 'Image generation'
+    },
     newChat: 'New chat',
     emptyTitle: 'Start a conversation',
     emptyDescription: 'Ask a question and the system will use your available group and default model automatically.',
@@ -351,7 +355,13 @@ export default {
     thinking: 'The model is thinking...',
     loadModelsFailed: 'Failed to load models. Create an API key bound to an available group first.',
     sendFailed: 'Failed to send. Check your API key, balance, or upstream channel status.',
-    emptyReply: 'The model returned no content'
+    emptyReply: 'The model returned no content',
+    imagePromptPlaceholder: 'Describe the image you want to generate',
+    generateImage: 'Generate image',
+    generatingImage: 'Generating...',
+    imageModelsLoadFailed: 'Failed to load image models. Create an API key bound to an available group first.',
+    imageGenerationFailed: 'Image generation failed. Check the image model, API key, balance, or upstream channel status.',
+    noImageResult: 'No image returned'
   },
 
   // Navigation
