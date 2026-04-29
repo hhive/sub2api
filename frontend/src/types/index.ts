@@ -1,3 +1,5 @@
+export type * from './chat'
+
 /**
  * Core Type Definitions for Sub2API Frontend
  */
