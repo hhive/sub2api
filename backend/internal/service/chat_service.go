@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 )
 
@@ -16,11 +18,12 @@ type ChatModel struct {
 }
 
 type ChatService struct {
-	apiKeyService *APIKeyService
+	apiKeyService  *APIKeyService
+	gatewayService *GatewayService
 }
 
-func NewChatService(apiKeyService *APIKeyService) *ChatService {
-	return &ChatService{apiKeyService: apiKeyService}
+func NewChatService(apiKeyService *APIKeyService, gatewayService *GatewayService) *ChatService {
+	return &ChatService{apiKeyService: apiKeyService, gatewayService: gatewayService}
 }
 
 func (s *ChatService) SelectDefaultAPIKey(ctx context.Context, userID int64) (*APIKey, error) {
@@ -47,15 +50,57 @@ func (s *ChatService) ListModels(ctx context.Context, userID int64) ([]ChatModel
 	if err != nil {
 		return nil, err
 	}
-	model := "gpt-4o-mini"
-	provider := "openai"
-	if key.Group != nil {
-		if key.Group.DefaultMappedModel != "" {
-			model = key.Group.DefaultMappedModel
-		}
-		if key.Group.Platform != "" {
-			provider = key.Group.Platform
+
+	if key.Group != nil && s.gatewayService != nil {
+		groupID := key.Group.ID
+		if models := s.gatewayService.GetAvailableModels(ctx, &groupID, ""); len(models) > 0 {
+			return chatModelsFromIDs(models, key.Group.Platform), nil
 		}
 	}
-	return []ChatModel{{ID: model, Name: model, Provider: provider}}, nil
+
+	if key.Group != nil {
+		switch key.Group.Platform {
+		case PlatformOpenAI:
+			return chatModelsFromOpenAI(openai.DefaultModels), nil
+		case PlatformAnthropic:
+			return chatModelsFromClaude(claude.DefaultModels), nil
+		}
+		if key.Group.DefaultMappedModel != "" {
+			return []ChatModel{{ID: key.Group.DefaultMappedModel, Name: key.Group.DefaultMappedModel, Provider: key.Group.Platform}}, nil
+		}
+	}
+
+	return chatModelsFromOpenAI(openai.DefaultModels), nil
+}
+
+func chatModelsFromIDs(ids []string, provider string) []ChatModel {
+	models := make([]ChatModel, 0, len(ids))
+	for _, id := range ids {
+		models = append(models, ChatModel{ID: id, Name: id, Provider: provider})
+	}
+	return models
+}
+
+func chatModelsFromOpenAI(models []openai.Model) []ChatModel {
+	out := make([]ChatModel, 0, len(models))
+	for _, model := range models {
+		name := model.DisplayName
+		if name == "" {
+			name = model.ID
+		}
+		out = append(out, ChatModel{ID: model.ID, Name: name, Provider: PlatformOpenAI})
+	}
+	return out
+}
+
+func chatModelsFromClaude(models []claude.Model) []ChatModel {
+	out := make([]ChatModel, 0, len(models))
+	for _, model := range models {
+		name := model.DisplayName
+		if name == "" {
+			name = model.ID
+		}
+		out = append(out, ChatModel{ID: model.ID, Name: name, Provider: PlatformAnthropic})
+	}
+	return out
 }

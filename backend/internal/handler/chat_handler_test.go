@@ -49,7 +49,7 @@ func TestChatHandlerPrepareGatewayContextInjectsSubscriptionForSubscriptionGroup
 	}
 	subRepo := &chatHandlerUserSubscriptionRepoStub{subscription: subscription}
 	h := NewChatHandler(
-		service.NewChatService(service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, nil)),
+		service.NewChatService(service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, nil), nil),
 		service.NewSubscriptionService(nil, subRepo, nil, nil, nil),
 		nil,
 	)
