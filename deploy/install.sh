@@ -670,6 +670,8 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sub2api
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
 # Security hardening
 NoNewPrivileges=true
@@ -679,6 +681,7 @@ PrivateTmp=true
 ReadWritePaths=/opt/sub2api
 
 # Environment - Server configuration
+Environment=DATA_DIR=/opt/sub2api
 Environment=GIN_MODE=release
 Environment=SERVER_HOST=${SERVER_HOST}
 Environment=SERVER_PORT=${SERVER_PORT}
