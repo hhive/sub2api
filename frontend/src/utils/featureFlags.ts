@@ -114,6 +114,11 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'Affiliate',
   }),
+  onyx: defineFlag({
+    key: 'onyx_enabled',
+    mode: 'opt-in',
+    label: 'Onyx',
+  }),
 } as const
 
 export type RegisteredFeatureFlag = keyof typeof FeatureFlags

@@ -186,6 +186,14 @@ const (
 	SettingKeyTablePageSizeOptions        = "table_page_size_options"       // 表格可选每页条数（JSON 数组）
 	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
 	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
+	SettingKeyOnyxEnabled                 = "onyx_enabled"                 // 是否启用 Onyx 菜单集成
+	SettingKeyOnyxBaseURL                 = "onyx_base_url"                // Onyx 访问地址
+	SettingKeyOnyxMenuLabel               = "onyx_menu_label"              // Onyx 菜单显示名称
+	SettingKeyOnyxExchangeSecret          = "onyx_exchange_secret"         // Onyx 后端交换密钥
+	SettingKeyOnyxLaunchTokenTTLSeconds   = "onyx_launch_token_ttl_seconds" // Onyx 跳转 token 有效期（秒）
+	SettingKeyOnyxDefaultRedirectPath     = "onyx_default_redirect_path"   // Onyx 登录后默认路径
+	SettingKeyOnyxDefaultTextModel        = "onyx_default_text_model"      // Onyx 默认文本模型
+	SettingKeyOnyxDefaultImageModel       = "onyx_default_image_model"     // Onyx 默认图片模型
 
 	// 默认配置
 	SettingKeyDefaultConcurrency   = "default_concurrency"    // 新用户默认并发量

@@ -183,6 +183,14 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TablePageSizeOptions:                   settings.TablePageSizeOptions,
 		CustomMenuItems:                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
 		CustomEndpoints:                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
+		OnyxEnabled:                            settings.OnyxEnabled,
+		OnyxBaseURL:                            settings.OnyxBaseURL,
+		OnyxMenuLabel:                          settings.OnyxMenuLabel,
+		OnyxExchangeSecretConfigured:           settings.OnyxExchangeSecret != "",
+		OnyxLaunchTokenTTLSeconds:              settings.OnyxLaunchTokenTTLSeconds,
+		OnyxDefaultRedirectPath:                settings.OnyxDefaultRedirectPath,
+		OnyxDefaultTextModel:                   settings.OnyxDefaultTextModel,
+		OnyxDefaultImageModel:                  settings.OnyxDefaultImageModel,
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
 		AffiliateRebateRate:                    settings.AffiliateRebateRate,
@@ -340,6 +348,14 @@ type UpdateSettingsRequest struct {
 	TablePageSizeOptions        []int                 `json:"table_page_size_options"`
 	CustomMenuItems             *[]dto.CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints             *[]dto.CustomEndpoint `json:"custom_endpoints"`
+	OnyxEnabled                 *bool                 `json:"onyx_enabled"`
+	OnyxBaseURL                 *string               `json:"onyx_base_url"`
+	OnyxMenuLabel               *string               `json:"onyx_menu_label"`
+	OnyxExchangeSecret          *string               `json:"onyx_exchange_secret"`
+	OnyxLaunchTokenTTLSeconds   *int                  `json:"onyx_launch_token_ttl_seconds"`
+	OnyxDefaultRedirectPath     *string               `json:"onyx_default_redirect_path"`
+	OnyxDefaultTextModel        *string               `json:"onyx_default_text_model"`
+	OnyxDefaultImageModel       *string               `json:"onyx_default_image_model"`
 
 	// 默认配置
 	DefaultConcurrency                       int                               `json:"default_concurrency"`
@@ -885,7 +901,67 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		}
 	}
 
-	// “购买订阅”页面配置验证
+	// Onyx 参数验证
+	onyxEnabled := previousSettings.OnyxEnabled
+	if req.OnyxEnabled != nil {
+		onyxEnabled = *req.OnyxEnabled
+	}
+	onyxBaseURL := strings.TrimSpace(previousSettings.OnyxBaseURL)
+	if req.OnyxBaseURL != nil {
+		onyxBaseURL = strings.TrimSpace(*req.OnyxBaseURL)
+	}
+	onyxMenuLabel := strings.TrimSpace(previousSettings.OnyxMenuLabel)
+	if req.OnyxMenuLabel != nil {
+		onyxMenuLabel = strings.TrimSpace(*req.OnyxMenuLabel)
+	}
+	if onyxMenuLabel == "" {
+		onyxMenuLabel = "Onyx"
+	}
+	onyxExchangeSecret := strings.TrimSpace(previousSettings.OnyxExchangeSecret)
+	if req.OnyxExchangeSecret != nil {
+		onyxExchangeSecret = strings.TrimSpace(*req.OnyxExchangeSecret)
+	}
+	onyxLaunchTokenTTLSeconds := previousSettings.OnyxLaunchTokenTTLSeconds
+	if req.OnyxLaunchTokenTTLSeconds != nil {
+		onyxLaunchTokenTTLSeconds = *req.OnyxLaunchTokenTTLSeconds
+	}
+	if onyxLaunchTokenTTLSeconds <= 0 {
+		onyxLaunchTokenTTLSeconds = 60
+	}
+	onyxDefaultRedirectPath := strings.TrimSpace(previousSettings.OnyxDefaultRedirectPath)
+	if req.OnyxDefaultRedirectPath != nil {
+		onyxDefaultRedirectPath = strings.TrimSpace(*req.OnyxDefaultRedirectPath)
+	}
+	if onyxDefaultRedirectPath == "" {
+		onyxDefaultRedirectPath = "/chat"
+	}
+	onyxDefaultTextModel := strings.TrimSpace(previousSettings.OnyxDefaultTextModel)
+	if req.OnyxDefaultTextModel != nil {
+		onyxDefaultTextModel = strings.TrimSpace(*req.OnyxDefaultTextModel)
+	}
+	onyxDefaultImageModel := strings.TrimSpace(previousSettings.OnyxDefaultImageModel)
+	if req.OnyxDefaultImageModel != nil {
+		onyxDefaultImageModel = strings.TrimSpace(*req.OnyxDefaultImageModel)
+	}
+	if onyxEnabled {
+		if onyxBaseURL == "" {
+			response.BadRequest(c, "Onyx Base URL is required when enabled")
+			return
+		}
+		if err := config.ValidateAbsoluteHTTPURL(onyxBaseURL); err != nil {
+			response.BadRequest(c, "Onyx Base URL must be an absolute http(s) URL")
+			return
+		}
+		if onyxExchangeSecret == "" {
+			response.BadRequest(c, "Onyx Exchange Secret is required when enabled")
+			return
+		}
+		if err := config.ValidateFrontendRedirectURL(onyxDefaultRedirectPath); err != nil {
+			response.BadRequest(c, "Onyx Default Redirect Path is invalid")
+			return
+		}
+	}
+
 	purchaseEnabled := previousSettings.PurchaseSubscriptionEnabled
 	if req.PurchaseSubscriptionEnabled != nil {
 		purchaseEnabled = *req.PurchaseSubscriptionEnabled
@@ -1167,6 +1243,14 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TablePageSizeOptions:             req.TablePageSizeOptions,
 		CustomMenuItems:                  customMenuJSON,
 		CustomEndpoints:                  customEndpointsJSON,
+		OnyxEnabled:                      onyxEnabled,
+		OnyxBaseURL:                      onyxBaseURL,
+		OnyxMenuLabel:                    onyxMenuLabel,
+		OnyxExchangeSecret:               onyxExchangeSecret,
+		OnyxLaunchTokenTTLSeconds:        onyxLaunchTokenTTLSeconds,
+		OnyxDefaultRedirectPath:          onyxDefaultRedirectPath,
+		OnyxDefaultTextModel:             onyxDefaultTextModel,
+		OnyxDefaultImageModel:            onyxDefaultImageModel,
 		DefaultConcurrency:               req.DefaultConcurrency,
 		DefaultBalance:                   req.DefaultBalance,
 		AffiliateRebateRate:              affiliateRebateRate,

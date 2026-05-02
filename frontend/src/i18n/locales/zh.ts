@@ -361,6 +361,7 @@ export default {
     apiKeys: 'API 密钥',
     usage: '使用记录',
     chat: '聊天台',
+    onyx: 'Onyx',
     redeem: '兑换',
     affiliate: '邀请返利',
     profile: '个人资料',
@@ -394,6 +395,13 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
+  },
+
+  onyx: {
+    opening: '正在打开 Onyx',
+    noAvailableApiKey: '没有可用 API Key，请先创建一条启用、未过期且有额度的 API Key',
+    notConfigured: 'Onyx 尚未配置，请联系管理员',
+    openFailed: '打开 Onyx 失败'
   },
 
   // Auth

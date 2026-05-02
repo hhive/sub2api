@@ -426,6 +426,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyTablePageSizeOptions,
 		SettingKeyCustomMenuItems,
 		SettingKeyCustomEndpoints,
+		SettingKeyOnyxEnabled,
+		SettingKeyOnyxMenuLabel,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
 		SettingKeyWeChatConnectAppID,
@@ -524,6 +526,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		TablePageSizeOptions:             tablePageSizeOptions,
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
+		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
+		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "Onyx"),
+		OnyxLaunchPath:                   "/api/v1/onyx/launch",
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
 		WeChatOAuthOpenEnabled:           weChatOpenEnabled,
@@ -648,6 +653,7 @@ func (s *SettingService) SetVersion(version string) {
 type PublicSettingsInjectionPayload struct {
 	RegistrationEnabled              bool            `json:"registration_enabled"`
 	EmailVerifyEnabled               bool            `json:"email_verify_enabled"`
+	ForceEmailOnThirdPartySignup     bool            `json:"force_email_on_third_party_signup"`
 	RegistrationEmailSuffixWhitelist []string        `json:"registration_email_suffix_whitelist"`
 	PromoCodeEnabled                 bool            `json:"promo_code_enabled"`
 	PasswordResetEnabled             bool            `json:"password_reset_enabled"`
@@ -669,6 +675,9 @@ type PublicSettingsInjectionPayload struct {
 	TablePageSizeOptions             []int           `json:"table_page_size_options"`
 	CustomMenuItems                  json.RawMessage `json:"custom_menu_items"`
 	CustomEndpoints                  json.RawMessage `json:"custom_endpoints"`
+	OnyxEnabled                      bool            `json:"onyx_enabled"`
+	OnyxMenuLabel                    string          `json:"onyx_menu_label"`
+	OnyxLaunchPath                   string          `json:"onyx_launch_path"`
 	LinuxDoOAuthEnabled              bool            `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool            `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool            `json:"wechat_oauth_open_enabled"`
@@ -704,6 +713,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 	return &PublicSettingsInjectionPayload{
 		RegistrationEnabled:              settings.RegistrationEnabled,
 		EmailVerifyEnabled:               settings.EmailVerifyEnabled,
+		ForceEmailOnThirdPartySignup:     settings.ForceEmailOnThirdPartySignup,
 		RegistrationEmailSuffixWhitelist: settings.RegistrationEmailSuffixWhitelist,
 		PromoCodeEnabled:                 settings.PromoCodeEnabled,
 		PasswordResetEnabled:             settings.PasswordResetEnabled,
@@ -725,6 +735,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		TablePageSizeOptions:             settings.TablePageSizeOptions,
 		CustomMenuItems:                  filterUserVisibleMenuItems(settings.CustomMenuItems),
 		CustomEndpoints:                  safeRawJSONArray(settings.CustomEndpoints),
+		OnyxEnabled:                      settings.OnyxEnabled,
+		OnyxMenuLabel:                    settings.OnyxMenuLabel,
+		OnyxLaunchPath:                   settings.OnyxLaunchPath,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
 		WeChatOAuthOpenEnabled:           settings.WeChatOAuthOpenEnabled,
@@ -1169,6 +1182,19 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyTablePageSizeOptions] = string(tablePageSizeOptionsJSON)
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
+	updates[SettingKeyOnyxEnabled] = strconv.FormatBool(settings.OnyxEnabled)
+	updates[SettingKeyOnyxBaseURL] = strings.TrimSpace(settings.OnyxBaseURL)
+	updates[SettingKeyOnyxMenuLabel] = strings.TrimSpace(settings.OnyxMenuLabel)
+	if settings.OnyxExchangeSecret != "" {
+		updates[SettingKeyOnyxExchangeSecret] = strings.TrimSpace(settings.OnyxExchangeSecret)
+	}
+	if settings.OnyxLaunchTokenTTLSeconds <= 0 {
+		settings.OnyxLaunchTokenTTLSeconds = 60
+	}
+	updates[SettingKeyOnyxLaunchTokenTTLSeconds] = strconv.Itoa(settings.OnyxLaunchTokenTTLSeconds)
+	updates[SettingKeyOnyxDefaultRedirectPath] = strings.TrimSpace(settings.OnyxDefaultRedirectPath)
+	updates[SettingKeyOnyxDefaultTextModel] = strings.TrimSpace(settings.OnyxDefaultTextModel)
+	updates[SettingKeyOnyxDefaultImageModel] = strings.TrimSpace(settings.OnyxDefaultImageModel)
 
 	// 默认配置
 	updates[SettingKeyDefaultConcurrency] = strconv.Itoa(settings.DefaultConcurrency)
@@ -1780,6 +1806,14 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyTablePageSizeOptions:                     "[10,20,50,100]",
 		SettingKeyCustomMenuItems:                          "[]",
 		SettingKeyCustomEndpoints:                          "[]",
+		SettingKeyOnyxEnabled:                              "false",
+		SettingKeyOnyxBaseURL:                              "",
+		SettingKeyOnyxMenuLabel:                            "Onyx",
+		SettingKeyOnyxExchangeSecret:                       "",
+		SettingKeyOnyxLaunchTokenTTLSeconds:                "60",
+		SettingKeyOnyxDefaultRedirectPath:                  "/chat",
+		SettingKeyOnyxDefaultTextModel:                     "gpt-5.5",
+		SettingKeyOnyxDefaultImageModel:                    "gpt-image-2",
 		SettingKeyWeChatConnectEnabled:                     "false",
 		SettingKeyWeChatConnectAppID:                       "",
 		SettingKeyWeChatConnectAppSecret:                   "",
@@ -1922,6 +1956,13 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
+		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
+		OnyxBaseURL:                      strings.TrimSpace(settings[SettingKeyOnyxBaseURL]),
+		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "Onyx"),
+		OnyxExchangeSecret:               strings.TrimSpace(settings[SettingKeyOnyxExchangeSecret]),
+		OnyxDefaultRedirectPath:          strings.TrimSpace(settings[SettingKeyOnyxDefaultRedirectPath]),
+		OnyxDefaultTextModel:             strings.TrimSpace(settings[SettingKeyOnyxDefaultTextModel]),
+		OnyxDefaultImageModel:            strings.TrimSpace(settings[SettingKeyOnyxDefaultImageModel]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
@@ -1946,6 +1987,12 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 
 	if rpm, err := strconv.Atoi(settings[SettingKeyDefaultUserRPMLimit]); err == nil && rpm >= 0 {
 		result.DefaultUserRPMLimit = rpm
+	}
+
+	if ttl, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyOnyxLaunchTokenTTLSeconds])); err == nil && ttl > 0 {
+		result.OnyxLaunchTokenTTLSeconds = ttl
+	} else {
+		result.OnyxLaunchTokenTTLSeconds = 60
 	}
 
 	// 解析浮点数类型

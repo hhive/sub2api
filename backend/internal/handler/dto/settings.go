@@ -91,20 +91,28 @@ type SystemSettings struct {
 	OIDCConnectUserInfoIDPath         string `json:"oidc_connect_userinfo_id_path"`
 	OIDCConnectUserInfoUsernamePath   string `json:"oidc_connect_userinfo_username_path"`
 
-	SiteName                    string           `json:"site_name"`
-	SiteLogo                    string           `json:"site_logo"`
-	SiteSubtitle                string           `json:"site_subtitle"`
-	APIBaseURL                  string           `json:"api_base_url"`
-	ContactInfo                 string           `json:"contact_info"`
-	DocURL                      string           `json:"doc_url"`
-	HomeContent                 string           `json:"home_content"`
-	HideCcsImportButton         bool             `json:"hide_ccs_import_button"`
-	PurchaseSubscriptionEnabled bool             `json:"purchase_subscription_enabled"`
-	PurchaseSubscriptionURL     string           `json:"purchase_subscription_url"`
-	TableDefaultPageSize        int              `json:"table_default_page_size"`
-	TablePageSizeOptions        []int            `json:"table_page_size_options"`
-	CustomMenuItems             []CustomMenuItem `json:"custom_menu_items"`
-	CustomEndpoints             []CustomEndpoint `json:"custom_endpoints"`
+	SiteName                     string           `json:"site_name"`
+	SiteLogo                     string           `json:"site_logo"`
+	SiteSubtitle                 string           `json:"site_subtitle"`
+	APIBaseURL                   string           `json:"api_base_url"`
+	ContactInfo                  string           `json:"contact_info"`
+	DocURL                       string           `json:"doc_url"`
+	HomeContent                  string           `json:"home_content"`
+	HideCcsImportButton          bool             `json:"hide_ccs_import_button"`
+	PurchaseSubscriptionEnabled  bool             `json:"purchase_subscription_enabled"`
+	PurchaseSubscriptionURL      string           `json:"purchase_subscription_url"`
+	TableDefaultPageSize         int              `json:"table_default_page_size"`
+	TablePageSizeOptions         []int            `json:"table_page_size_options"`
+	CustomMenuItems              []CustomMenuItem `json:"custom_menu_items"`
+	CustomEndpoints              []CustomEndpoint `json:"custom_endpoints"`
+	OnyxEnabled                  bool             `json:"onyx_enabled"`
+	OnyxBaseURL                  string           `json:"onyx_base_url"`
+	OnyxMenuLabel                string           `json:"onyx_menu_label"`
+	OnyxExchangeSecretConfigured bool             `json:"onyx_exchange_secret_configured"`
+	OnyxLaunchTokenTTLSeconds    int              `json:"onyx_launch_token_ttl_seconds"`
+	OnyxDefaultRedirectPath      string           `json:"onyx_default_redirect_path"`
+	OnyxDefaultTextModel         string           `json:"onyx_default_text_model"`
+	OnyxDefaultImageModel        string           `json:"onyx_default_image_model"`
 
 	DefaultConcurrency           int                          `json:"default_concurrency"`
 	DefaultBalance               float64                      `json:"default_balance"`
@@ -230,6 +238,9 @@ type PublicSettings struct {
 	TablePageSizeOptions             []int            `json:"table_page_size_options"`
 	CustomMenuItems                  []CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints                  []CustomEndpoint `json:"custom_endpoints"`
+	OnyxEnabled                      bool             `json:"onyx_enabled"`
+	OnyxMenuLabel                    string           `json:"onyx_menu_label"`
+	OnyxLaunchPath                   string           `json:"onyx_launch_path"`
 	LinuxDoOAuthEnabled              bool             `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool             `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool             `json:"wechat_oauth_open_enabled"`

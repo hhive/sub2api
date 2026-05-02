@@ -219,6 +219,9 @@ export interface PublicSettings {
   channel_monitor_default_interval_seconds: number
   available_channels_enabled: boolean
   affiliate_enabled: boolean
+  onyx_enabled: boolean
+  onyx_menu_label: string
+  onyx_launch_path: string
 }
 
 export interface AuthResponse {

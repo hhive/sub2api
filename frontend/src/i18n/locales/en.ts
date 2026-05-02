@@ -361,6 +361,7 @@ export default {
     apiKeys: 'API Keys',
     usage: 'Usage',
     chat: 'Chat',
+    onyx: 'Onyx',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     profile: 'Profile',
@@ -394,6 +395,13 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
+  },
+
+  onyx: {
+    opening: 'Opening Onyx',
+    noAvailableApiKey: 'No available API key. Create an active, unexpired API key with remaining quota first.',
+    notConfigured: 'Onyx is not configured. Contact an administrator.',
+    openFailed: 'Failed to open Onyx'
   },
 
   // Auth
