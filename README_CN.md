@@ -135,9 +135,11 @@ Sub2API 是一个 AI API 网关平台，用于分发和管理 AI 产品订阅的
 
 ```nginx
 underscores_in_headers on;
+client_max_body_size 256m;
 ```
 
 Nginx 默认会丢弃名称中含下划线的请求头（如 `session_id`），这会导致多账号环境下的粘性会话功能失效。
+同时要把 `client_max_body_size` 调大，否则 `/responses` 请求体过大时会先被 Nginx 拒绝，直接返回 `413 Request Entity Too Large`，Sub2API 还来不及处理。
 
 ---
 

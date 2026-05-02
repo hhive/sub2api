@@ -135,9 +135,11 @@ Sub2API（または CRS）を Nginx でリバースプロキシし、Codex CLI �
 
 ```nginx
 underscores_in_headers on;
+client_max_body_size 256m;
 ```
 
 Nginx はデフォルトでアンダースコアを含むヘッダー（例: `session_id`）を破棄するため、マルチアカウント構成でのスティッキーセッションルーティングに支障をきたします。
+`client_max_body_size` も十分大きくしないと、`/responses` のリクエストが Nginx で先に拒否され、`413 Request Entity Too Large` が返ります。
 
 ---
 
