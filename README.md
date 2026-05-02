@@ -129,9 +129,11 @@ When using Nginx as a reverse proxy for Sub2API (or CRS) with Codex CLI, add the
 
 ```nginx
 underscores_in_headers on;
+client_max_body_size 256m;
 ```
 
 Nginx drops headers containing underscores by default (e.g. `session_id`), which breaks sticky session routing in multi-account setups.
+`client_max_body_size` must also be large enough for `/responses` requests, or Nginx will return `413 Request Entity Too Large` before Sub2API can handle the request.
 
 ---
 

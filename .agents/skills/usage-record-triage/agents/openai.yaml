@@ -1,0 +1,4 @@
+interface:
+  display_name: "Usage Record Triage"
+  short_description: "Investigate missing usage records"
+  default_prompt: "Use $usage-record-triage to trace missing usage records by user, key, timezone, and gateway logs."
