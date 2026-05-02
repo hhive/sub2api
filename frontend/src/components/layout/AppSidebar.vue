@@ -22,7 +22,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="sidebar-nav scrollbar-hide">
+    <nav class="sidebar-nav">
       <!-- Admin View: Admin menu first, then personal menu -->
       <template v-if="isAdmin">
         <!-- Admin Section -->
@@ -279,8 +279,6 @@ const siteName = computed(() => appStore.siteName)
 const siteLogo = computed(() => appStore.siteLogo)
 const siteVersion = computed(() => appStore.siteVersion)
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
-const onyxMenuLabel = computed(() => appStore.cachedPublicSettings?.onyx_menu_label || t('nav.onyx'))
-
 // SVG Icon Components
 const DashboardIcon = {
   render: () =>
@@ -701,8 +699,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   items.push(
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
-    { path: '/chat', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true },
-    { path: '__onyx__', label: onyxMenuLabel.value, icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
+    { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -849,7 +846,7 @@ async function handleOnyxLaunch() {
   onyxLaunching.value = true
   try {
     const result = await launchOnyx()
-    window.location.href = result.redirect_url
+    window.open(result.redirect_url, '_blank', 'noopener')
   } catch (error) {
     appStore.showError(resolveOnyxLaunchError(error))
   } finally {

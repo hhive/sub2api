@@ -363,15 +363,71 @@ Docker Postgres 验证：
 
 ---
 
+## 2026-05-02 执行记录：Windows 本地 lite 联调
+
+本轮按用户要求使用 Onyx lite 部署路径继续联调，已完成 sub2api 与 Onyx 的本地服务级验证。
+
+### 已完成
+
+1. sub2api 前端完成 `pnpm run build`，后端完成 `go build -tags embed -o sub2api.exe ./cmd/server`，并以嵌入前端方式启动在 `http://127.0.0.1:8080`。
+2. Onyx backend 从当前源码重新构建为 `onyxdotapp/onyx-backend:latest`，并标记为 `onyxdotapp/onyx-backend:edge`。
+3. Onyx 使用 lite compose 启动核心服务：`api_server`、`relational_db`、`web_server`、`nginx`，入口为 `http://localhost:3000`。
+4. Onyx lite 环境变量已配置：
+   - `SUB2API_INTEGRATION_ENABLED=true`
+   - `SUB2API_BASE_URL=http://host.docker.internal:8080`
+   - `SUB2API_EXCHANGE_SECRET=sub2api-onyx-local-secret`
+   - `SUB2API_DEFAULT_TEXT_MODEL=gpt-5.5`
+   - `SUB2API_DEFAULT_IMAGE_MODEL=gpt-image-2`
+   - `SUB2API_ONYX_REDIRECT_PATH=/chat`
+5. sub2api 本地库已配置 Onyx settings 和可用 API Key。
+6. sub2api 本地 `api_base_url` 已配置为 `http://host.docker.internal:8080/v1`，供 Onyx 容器调用。
+7. 真实 launch/exchange 链路已通过：
+   - sub2api `/api/v1/onyx/launch` 返回 Onyx exchange URL。
+   - Onyx `/api/sub2api/exchange` 返回 `302 /chat`。
+   - 响应包含 `fastapiusersauth` 登录 cookie。
+   - Onyx `sub2api_user_credential` 表已写入 `admin@example.com` 对应的用户级凭证。
+
+### 本轮修复
+
+1. 修复 sub2api public settings 未暴露 Onyx 菜单配置的问题：
+   - `sub2api/backend/internal/handler/setting_handler.go`
+   - `sub2api/backend/internal/handler/setting_handler_public_test.go`
+2. 修复 Onyx Alembic migration 多 head 问题，把 `4f2b7c8d9e10_add_sub2api_user_credential.py` 的 `down_revision` 调整到当前 head。
+3. 修复 Onyx client 解析 sub2api 标准响应包装的问题，兼容 `{code,message,data}`：
+   - `onyx/backend/onyx/server/sub2api/client.py`
+   - `onyx/backend/tests/unit/onyx/server/sub2api/test_client.py`
+
+### 已验证命令
+
+```bash
+go -C E:/Study/AI/claude/sub2api/backend test -p=1 -tags unit ./internal/handler -run "TestSettingHandler_GetPublicSettings_Exposes(OnyxMenuConfig|ForceEmailOnThirdPartySignup|WeChatOAuthModeCapabilities)|TestOnyxHandler"
+cmd /c npm run test:run -- src/api/__tests__/onyx.spec.ts src/components/layout/__tests__/AppSidebar.spec.ts
+E:/Study/AI/claude/onyx/.venv311/Scripts/python.exe -m pytest backend/tests/unit/onyx/server/sub2api/test_client.py backend/tests/unit/onyx/server/sub2api/test_api.py
+```
+
+结果：
+
+- sub2api handler 目标测试通过。
+- sub2api 前端 Onyx API 与 Sidebar 测试通过，4 passed。
+- Onyx sub2api server/client 单测通过，16 passed。
+
+### 当前限制
+
+1. Playwright CLI 在当前 Windows 环境下单步会话不能稳定保持，`open` 能生成快照，但后续 `snapshot/click/fill` 会报告 session 不存在；因此 Sidebar 的真实点击还未完成，只完成了前端单测验证与真实 exchange URL 浏览器打开验证。
+2. Onyx 浏览器打开 exchange URL 后已落到 `http://localhost:3000/app`，服务端 cookie 与数据库凭证均验证成功；但页面快照只捕获到 app 根节点，未进一步验证聊天消息发送。
+3. 当前本地没有配置真实上游模型账号，因此文本聊天和 Image Generation 的真实模型调用仍未完成，只验证了用户级 API Key/模型配置已写入 Onyx。
+
+---
+
 ## 当前对下一步的判断
 
-代码层主链路已经基本补齐：sub2api launch/exchange、sub2api Sidebar、Onyx exchange/自动登录、用户级 credential、聊天 LLM、Image Generation 都已有实现与目标测试覆盖。
+代码层主链路已经基本补齐：sub2api launch/exchange、sub2api Sidebar、Onyx exchange/自动登录、用户级 credential、聊天 LLM、Image Generation 都已有实现与目标测试覆盖。2026-05-02 已完成 Windows 本地 Onyx lite 服务级联调，确认 launch/exchange/cookie/credential 写入链路可用。
 
 下一阶段最窄的合理扩展是端到端联调：
 
-1. 确认 sub2api 和 Onyx 服务都能本地启动。
-2. 配置两边 shared secret、Onyx base URL、默认模型。
-3. 使用浏览器验证 Sidebar 菜单、跳转、自动登录、聊天和生图 API Key 隔离。
+1. 恢复 Playwright CLI 分步会话，或在用户允许后使用等效浏览器自动化方式，完成 Sidebar 真实点击验证。
+2. 配置真实上游模型账号。
+3. 在 Onyx 聊天和 Image Generation 中验证当前用户的 sub2api API Key 隔离。
 
 ---
 

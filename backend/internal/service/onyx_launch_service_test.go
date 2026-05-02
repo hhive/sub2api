@@ -375,9 +375,44 @@ func TestOnyxLaunchService_ConsumeLaunch_ReturnsExchangePayloadForEligibleBoundA
 	require.Equal(t, "onyx-user", result.Username)
 	require.Equal(t, int64(1001), result.APIKeyID)
 	require.Equal(t, "sk-user-key", result.APIKey)
-	require.Equal(t, "https://sub2api.example.com", result.APIBaseURL)
+	require.Equal(t, "https://sub2api.example.com/v1", result.APIBaseURL)
 	require.Equal(t, "gpt-5.5-mini", result.TextModelName)
 	require.Equal(t, "gpt-image-2", result.ImageModelName)
+}
+
+func TestNormalizeOnyxOpenAICompatibleAPIBaseURL(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "windows host loopback becomes docker host with v1",
+			input:    "http://127.0.0.1:8080",
+			expected: "http://host.docker.internal:8080/v1",
+		},
+		{
+			name:     "localhost becomes docker host with v1",
+			input:    "http://localhost:8080/",
+			expected: "http://host.docker.internal:8080/v1",
+		},
+		{
+			name:     "external base gets v1 path",
+			input:    "https://sub2api.example.com",
+			expected: "https://sub2api.example.com/v1",
+		},
+		{
+			name:     "existing v1 path stays stable",
+			input:    "https://sub2api.example.com/v1",
+			expected: "https://sub2api.example.com/v1",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, normalizeOnyxOpenAICompatibleAPIBaseURL(tc.input))
+		})
+	}
 }
 
 func TestOnyxLaunchService_ConsumeLaunch_ReturnsUnauthorizedWhenTokenDataMissing(t *testing.T) {

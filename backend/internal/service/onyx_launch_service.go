@@ -134,7 +134,7 @@ func (s *OnyxLaunchService) ConsumeLaunch(ctx context.Context, token string) (*O
 		if err != nil {
 			return nil, err
 		}
-		payload.APIBaseURL = settings.APIBaseURL
+		payload.APIBaseURL = normalizeOnyxOpenAICompatibleAPIBaseURL(settings.APIBaseURL)
 		payload.TextModelName = settings.OnyxDefaultTextModel
 		payload.ImageModelName = settings.OnyxDefaultImageModel
 	}
@@ -221,6 +221,32 @@ func randomOnyxLaunchToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+func normalizeOnyxOpenAICompatibleAPIBaseURL(rawBaseURL string) string {
+	rawBaseURL = strings.TrimSpace(rawBaseURL)
+	if rawBaseURL == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(rawBaseURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return rawBaseURL
+	}
+
+	if parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost" {
+		host := "host.docker.internal"
+		if port := parsed.Port(); port != "" {
+			host += ":" + port
+		}
+		parsed.Host = host
+	}
+
+	if strings.TrimRight(parsed.Path, "/") != "/v1" {
+		parsed.Path = path.Join(parsed.Path, "/v1")
+	}
+
+	return parsed.String()
 }
 
 func buildOnyxExchangeRedirectURL(baseURL, token string) (string, error) {

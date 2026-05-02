@@ -36,6 +36,7 @@ describe('AppSidebar Onyx menu wiring', () => {
     expect(componentSource).toContain("import { launchOnyx } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
-    expect(componentSource).toContain('window.location.href = result.redirect_url')
+    expect(componentSource).toContain("window.open(result.redirect_url, '_blank', 'noopener')")
+    expect(componentSource).not.toContain("{ path: '/chat', label: t('nav.chat')")
   })
 })
