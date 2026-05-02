@@ -177,6 +177,7 @@ const (
 	defaultWeChatConnectMode     = "open"
 	defaultWeChatConnectScopes   = "snsapi_login"
 	defaultWeChatConnectFrontend = "/auth/wechat/callback"
+	defaultRedeemPurchaseURL     = "https://pay.ldxp.cn/shop/xiaoni-ai"
 )
 
 func normalizeWeChatConnectModeSetting(raw string) string {
@@ -419,6 +420,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAPIBaseURL,
 		SettingKeyContactInfo,
 		SettingKeyDocURL,
+		SettingKeyRedeemPurchaseURL,
 		SettingKeyHomeContent,
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
@@ -517,6 +519,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
@@ -662,6 +665,7 @@ type PublicSettingsInjectionPayload struct {
 	APIBaseURL                       string          `json:"api_base_url"`
 	ContactInfo                      string          `json:"contact_info"`
 	DocURL                           string          `json:"doc_url"`
+	RedeemPurchaseURL                string          `json:"redeem_purchase_url"`
 	HomeContent                      string          `json:"home_content"`
 	HideCcsImportButton              bool            `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled      bool            `json:"purchase_subscription_enabled"`
@@ -718,6 +722,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		APIBaseURL:                       settings.APIBaseURL,
 		ContactInfo:                      settings.ContactInfo,
 		DocURL:                           settings.DocURL,
+		RedeemPurchaseURL:                settings.RedeemPurchaseURL,
 		HomeContent:                      settings.HomeContent,
 		HideCcsImportButton:              settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:      settings.PurchaseSubscriptionEnabled,
@@ -1154,6 +1159,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo
 	updates[SettingKeyDocURL] = settings.DocURL
+	updates[SettingKeyRedeemPurchaseURL] = strings.TrimSpace(settings.RedeemPurchaseURL)
 	updates[SettingKeyHomeContent] = settings.HomeContent
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
 	updates[SettingKeyPurchaseSubscriptionEnabled] = strconv.FormatBool(settings.PurchaseSubscriptionEnabled)
@@ -1804,6 +1810,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeySiteLogo:                                 "",
 		SettingKeyPurchaseSubscriptionEnabled:              "false",
 		SettingKeyPurchaseSubscriptionURL:                  "",
+		SettingKeyRedeemPurchaseURL:                        defaultRedeemPurchaseURL,
 		SettingKeyTableDefaultPageSize:                     "20",
 		SettingKeyTablePageSizeOptions:                     "[10,20,50,100]",
 		SettingKeyCustomMenuItems:                          "[]",
@@ -1947,6 +1954,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",

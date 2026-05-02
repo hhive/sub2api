@@ -3822,6 +3822,26 @@
                 </p>
               </div>
 
+              <!-- Redeem Purchase URL -->
+              <div>
+                <label
+                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {{ t("admin.settings.site.redeemPurchaseUrl") }}
+                </label>
+                <input
+                  v-model="form.redeem_purchase_url"
+                  type="url"
+                  class="input font-mono text-sm"
+                  :placeholder="
+                    t('admin.settings.site.redeemPurchaseUrlPlaceholder')
+                  "
+                />
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.site.redeemPurchaseUrlHint") }}
+                </p>
+              </div>
+
               <!-- Site Logo Upload -->
               <div>
                 <label
@@ -5709,6 +5729,7 @@ const form = reactive<SettingsForm>({
   api_base_url: "",
   contact_info: "",
   doc_url: "",
+  redeem_purchase_url: "https://pay.ldxp.cn/shop/xiaoni-ai",
   home_content: "",
   backend_mode_enabled: false,
   hide_ccs_import_button: false,
@@ -6621,6 +6642,9 @@ async function saveSettings() {
     // Optional URL fields: auto-clear invalid values so they don't cause backend 400 errors
     if (!isValidHttpUrl(form.frontend_url)) form.frontend_url = "";
     if (!isValidHttpUrl(form.doc_url)) form.doc_url = "";
+    if (!isValidHttpUrl(form.redeem_purchase_url)) {
+      form.redeem_purchase_url = "https://pay.ldxp.cn/shop/xiaoni-ai";
+    }
     syncWeChatConnectMode();
     const wechatStoredMode = deriveWeChatConnectStoredMode(
       form.wechat_connect_open_enabled,
@@ -6658,6 +6682,7 @@ async function saveSettings() {
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
       doc_url: form.doc_url,
+      redeem_purchase_url: form.redeem_purchase_url,
       home_content: form.home_content,
       backend_mode_enabled: form.backend_mode_enabled,
       hide_ccs_import_button: form.hide_ccs_import_button,

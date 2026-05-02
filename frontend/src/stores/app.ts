@@ -333,6 +333,7 @@ export const useAppStore = defineStore('app', () => {
         api_base_url: apiBaseUrl.value,
         contact_info: contactInfo.value,
         doc_url: docUrl.value,
+        redeem_purchase_url: 'https://pay.ldxp.cn/shop/xiaoni-ai',
         home_content: '',
         hide_ccs_import_button: false,
         payment_enabled: false,

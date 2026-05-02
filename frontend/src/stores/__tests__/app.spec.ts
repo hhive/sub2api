@@ -261,6 +261,7 @@ describe('useAppStore', () => {
         contact_info: 'test@test.com',
         api_base_url: 'https://api.test.com',
         doc_url: 'https://docs.test.com',
+        redeem_purchase_url: 'https://pay.ldxp.cn/shop/xiaoni-ai',
       }
 
       const store = useAppStore()
@@ -270,6 +271,7 @@ describe('useAppStore', () => {
       expect(store.siteName).toBe('TestSite')
       expect(store.siteLogo).toBe('/logo.png')
       expect(store.siteVersion).toBe('1.0.0')
+      expect(store.cachedPublicSettings?.redeem_purchase_url).toBe('https://pay.ldxp.cn/shop/xiaoni-ai')
       expect(store.publicSettingsLoaded).toBe(true)
     })
 
@@ -311,6 +313,7 @@ describe('useAppStore', () => {
         api_base_url: '',
         contact_info: '',
         doc_url: '',
+        redeem_purchase_url: 'https://pay.ldxp.cn/shop/xiaoni-ai',
         home_content: '',
         hide_ccs_import_button: false,
         purchase_subscription_enabled: false,
@@ -328,6 +331,7 @@ describe('useAppStore', () => {
       await store.fetchPublicSettings(true)
 
       expect((window as any).__APP_CONFIG__.table_default_page_size).toBe(1000)
+      expect((window as any).__APP_CONFIG__.redeem_purchase_url).toBe('https://pay.ldxp.cn/shop/xiaoni-ai')
       expect((window as any).__APP_CONFIG__.table_page_size_options).toEqual([20, 100, 1000])
       expect(localStorage.getItem('table-page-size')).toBeNull()
       expect(localStorage.getItem('table-page-size-source')).toBeNull()
