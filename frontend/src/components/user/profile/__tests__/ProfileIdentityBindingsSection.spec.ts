@@ -249,6 +249,7 @@ describe('ProfileIdentityBindingsSection', () => {
       api_base_url: '',
       contact_info: '',
       doc_url: '',
+      redeem_purchase_url: 'https://pay.ldxp.cn/shop/xiaoni-ai',
       home_content: '',
       hide_ccs_import_button: false,
       payment_enabled: false,

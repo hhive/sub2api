@@ -291,6 +291,7 @@ const baseSettingsResponse = {
   api_base_url: "",
   contact_info: "",
   doc_url: "",
+  redeem_purchase_url: "https://pay.ldxp.cn/shop/xiaoni-ai",
   home_content: "",
   hide_ccs_import_button: false,
   table_default_page_size: 20,
@@ -362,6 +363,7 @@ const baseSettingsResponse = {
   enable_fingerprint_unification: true,
   enable_metadata_passthrough: false,
   enable_cch_signing: false,
+  enable_anthropic_cache_ttl_1h_injection: false,
   payment_enabled: true,
   payment_min_amount: 1,
   payment_max_amount: 10000,
@@ -565,6 +567,26 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(payload).not.toHaveProperty("payment_visible_method_wxpay_source");
     expect(payload).not.toHaveProperty("payment_visible_method_alipay_enabled");
     expect(payload).not.toHaveProperty("payment_visible_method_wxpay_enabled");
+  });
+
+  it("submits Anthropic cache TTL injection gateway setting", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      enable_anthropic_cache_ttl_1h_injection: true,
+    });
+
+    const wrapper = mountView();
+
+    await flushPromises();
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enable_anthropic_cache_ttl_1h_injection: true,
+      }),
+    );
   });
 
   it("updates provider enablement immediately and reloads providers", async () => {

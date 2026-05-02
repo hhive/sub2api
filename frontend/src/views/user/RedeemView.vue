@@ -181,6 +181,17 @@
                 class="mt-2 list-inside list-disc space-y-1 text-sm text-primary-700 dark:text-primary-400"
               >
                 <li>{{ t('redeem.codeRule1') }}</li>
+                <li v-if="redeemPurchaseUrl">
+                  {{ t('redeem.purchaseUrl') }}
+                  <a
+                    :href="redeemPurchaseUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="font-medium underline underline-offset-2 hover:text-primary-800 dark:hover:text-primary-200"
+                  >
+                    {{ t('redeem.purchaseLink') }}
+                  </a>
+                </li>
                 <li>{{ t('redeem.codeRule2') }}</li>
                 <li>
                   {{ t('redeem.codeRule3') }}
@@ -376,6 +387,7 @@ const errorMessage = ref('')
 const history = ref<RedeemHistoryItem[]>([])
 const loadingHistory = ref(false)
 const contactInfo = ref('')
+const redeemPurchaseUrl = ref('')
 
 // Helper functions for history display
 const isBalanceType = (type: string) => {
@@ -481,6 +493,7 @@ onMounted(async () => {
   try {
     const settings = await authAPI.getPublicSettings()
     contactInfo.value = settings.contact_info || ''
+    redeemPurchaseUrl.value = settings.redeem_purchase_url || ''
   } catch (error) {
     console.error('Failed to load contact info:', error)
   }
