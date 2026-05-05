@@ -51,10 +51,11 @@ const (
 
 // Redeem type constants
 const (
-	RedeemTypeBalance      = domain.RedeemTypeBalance
-	RedeemTypeConcurrency  = domain.RedeemTypeConcurrency
-	RedeemTypeSubscription = domain.RedeemTypeSubscription
-	RedeemTypeInvitation   = domain.RedeemTypeInvitation
+	RedeemTypeBalance          = domain.RedeemTypeBalance
+	RedeemTypeConcurrency      = domain.RedeemTypeConcurrency
+	RedeemTypeSubscription     = domain.RedeemTypeSubscription
+	RedeemTypeInvitation       = domain.RedeemTypeInvitation
+	RedeemTypeAffiliateBalance = "affiliate_balance"
 )
 
 // PromoCode status constants
@@ -286,6 +287,9 @@ const (
 
 	// SettingKeyOverloadCooldownSettings stores JSON config for 529 overload cooldown handling.
 	SettingKeyOverloadCooldownSettings = "overload_cooldown_settings"
+
+	// SettingKeyRateLimit429CooldownSettings stores JSON config for 429 fallback cooldown handling.
+	SettingKeyRateLimit429CooldownSettings = "rate_limit_429_cooldown_settings"
 
 	// =========================
 	// Stream Timeout Handling
