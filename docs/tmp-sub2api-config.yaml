@@ -1,0 +1,25 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "release"
+  frontend_url: "http://108.187.32.100"
+
+database:
+  host: "127.0.0.1"
+  port: 5432
+  user: "sub2api"
+  password: "8d41d4c31c3355f6fa82b28dce613fcf"
+  dbname: "sub2api"
+  sslmode: "disable"
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: "ecd54cf6cc74021c70c2566cb7abfcc3"
+  db: 0
+
+jwt:
+  secret: "ce175c6a9ef27cbae1285c7c027ab65eb16532ced066c1e20a21f41219e4af55"
+  expire_hour: 24
+
+run_mode: "standard"

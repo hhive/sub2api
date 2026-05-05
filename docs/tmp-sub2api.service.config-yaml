@@ -1,0 +1,24 @@
+[Unit]
+Description=Sub2API
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=sub2api
+Group=sub2api
+WorkingDirectory=/opt/sub2api
+Environment=DATA_DIR=/etc/sub2api
+ExecStart=/opt/sub2api/sub2api
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sub2api
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ReadWritePaths=/opt/sub2api /var/log/sub2api /etc/sub2api
+
+[Install]
+WantedBy=multi-user.target

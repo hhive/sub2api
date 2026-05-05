@@ -1,5 +1,7 @@
 # Ubuntu 24.04 裸机部署 Sub2API + Onyx Lite 指南
 
+> 当前这台机器已经实际落地的环境信息、密钥、环境变量、systemd 配置和 Nginx 配置，统一记录在 [sub2api-onyx-runtime-environment-and-config.md](/app/ai/sub2api-all/sub2api/docs/sub2api-onyx-runtime-environment-and-config.md)。
+
 > 目标：在一台全新的 Ubuntu 24.04 服务器上，不使用 Docker，部署 Sub2API 与 Onyx Lite，并通过 Nginx 统一反向代理。
 
 ## 目录
@@ -24,7 +26,7 @@
 服务器上的大模型或运维 agent 按阶段执行，不要一次性全量粘贴整篇文档：
 
 1. 先执行第 2 节，替换域名、密码和密钥变量。
-2. 执行第 3 到第 4 节，完成系统依赖、PostgreSQL、Redis。
+2. 执行第 3 到第 4 节，完成系统依赖，并确认本机 PostgreSQL、Redis 已存在且可用；如果本机不存在，则按第 4 节新增安装。
 3. 执行第 5 节，只部署 Sub2API。第 5.7 节验证通过后再继续。
 4. 执行第 6 节，只部署 Onyx Lite。第 6.8 节验证通过后再继续。
 5. 执行第 7 节，配置 Sub2API 与 Onyx 的 shared secret 和 URL。
@@ -47,8 +49,8 @@
 - 不使用 Docker / Docker Compose。
 - Sub2API 与 Onyx Lite 部署在同一台机器。
 - 尽量复用中间件：
-  - 复用同一个 PostgreSQL 实例，分别创建 `sub2api` 与 `onyx` 数据库。
-  - Redis 仅供 Sub2API 使用。
+  - 优先使用本机已有的 PostgreSQL 实例，分别创建 `sub2api` 与 `onyx` 数据库；如果本机没有 PostgreSQL，则在本机新增部署一个实例。
+  - Redis 仅供 Sub2API 使用；如果本机没有 Redis，则在本机新增部署一个实例。
   - Onyx Lite 使用 PostgreSQL 作为 cache/auth/file store，不启动 Redis、Vespa、OpenSearch、MinIO、model server、background worker。
 - Nginx 对外提供 HTTPS 和反向代理。
 
@@ -63,15 +65,10 @@
 | Redis | `127.0.0.1:6379` | Sub2API token/cache |
 | Nginx | `0.0.0.0:80/443` | 对外入口 |
 
-跨服务器使用 PostgreSQL 时，推荐让 PostgreSQL 服务器继续只监听 `127.0.0.1:5432`，在应用服务器上用 SSH tunnel 映射成本机端口：
+说明：
 
-```text
-Sub2API/Onyx 应用服务器 127.0.0.1:15432
-  -> SSH tunnel
-PostgreSQL 服务器 127.0.0.1:5432
-```
-
-应用服务仍然连接 `127.0.0.1`，但端口改为 tunnel 本地端口。不要为了跨服务器访问而直接把 PostgreSQL 暴露到公网。
+- 推荐让 Sub2API、Onyx API、Onyx Web 都只监听本机回环地址，再由 Nginx 暴露对外入口。
+- 如果你需要临时排查“浏览器直连 `IP:8080` 不通”这类问题，可以把 Sub2API 的 `SERVER_HOST` 临时改成 `0.0.0.0`，但这不应作为默认生产形态。
 
 推荐域名：
 
@@ -108,18 +105,9 @@ export ONYX_DB="onyx"
 export ONYX_DB_USER="onyx"
 export ONYX_DB_PASSWORD="replace-with-strong-onyx-db-password"
 
-# 单机部署使用 127.0.0.1:5432。
-# 跨服务器 PostgreSQL 使用 SSH tunnel 时，保持 host 为 127.0.0.1，端口改为本机转发端口。
 export PG_APP_HOST="127.0.0.1"
 export PG_APP_PORT="5432"
 export PG_SSLMODE="disable"
-
-# 跨服务器 PostgreSQL 可选变量。仅在第 4.2 节启用 SSH tunnel 时使用。
-export PG_TUNNEL_LOCAL_PORT="15432"
-export PG_REMOTE_SSH_HOST="108.187.32.84"
-export PG_REMOTE_SSH_USER="root"
-export PG_REMOTE_DB_HOST="127.0.0.1"
-export PG_REMOTE_DB_PORT="5432"
 
 export REDIS_PASSWORD="replace-with-strong-redis-password"
 export SUB2API_ADMIN_EMAIL="admin@example.com"
@@ -150,12 +138,15 @@ sudo apt update
 sudo apt install -y \
   git curl wget ca-certificates gnupg lsb-release build-essential pkg-config cmake \
   nginx certbot python3-certbot-nginx jq \
-  postgresql postgresql-contrib redis-server \
   libpq-dev libxmlsec1-dev libxmlsec1-openssl libjemalloc2 \
   python3.12 python3.12-venv python3.12-dev
 ```
 
-如果 PostgreSQL 已部署在另一台服务器，应用服务器不需要运行本机 PostgreSQL 服务，但仍建议安装 `postgresql-client` 或保留上面的 `postgresql` 包用于 `psql`、`pg_isready` 验证。第 4.1 节的建库命令应在 PostgreSQL 服务器上执行。
+如果你明确知道本机还没有 PostgreSQL 或 Redis，也可以在这里一并安装：
+
+```bash
+sudo apt install -y postgresql postgresql-contrib redis-server
+```
 
 ### 3.2 安装 Node.js 24
 
@@ -210,112 +201,69 @@ uv --version
 
 ## 4. 中间件初始化
 
-### 4.1 PostgreSQL 创建两个数据库
+### 4.1 本机 PostgreSQL 检查、安装并初始化
 
-单机部署时，在当前应用服务器执行本节。跨服务器 PostgreSQL 时，在 PostgreSQL 服务器执行本节，应用服务器只执行第 4.2 节创建 SSH tunnel。
+本节只使用本机 PostgreSQL。若本机已安装，则直接复用；若本机未安装，则新增安装并初始化。
 
 ```bash
+if ! dpkg -s postgresql >/dev/null 2>&1; then
+  sudo apt update
+  sudo apt install -y postgresql postgresql-contrib
+fi
+
 sudo systemctl enable --now postgresql
-sudo -u postgres psql <<SQL
-CREATE USER ${SUB2API_DB_USER} WITH PASSWORD '${SUB2API_DB_PASSWORD}';
-CREATE DATABASE ${SUB2API_DB} OWNER ${SUB2API_DB_USER};
-CREATE USER ${ONYX_DB_USER} WITH PASSWORD '${ONYX_DB_PASSWORD}';
-CREATE DATABASE ${ONYX_DB} OWNER ${ONYX_DB_USER};
-SQL
+sudo systemctl status postgresql --no-pager
+```
+
+创建或更新 `sub2api` 与 `onyx` 数据库用户、数据库：
+
+```bash
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${SUB2API_DB_USER}'" | grep -q 1; then
+  sudo -u postgres psql -c "CREATE USER ${SUB2API_DB_USER} WITH PASSWORD '${SUB2API_DB_PASSWORD}';"
+else
+  sudo -u postgres psql -c "ALTER USER ${SUB2API_DB_USER} WITH PASSWORD '${SUB2API_DB_PASSWORD}';"
+fi
+
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${SUB2API_DB}'" | grep -q 1; then
+  sudo -u postgres psql -c "CREATE DATABASE ${SUB2API_DB} OWNER ${SUB2API_DB_USER};"
+fi
+
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${ONYX_DB_USER}'" | grep -q 1; then
+  sudo -u postgres psql -c "CREATE USER ${ONYX_DB_USER} WITH PASSWORD '${ONYX_DB_PASSWORD}';"
+else
+  sudo -u postgres psql -c "ALTER USER ${ONYX_DB_USER} WITH PASSWORD '${ONYX_DB_PASSWORD}';"
+fi
+
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${ONYX_DB}'" | grep -q 1; then
+  sudo -u postgres psql -c "CREATE DATABASE ${ONYX_DB} OWNER ${ONYX_DB_USER};"
+fi
 ```
 
 验证：
 
 ```bash
-PGPASSWORD="${SUB2API_DB_PASSWORD}" psql -h 127.0.0.1 -U "${SUB2API_DB_USER}" -d "${SUB2API_DB}" -c "select current_database(), current_user;"
-PGPASSWORD="${ONYX_DB_PASSWORD}" psql -h 127.0.0.1 -U "${ONYX_DB_USER}" -d "${ONYX_DB}" -c "select current_database(), current_user;"
-```
-
-### 4.2 可选：跨服务器 PostgreSQL SSH tunnel
-
-如果 PostgreSQL 不在当前应用服务器上，且远端 PostgreSQL 只监听 `127.0.0.1:5432`，不要开放 PostgreSQL 公网端口。建议在应用服务器上创建一个长期运行的 SSH tunnel，把远端数据库映射到本机端口。
-
-启用该模式前，调整变量：
-
-```bash
-export PG_APP_HOST="127.0.0.1"
-export PG_APP_PORT="${PG_TUNNEL_LOCAL_PORT}"
-export PG_SSLMODE="require"
-```
-
-在应用服务器上生成 tunnel 专用 SSH key：
-
-```bash
-sudo install -d -m 700 /etc/sub2api
-sudo ssh-keygen -t ed25519 -f /etc/sub2api/pgsql-tunnel_ed25519 -N "" -C "sub2api-pgsql-tunnel"
-sudo chmod 600 /etc/sub2api/pgsql-tunnel_ed25519
-sudo cat /etc/sub2api/pgsql-tunnel_ed25519.pub
-```
-
-把上一步输出的公钥加入 PostgreSQL 服务器 `${PG_REMOTE_SSH_USER}` 用户的 `~/.ssh/authorized_keys`。确认应用服务器可以免密登录：
-
-```bash
-sudo ssh -i /etc/sub2api/pgsql-tunnel_ed25519 \
-  -o BatchMode=yes \
-  -o StrictHostKeyChecking=accept-new \
-  "${PG_REMOTE_SSH_USER}@${PG_REMOTE_SSH_HOST}" \
-  "pg_isready -h ${PG_REMOTE_DB_HOST} -p ${PG_REMOTE_DB_PORT}"
-```
-
-创建 SSH tunnel 服务：
-
-```bash
-sudo tee /etc/systemd/system/pgsql-ssh-tunnel.service >/dev/null <<EOF
-[Unit]
-Description=PostgreSQL SSH Tunnel
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/ssh \
-  -N \
-  -i /etc/sub2api/pgsql-tunnel_ed25519 \
-  -o BatchMode=yes \
-  -o ExitOnForwardFailure=yes \
-  -o ServerAliveInterval=30 \
-  -o ServerAliveCountMax=3 \
-  -o StrictHostKeyChecking=accept-new \
-  -L 127.0.0.1:${PG_TUNNEL_LOCAL_PORT}:${PG_REMOTE_DB_HOST}:${PG_REMOTE_DB_PORT} \
-  ${PG_REMOTE_SSH_USER}@${PG_REMOTE_SSH_HOST}
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now pgsql-ssh-tunnel
-sudo systemctl status pgsql-ssh-tunnel --no-pager
-```
-
-验证应用服务器本机 tunnel 端口：
-
-```bash
-ss -lntp | grep ":${PG_TUNNEL_LOCAL_PORT}\b"
 PGPASSWORD="${SUB2API_DB_PASSWORD}" psql \
-  "host=${PG_APP_HOST} port=${PG_APP_PORT} user=${SUB2API_DB_USER} dbname=${SUB2API_DB} sslmode=${PG_SSLMODE}" \
+  -h "${PG_APP_HOST}" -p "${PG_APP_PORT}" \
+  -U "${SUB2API_DB_USER}" -d "${SUB2API_DB}" \
   -c "select current_database(), current_user;"
 PGPASSWORD="${ONYX_DB_PASSWORD}" psql \
-  "host=${PG_APP_HOST} port=${PG_APP_PORT} user=${ONYX_DB_USER} dbname=${ONYX_DB} sslmode=${PG_SSLMODE}" \
+  -h "${PG_APP_HOST}" -p "${PG_APP_PORT}" \
+  -U "${ONYX_DB_USER}" -d "${ONYX_DB}" \
   -c "select current_database(), current_user;"
 ```
 
-启用 tunnel 后，后续 Sub2API 与 Onyx 的数据库配置都使用 `${PG_APP_HOST}:${PG_APP_PORT}`，并把 systemd 依赖从 `postgresql.service` 调整为 `pgsql-ssh-tunnel.service`。SSH tunnel 已提供传输加密；Sub2API 可继续设置 `sslmode=require`，Onyx 只需要把 PostgreSQL host/port 指向 tunnel 本地端口。如果 PostgreSQL 就在本机，跳过本节，继续使用 `127.0.0.1:5432`。
+### 4.2 本机 Redis 检查、安装并初始化
 
-### 4.3 Redis 仅供 Sub2API 使用
-
-编辑 Redis 配置：
+本节只使用本机 Redis。若本机已安装，则直接复用；若本机未安装，则新增安装并初始化。
 
 ```bash
+if ! dpkg -s redis-server >/dev/null 2>&1; then
+  sudo apt update
+  sudo apt install -y redis-server
+fi
+
 sudo cp /etc/redis/redis.conf /etc/redis/redis.conf.bak.$(date +%F-%H%M%S)
-sudo sed -i "s/^# requirepass .*/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
+sudo sed -i "s/^#\? requirepass .*/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
 if ! grep -q '^requirepass ' /etc/redis/redis.conf; then
   echo "requirepass ${REDIS_PASSWORD}" | sudo tee -a /etc/redis/redis.conf
 fi
@@ -381,54 +329,54 @@ sudo chown sub2api:sub2api "${SUB2API_APP_DIR}/sub2api"
 ### 5.5 写入配置文件
 
 ```bash
-sudo mkdir -p /etc/sub2api "${SUB2API_APP_DIR}/data"
-sudo cp "${SUB2API_SRC_DIR}/deploy/config.example.yaml" /etc/sub2api/config.yaml
-sudo chown -R sub2api:sub2api "${SUB2API_APP_DIR}" "${SUB2API_APP_DIR}/data"
-sudo chmod 750 "${SUB2API_APP_DIR}" "${SUB2API_APP_DIR}/data"
-sudo chown root:sub2api /etc/sub2api/config.yaml
-sudo chmod 640 /etc/sub2api/config.yaml
+sudo mkdir -p /etc/sub2api
+sudo chown -R sub2api:sub2api "${SUB2API_APP_DIR}"
+sudo chmod 750 "${SUB2API_APP_DIR}"
 ```
 
-编辑 `/etc/sub2api/config.yaml`，至少确认这些值：
+创建 `/etc/sub2api/config.yaml`：
 
-```yaml
+```bash
+sudo tee /etc/sub2api/config.yaml >/dev/null <<EOF
 server:
   host: "127.0.0.1"
   port: 8080
   mode: "release"
-  frontend_url: "https://sub2api.example.com"
+  frontend_url: "https://${SUB2API_DOMAIN}"
 
 database:
   host: "127.0.0.1"
   port: 5432
-  user: "sub2api"
-  password: "replace-with-strong-sub2api-db-password"
-  dbname: "sub2api"
-  sslmode: "disable"
+  user: "${SUB2API_DB_USER}"
+  password: "${SUB2API_DB_PASSWORD}"
+  dbname: "${SUB2API_DB}"
+  sslmode: "${PG_SSLMODE}"
 
 redis:
   host: "127.0.0.1"
   port: 6379
-  password: "replace-with-strong-redis-password"
+  password: "${REDIS_PASSWORD}"
   db: 0
 
 jwt:
-  secret: "replace-with-64-random-chars"
+  secret: "${SUB2API_JWT_SECRET}"
+  expire_hour: 24
+
+run_mode: "standard"
+EOF
+
+sudo chown root:sub2api /etc/sub2api/config.yaml
+sudo chmod 640 /etc/sub2api/config.yaml
 ```
 
-如果配置文件字段结构与当前版本略有差异，以 `deploy/config.example.yaml` 中的实际 key 为准，保持上面的语义不变。
+说明：
 
-如果第 4.2 节启用了跨服务器 PostgreSQL SSH tunnel，数据库配置改为：
+- `config.yaml` 是 Sub2API README 中“源码部署”的主路径。
+- 当前二进制没有 `--config` 启动参数，不要写 `ExecStart=/opt/sub2api/sub2api --config /etc/sub2api/config.yaml`。
+- systemd 必须显式设置 `DATA_DIR=/etc/sub2api`，让启动阶段的 `setup.NeedsSetup()` 和主配置加载都指向同一份 `config.yaml`。
+- 如需临时允许外部直连 `:8080` 调试，可把 `SERVER_HOST` 从 `127.0.0.1` 改成 `0.0.0.0`，排查结束后再改回。
 
-```yaml
-database:
-  host: "127.0.0.1"
-  port: 15432
-  user: "sub2api"
-  password: "replace-with-strong-sub2api-db-password"
-  dbname: "sub2api"
-  sslmode: "require"
-```
+如果你明确需要无人值守自动初始化，也可以走 `env + AUTO_SETUP=true` 备选路径；但本文主路径以 `config.yaml` 为准。
 
 ### 5.6 创建 systemd 服务
 
@@ -444,11 +392,10 @@ Type=simple
 User=sub2api
 Group=sub2api
 WorkingDirectory=/opt/sub2api
-ExecStart=/opt/sub2api/sub2api --config /etc/sub2api/config.yaml
+Environment=DATA_DIR=/etc/sub2api
+ExecStart=/opt/sub2api/sub2api
 Restart=always
 RestartSec=5
-Environment=DATA_DIR=/opt/sub2api/data
-Environment=GIN_MODE=release
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sub2api
@@ -456,7 +403,7 @@ SyslogIdentifier=sub2api
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
-ReadWritePaths=/opt/sub2api /var/log/sub2api
+ReadWritePaths=/opt/sub2api /var/log/sub2api /etc/sub2api
 
 [Install]
 WantedBy=multi-user.target
@@ -467,23 +414,6 @@ sudo systemctl enable --now sub2api
 sudo systemctl status sub2api --no-pager
 ```
 
-如果第 4.2 节启用了跨服务器 PostgreSQL SSH tunnel，把 `[Unit]` 中的 PostgreSQL 依赖改为 tunnel 服务：
-
-```ini
-After=network-online.target pgsql-ssh-tunnel.service redis-server.service
-Wants=network-online.target pgsql-ssh-tunnel.service redis-server.service
-```
-
-如果当前二进制不支持 `--config` 参数，改为把配置文件复制到工作目录：
-
-```bash
-sudo cp /etc/sub2api/config.yaml /opt/sub2api/config.yaml
-sudo chown sub2api:sub2api /opt/sub2api/config.yaml
-sudo sed -i 's#ExecStart=/opt/sub2api/sub2api --config /etc/sub2api/config.yaml#ExecStart=/opt/sub2api/sub2api#' /etc/systemd/system/sub2api.service
-sudo systemctl daemon-reload
-sudo systemctl restart sub2api
-```
-
 ### 5.7 验证 Sub2API
 
 ```bash
@@ -491,11 +421,15 @@ curl -i http://127.0.0.1:8080/
 curl -s http://127.0.0.1:8080/api/v1/settings/public | jq .
 ```
 
-首次部署可能进入安装向导。可以通过浏览器访问 `https://sub2api.example.com` 完成初始化，也可以按当前版本支持的自动初始化方式写入管理员账户。完成初始化后重启：
+如果你使用的是已有数据库，这里应直接进入主服务，而不是 setup wizard。
+
+如果这是全新安装、数据库还是空的，按 README 的源码部署路径，首次会进入 setup wizard。此时通过浏览器完成初始化后，程序会写入 `/etc/sub2api/config.yaml` 并创建安装锁文件。完成初始化后重启：
 
 ```bash
 sudo systemctl restart sub2api
 ```
+
+如果你不想走浏览器向导，才改用 `env + AUTO_SETUP=true` 备选路径。
 
 ---
 
@@ -542,6 +476,8 @@ uv sync --frozen --group backend
 
 ```bash
 sudo tee /etc/onyx/onyx.env >/dev/null <<EOF
+HOME=/tmp/onyx
+HF_HOME=/tmp/onyx/.cache/huggingface
 PYTHONPATH=${ONYX_DIR}/backend
 LD_PRELOAD=libjemalloc.so.2
 
@@ -575,15 +511,10 @@ sudo chmod 640 /etc/onyx/onyx.env
 sudo chown root:onyx /etc/onyx/onyx.env
 ```
 
-如果第 4.2 节启用了跨服务器 PostgreSQL SSH tunnel，Onyx 数据库变量改为：
+说明：
 
-```env
-POSTGRES_HOST=127.0.0.1
-POSTGRES_PORT=15432
-POSTGRES_USER=${ONYX_DB_USER}
-POSTGRES_PASSWORD=${ONYX_DB_PASSWORD}
-POSTGRES_DB=${ONYX_DB}
-```
+- `HOME` 和 `HF_HOME` 必须显式设置到可写目录。否则 Onyx 首次加载 tokenizer 或 Hugging Face 缓存时，可能默认落到 `/opt/onyx` 并触发权限错误。
+- 如果你采用的是 IP + 端口入口，而不是域名 + HTTPS，这里的 `WEB_DOMAIN` 应替换成实际外部入口，例如 `http://108.187.32.100:81`。
 
 ### 6.5 执行 Onyx 数据库迁移
 
@@ -644,19 +575,49 @@ sudo systemctl enable --now onyx-api
 sudo systemctl status onyx-api --no-pager
 ```
 
-如果第 4.2 节启用了跨服务器 PostgreSQL SSH tunnel，把 `[Unit]` 中的 PostgreSQL 依赖改为 tunnel 服务：
-
-```ini
-After=network-online.target pgsql-ssh-tunnel.service
-Wants=network-online.target pgsql-ssh-tunnel.service
-```
-
 ### 6.7 构建并运行 Onyx Web
 
 ```bash
 cd "${ONYX_DIR}/web"
 npm ci
-NEXT_PRIVATE_STANDALONE=true NEXT_TELEMETRY_DISABLED=1 npm run build
+NEXT_PRIVATE_STANDALONE=true \
+NEXT_TELEMETRY_DISABLED=1 \
+INTERNAL_URL=http://127.0.0.1:8081 \
+WEB_DOMAIN=https://${ONYX_DOMAIN} \
+npm run build
+```
+
+如果构建阶段因为内存不足被杀掉，例如 `Killed`、退出码 `137` 或 Next 构建长时间卡死，按下面方式处理：
+
+```bash
+sudo fallocate -l 4G /swapfile_onyx_build
+sudo chmod 600 /swapfile_onyx_build
+sudo mkswap /swapfile_onyx_build
+sudo swapon /swapfile_onyx_build
+
+cd "${ONYX_DIR}/web"
+NEXT_PRIVATE_STANDALONE=true \
+NEXT_TELEMETRY_DISABLED=1 \
+INTERNAL_URL=http://127.0.0.1:8081 \
+WEB_DOMAIN=https://${ONYX_DOMAIN} \
+NODE_OPTIONS=--max-old-space-size=3072 \
+npx next build --webpack
+```
+
+构建完成后，把静态资源和 `public` 目录放进 standalone 运行目录：
+
+```bash
+cd "${ONYX_DIR}/web"
+mkdir -p .next/standalone/.next
+cp -a .next/static .next/standalone/.next/static
+cp -a public .next/standalone/public
+```
+
+如果前面为了构建临时创建了 swap，确认系统内存压力恢复正常后可以清理：
+
+```bash
+sudo swapoff /swapfile_onyx_build
+sudo rm -f /swapfile_onyx_build
 ```
 
 创建 `/etc/onyx/web.env`：
@@ -667,6 +628,8 @@ NODE_ENV=production
 NEXT_TELEMETRY_DISABLED=1
 INTERNAL_URL=http://127.0.0.1:8081
 WEB_DOMAIN=https://${ONYX_DOMAIN}
+HOSTNAME=127.0.0.1
+PORT=3000
 EOF
 
 sudo chmod 640 /etc/onyx/web.env
@@ -680,15 +643,15 @@ sudo tee /etc/systemd/system/onyx-web.service >/dev/null <<EOF
 [Unit]
 Description=Onyx Web
 After=network-online.target onyx-api.service
-Wants=network-online.target
+Wants=network-online.target onyx-api.service
 
 [Service]
 Type=simple
 User=onyx
 Group=onyx
-WorkingDirectory=${ONYX_DIR}/web
+WorkingDirectory=${ONYX_DIR}/web/.next/standalone
 EnvironmentFile=/etc/onyx/web.env
-ExecStart=/usr/bin/npm run start -- -p 3000 -H 127.0.0.1
+ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -697,6 +660,8 @@ SyslogIdentifier=onyx-web
 
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectHome=true
+ReadOnlyPaths=${ONYX_DIR}/web/.next/standalone
 
 [Install]
 WantedBy=multi-user.target
@@ -811,6 +776,8 @@ server {
 EOF
 ```
 
+如果这台机器已经有自定义 Nginx 在跑，不要再强行切回 Ubuntu 默认 `/etc/nginx/sites-enabled/*` 布局。把下面的 `server` 块合并进现有主配置，再执行对应 Nginx 二进制的 `-t` 和 reload。
+
 ### 8.2 Onyx 站点
 
 创建 `/etc/nginx/sites-available/onyx.conf`。重点是 `/api/*` 需要去掉 `/api` 前缀再转发给 Onyx API。
@@ -905,12 +872,6 @@ sudo systemctl reload nginx
 sudo systemctl status postgresql redis-server sub2api onyx-api onyx-web nginx --no-pager
 ```
 
-如果第 4.2 节启用了跨服务器 PostgreSQL SSH tunnel，改为检查：
-
-```bash
-sudo systemctl status pgsql-ssh-tunnel redis-server sub2api onyx-api onyx-web nginx --no-pager
-```
-
 ### 9.2 本机端口
 
 ```bash
@@ -922,18 +883,11 @@ ss -lntp | grep -E ':(8080|8081|3000|5432|6379|80|443)\b'
 - `127.0.0.1:8080` 有 Sub2API。
 - `127.0.0.1:8081` 有 Onyx API。
 - `127.0.0.1:3000` 有 Onyx Web。
-- 单机 PostgreSQL 时，`127.0.0.1:5432` 有 PostgreSQL。
-- 跨服务器 PostgreSQL SSH tunnel 时，`127.0.0.1:15432` 有 tunnel 监听。
+- `127.0.0.1:5432` 有 PostgreSQL。
+- `127.0.0.1:6379` 有 Redis。
 - `0.0.0.0:80` 和 `0.0.0.0:443` 由 Nginx 监听。
 
-跨服务器 PostgreSQL SSH tunnel 的端口检查命令：
-
-```bash
-ss -lntp | grep ":${PG_TUNNEL_LOCAL_PORT}\b"
-PGPASSWORD="${SUB2API_DB_PASSWORD}" psql \
-  "host=${PG_APP_HOST} port=${PG_APP_PORT} user=${SUB2API_DB_USER} dbname=${SUB2API_DB} sslmode=${PG_SSLMODE}" \
-  -c "select current_database(), current_user;"
-```
+如果你为了临时排查把 Sub2API 暴露到了 `0.0.0.0:8080`，这里只会多出一个外网可见监听；生产形态仍建议回到 `127.0.0.1:8080`。
 
 ### 9.3 Sub2API public settings
 
@@ -1074,7 +1028,15 @@ set +a
 
 cd "${ONYX_DIR}/web"
 npm ci
-NEXT_PRIVATE_STANDALONE=true NEXT_TELEMETRY_DISABLED=1 npm run build
+NEXT_PRIVATE_STANDALONE=true \
+NEXT_TELEMETRY_DISABLED=1 \
+INTERNAL_URL=http://127.0.0.1:8081 \
+WEB_DOMAIN=https://${ONYX_DOMAIN} \
+NODE_OPTIONS=--max-old-space-size=3072 \
+npx next build --webpack
+mkdir -p .next/standalone/.next
+cp -a .next/static .next/standalone/.next/static
+cp -a public .next/standalone/public
 
 sudo systemctl restart onyx-api onyx-web
 ```
@@ -1193,46 +1155,143 @@ curl -i http://127.0.0.1:3000/
 
 哪个失败就优先查看对应服务日志。
 
-### 11.8 跨服务器 PostgreSQL SSH tunnel 断开
+### 11.8 本机 PostgreSQL 未启动或拒绝连接
 
 现象：
 
 ```text
 connection refused
-connection timed out
 server closed the connection unexpectedly
 ```
 
-先确认 tunnel 服务和本地转发端口：
+先确认本机 PostgreSQL 服务状态和监听端口：
 
 ```bash
-sudo systemctl status pgsql-ssh-tunnel --no-pager
-sudo journalctl -u pgsql-ssh-tunnel -n 100 --no-pager
-ss -lntp | grep ":${PG_TUNNEL_LOCAL_PORT}\b"
+sudo systemctl status postgresql --no-pager
+sudo journalctl -u postgresql -n 100 --no-pager
+ss -lntp | grep ':5432\b'
 ```
 
-再确认 SSH 免密与远端 PostgreSQL 本机可用：
+再确认数据库本身和应用用户可登录：
 
 ```bash
-sudo ssh -i /etc/sub2api/pgsql-tunnel_ed25519 \
-  -o BatchMode=yes \
-  "${PG_REMOTE_SSH_USER}@${PG_REMOTE_SSH_HOST}" \
-  "pg_isready -h ${PG_REMOTE_DB_HOST} -p ${PG_REMOTE_DB_PORT}"
+sudo -u postgres pg_isready -h 127.0.0.1 -p 5432
+PGPASSWORD="${SUB2API_DB_PASSWORD}" psql \
+  -h "${PG_APP_HOST}" -p "${PG_APP_PORT}" \
+  -U "${SUB2API_DB_USER}" -d "${SUB2API_DB}" \
+  -c "select current_database(), current_user;"
 ```
 
-如果 tunnel 正常但应用仍连不上，检查应用配置是否连接本机 tunnel 端口，而不是远端公网地址：
+如果 PostgreSQL 正常但应用仍连不上，检查 Sub2API 和 Onyx 配置是否都指向本机：
 
 ```text
 host: 127.0.0.1
-port: 15432
-sslmode: require
+port: 5432
+sslmode: disable
 ```
 
-如果系统重启后应用先启动、tunnel 后启动，确认 Sub2API 与 Onyx API 的 systemd `[Unit]` 已依赖 `pgsql-ssh-tunnel.service`，然后执行：
+如果系统重启后 PostgreSQL 慢于应用启动，确认 Sub2API 与 Onyx API 的 systemd `[Unit]` 已依赖 `postgresql.service`，然后执行：
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart pgsql-ssh-tunnel sub2api onyx-api
+sudo systemctl restart postgresql sub2api onyx-api
+```
+
+### 11.9 Sub2API 误进入 setup wizard
+
+现象：
+
+```text
+Setup wizard available at http://...
+```
+
+但你明明已经写好了 `/etc/sub2api/config.yaml`，数据库里也已有数据。
+
+处理：
+
+- 确认 systemd 是否显式设置了 `DATA_DIR=/etc/sub2api`。
+- 确认 `/etc/sub2api/config.yaml` 的权限允许 `sub2api` 用户读取。
+- 不要给二进制传 `--config`，当前版本并不支持这个参数。
+
+推荐 unit 片段：
+
+```ini
+[Service]
+Environment=DATA_DIR=/etc/sub2api
+ExecStart=/opt/sub2api/sub2api
+```
+
+改完后执行：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart sub2api
+sudo journalctl -u sub2api -n 100 --no-pager
+```
+
+### 11.10 Onyx API 报 Hugging Face 缓存权限错误
+
+现象：
+
+```text
+PermissionError: [Errno 13] Permission denied: '/opt/onyx'
+```
+
+处理：
+
+```bash
+sudo grep -E '^(HOME|HF_HOME)=' /etc/onyx/onyx.env
+```
+
+如果没有下面两行，就补上后重启：
+
+```text
+HOME=/tmp/onyx
+HF_HOME=/tmp/onyx/.cache/huggingface
+```
+
+```bash
+sudo systemctl restart onyx-api
+sudo journalctl -u onyx-api -n 100 --no-pager
+```
+
+### 11.11 Onyx Web 构建被 OOM 杀掉
+
+现象：
+
+```text
+Killed
+exit code 137
+```
+
+处理：
+
+- 增加临时 swap，再重新构建。
+- 构建时显式设置 `NODE_OPTIONS=--max-old-space-size=3072`。
+- 优先使用 `npx next build --webpack`，与本次成功部署路径保持一致。
+
+### 11.12 生图工具未显示或不可用
+
+先确认 Sub2API 与 Onyx 两侧都具备前提条件：
+
+- Sub2API 已配置可用上游生图渠道。
+- 当前用户至少有一条可用的 Sub2API API Key。
+- `onyx_default_image_model` 已配置，例如 `gpt-image-2`。
+
+如果这些都满足，但 Onyx 前端仍不显示 Image Generation，检查你部署的 Onyx 代码是否包含 Sub2API 用户级图片凭证可用性判断修复。旧代码会只看全局 `image_generation_config`，而忽略用户级 Sub2API 图片凭证。
+
+### 11.13 Onyx migration 缺少角色权限
+
+部分环境下，Onyx migration 可能要求数据库用户临时具备更高权限。如果 `alembic upgrade head` 日志明确提示角色或权限不足，先为 `onyx` 用户临时补权，迁移完成后再收回：
+
+```bash
+sudo -u postgres psql -c "ALTER ROLE ${ONYX_DB_USER} CREATEROLE;"
+cd "${ONYX_DIR}/backend"
+set -a
+. /etc/onyx/onyx.env
+set +a
+"${ONYX_DIR}/.venv/bin/alembic" -c alembic.ini upgrade head
+sudo -u postgres psql -c "ALTER ROLE ${ONYX_DB_USER} NOCREATEROLE;"
 ```
 
 ---
@@ -1240,14 +1299,17 @@ sudo systemctl restart pgsql-ssh-tunnel sub2api onyx-api
 ## 附录：给服务器执行 agent 的最短检查清单
 
 1. 不安装 Docker，不执行任何 `docker` 命令。
-2. PostgreSQL 单机部署时只装一个实例，创建 `sub2api`、`onyx` 两个数据库；跨服务器部署时通过 SSH tunnel 暴露为应用服务器本机端口。
+2. PostgreSQL 只使用本机单实例，创建 `sub2api`、`onyx` 两个数据库；本机没有 PostgreSQL 时先安装再初始化。
 3. Redis 只给 Sub2API 用；Onyx Lite 使用 PostgreSQL backend。
-4. Sub2API 监听 `127.0.0.1:8080`。
-5. Onyx API 监听 `127.0.0.1:8081`。
-6. Onyx Web 监听 `127.0.0.1:3000`。
-7. Nginx 对外暴露两个域名。
-8. Onyx 域名的 `/api/*` 必须去掉 `/api` 前缀后转发到 Onyx API。
-9. 两边 exchange secret 必须完全一致。
-10. Sub2API `api_base_url` 应为 `https://${SUB2API_DOMAIN}/v1`。
-11. Onyx `SUB2API_BASE_URL` 应为 `http://127.0.0.1:8080`。
-12. 验证成功标准是 launch 返回 exchange URL、exchange 返回 `302 /chat`、Onyx DB 写入 `sub2api_user_credential`。
+4. Sub2API 源码部署主路径使用 `/etc/sub2api/config.yaml`，并在 systemd 里显式设置 `DATA_DIR=/etc/sub2api`。
+5. Sub2API 默认监听 `127.0.0.1:8080`，仅在临时排障时才改成 `0.0.0.0:8080`。
+6. 不要给 `sub2api` 二进制传 `--config`，当前版本不支持该参数。
+7. Onyx API 监听 `127.0.0.1:8081`。
+8. Onyx Web 监听 `127.0.0.1:3000`。
+9. Nginx 对外暴露两个域名。
+10. Onyx 域名的 `/api/*` 必须去掉 `/api` 前缀后转发到 Onyx API。
+11. 两边 exchange secret 必须完全一致。
+12. Sub2API `api_base_url` 应为 `https://${SUB2API_DOMAIN}/v1`。
+13. Onyx `SUB2API_BASE_URL` 应为 `http://127.0.0.1:8080`。
+14. Onyx Web 应从 `.next/standalone` 运行，而不是 `npm run start`。
+15. 验证成功标准是 launch 返回 exchange URL、exchange 返回 `302 /chat`、Onyx DB 写入 `sub2api_user_credential`。
