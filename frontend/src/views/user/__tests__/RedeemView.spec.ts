@@ -50,7 +50,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
 })
 
 describe('RedeemView', () => {
-  it('renders configured redeem purchase url as a purchase link label', async () => {
+  it('renders configured redeem purchase url as a purchase entry above the redeem button', async () => {
     getHistory.mockResolvedValue([])
     getPublicSettings.mockResolvedValue({
       contact_info: '',
@@ -72,5 +72,11 @@ describe('RedeemView', () => {
     expect(link.text()).toContain('redeem.purchaseLink')
     expect(link.text()).not.toContain('https://pay.ldxp.cn/shop/xiaoni-ai')
     expect(wrapper.text()).not.toContain('https://pay.ldxp.cn/shop/xiaoni-ai')
+
+    const redeemButton = wrapper.get('button[type="submit"]')
+    expect(link.element.compareDocumentPosition(redeemButton.element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+    expect(link.classes()).toContain('redeem-purchase-entry')
   })
 })

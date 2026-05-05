@@ -46,6 +46,24 @@
               </p>
             </div>
 
+            <a
+              v-if="redeemPurchaseUrl"
+              :href="redeemPurchaseUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="redeem-purchase-entry flex w-full items-center justify-between gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 hover:text-primary-800 dark:border-primary-800/50 dark:bg-primary-900/20 dark:text-primary-300 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-200"
+            >
+              <span class="flex min-w-0 items-center gap-3">
+                <span
+                  class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300"
+                >
+                  <Icon name="gift" size="sm" />
+                </span>
+                <span>{{ t('redeem.purchaseLink') }}</span>
+              </span>
+              <Icon name="externalLink" size="sm" class="flex-shrink-0" />
+            </a>
+
             <button
               type="submit"
               :disabled="!redeemCode || submitting"
@@ -181,17 +199,6 @@
                 class="mt-2 list-inside list-disc space-y-1 text-sm text-primary-700 dark:text-primary-400"
               >
                 <li>{{ t('redeem.codeRule1') }}</li>
-                <li v-if="redeemPurchaseUrl">
-                  {{ t('redeem.purchaseUrl') }}
-                  <a
-                    :href="redeemPurchaseUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="font-medium underline underline-offset-2 hover:text-primary-800 dark:hover:text-primary-200"
-                  >
-                    {{ t('redeem.purchaseLink') }}
-                  </a>
-                </li>
                 <li>{{ t('redeem.codeRule2') }}</li>
                 <li>
                   {{ t('redeem.codeRule3') }}
