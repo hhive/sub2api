@@ -361,6 +361,7 @@ export default {
     apiKeys: 'API Keys',
     usage: 'Usage',
     chat: 'Chat',
+    imagePlayground: 'Image Generation',
     onyx: 'Onyx',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
@@ -407,6 +408,12 @@ export default {
     noAvailableApiKey: 'No available API key. Create an active, unexpired API key with remaining quota first.',
     notConfigured: 'Onyx is not configured. Contact an administrator.',
     openFailed: 'Failed to open Onyx'
+  },
+
+  imagePlayground: {
+    opening: 'Opening image generation',
+    notConfigured: 'Image generation is not configured. Contact an administrator.',
+    openFailed: 'Failed to open image generation'
   },
 
   // Auth

@@ -282,6 +282,62 @@ func TestOnyxLaunchService_CreateLaunch_StoresLaunchTokenWithTTLAndBinding(t *te
 	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
 }
 
+func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPISettings(t *testing.T) {
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyAPIBaseURL: "https://xiaoni-ai.zle.ee/v1",
+	}}, &config.Config{})
+	now := time.Now()
+	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{{
+		ID:        401,
+		UserID:    42,
+		Key:       "sk-user-image-key",
+		Status:    StatusActive,
+		Quota:     10,
+		QuotaUsed: 1,
+		CreatedAt: now.Add(-1 * time.Hour),
+	}}}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
+
+	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	redirectURL, parseErr := url.Parse(result.RedirectURL)
+	require.NoError(t, parseErr)
+	require.Equal(t, "https", redirectURL.Scheme)
+	require.Equal(t, "xiaoni-ai.zle.ee", redirectURL.Host)
+	require.Equal(t, "/image_playground/", redirectURL.Path)
+	require.Equal(t, "https://xiaoni-ai.zle.ee/v1", redirectURL.Query().Get("apiUrl"))
+	require.Equal(t, "sk-user-image-key", redirectURL.Query().Get("apiKey"))
+	require.Equal(t, "images", redirectURL.Query().Get("apiMode"))
+	require.Equal(t, "true", redirectURL.Query().Get("codexCli"))
+	require.Len(t, redirectURL.Query(), 4)
+	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
+}
+
+func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailableWhenAPIBaseURLMissing(t *testing.T) {
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
+	svc := &OnyxLaunchService{settingService: settings}
+
+	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
+	require.Nil(t, result)
+	require.Error(t, err)
+	require.True(t, infraerrors.IsServiceUnavailable(err))
+}
+
+func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsConflictWhenNoEligibleAPIKeyExists(t *testing.T) {
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyAPIBaseURL: "https://xiaoni-ai.zle.ee/v1",
+	}}, &config.Config{})
+	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{}}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
+
+	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
+	require.Nil(t, result)
+	require.ErrorIs(t, err, ErrOnyxNoEligibleAPIKey)
+	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
+}
+
 func TestOnyxLaunchService_ConsumeLaunch_ReturnsUnauthorizedWhenTokenEmpty(t *testing.T) {
 	store := &onyxLaunchTokenStoreStub{}
 	svc := &OnyxLaunchService{tokenStore: store}

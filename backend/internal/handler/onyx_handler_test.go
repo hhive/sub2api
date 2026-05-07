@@ -18,12 +18,15 @@ import (
 )
 
 type onyxLaunchServiceStub struct {
-	createUserID  int64
-	createResult  *service.OnyxLaunchResult
-	createErr     error
-	consumeToken  string
-	consumeResult *service.OnyxLaunchPayload
-	consumeErr    error
+	createUserID                int64
+	createResult                *service.OnyxLaunchResult
+	createErr                   error
+	createImagePlaygroundUserID int64
+	createImagePlaygroundResult *service.OnyxLaunchResult
+	createImagePlaygroundErr    error
+	consumeToken                string
+	consumeResult               *service.OnyxLaunchPayload
+	consumeErr                  error
 }
 
 func (s *onyxLaunchServiceStub) CreateLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
@@ -32,6 +35,14 @@ func (s *onyxLaunchServiceStub) CreateLaunch(ctx context.Context, userID int64) 
 		return nil, s.createErr
 	}
 	return s.createResult, nil
+}
+
+func (s *onyxLaunchServiceStub) CreateImagePlaygroundLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
+	s.createImagePlaygroundUserID = userID
+	if s.createImagePlaygroundErr != nil {
+		return nil, s.createImagePlaygroundErr
+	}
+	return s.createImagePlaygroundResult, nil
 }
 
 func (s *onyxLaunchServiceStub) ConsumeLaunch(ctx context.Context, token string) (*service.OnyxLaunchPayload, error) {
@@ -79,6 +90,47 @@ func TestOnyxHandler_Launch_ReturnsUnauthorizedWithoutAuthenticatedUser(t *testi
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/onyx/launch", nil)
 
 	handler.Launch(c)
+
+	require.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
+func TestOnyxHandler_ImagePlaygroundLaunch_ReturnsRedirectURLForAuthenticatedUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	launchSvc := &onyxLaunchServiceStub{
+		createImagePlaygroundResult: &service.OnyxLaunchResult{RedirectURL: "https://xiaoni-ai.zle.ee/image_playground?apiMode=images"},
+	}
+	handler := NewOnyxHandler(launchSvc, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/image-playground/launch", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 42})
+
+	handler.ImagePlaygroundLaunch(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, int64(42), launchSvc.createImagePlaygroundUserID)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			RedirectURL string `json:"redirect_url"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Equal(t, "https://xiaoni-ai.zle.ee/image_playground?apiMode=images", resp.Data.RedirectURL)
+}
+
+func TestOnyxHandler_ImagePlaygroundLaunch_ReturnsUnauthorizedWithoutAuthenticatedUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewOnyxHandler(&onyxLaunchServiceStub{}, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/image-playground/launch", nil)
+
+	handler.ImagePlaygroundLaunch(c)
 
 	require.Equal(t, http.StatusUnauthorized, recorder.Code)
 }

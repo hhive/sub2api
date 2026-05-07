@@ -26,5 +26,9 @@ func RegisterOnyxRoutes(
 		{
 			onyx.POST("/launch", h.Onyx.Launch)
 		}
+		imagePlayground := authenticated.Group("/image-playground")
+		{
+			imagePlayground.POST("/launch", h.Onyx.ImagePlaygroundLaunch)
+		}
 	}
 }

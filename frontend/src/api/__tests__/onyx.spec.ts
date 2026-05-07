@@ -10,7 +10,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { launchOnyx } from '@/api/onyx'
+import { launchImagePlayground, launchOnyx } from '@/api/onyx'
 
 describe('onyx api', () => {
   beforeEach(() => {
@@ -23,5 +23,14 @@ describe('onyx api', () => {
 
     expect(post).toHaveBeenCalledWith('/onyx/launch')
     expect(result.redirect_url).toBe('https://onyx.example.com/api/sub2api/exchange?token=abc')
+  })
+
+  it('launches image playground through the backend launch endpoint', async () => {
+    post.mockResolvedValueOnce({ data: { redirect_url: 'https://xiaoni-ai.zle.ee/image_playground?apiMode=images' } })
+
+    const result = await launchImagePlayground()
+
+    expect(post).toHaveBeenCalledWith('/image-playground/launch')
+    expect(result.redirect_url).toBe('https://xiaoni-ai.zle.ee/image_playground?apiMode=images')
   })
 })

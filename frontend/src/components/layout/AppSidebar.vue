@@ -103,17 +103,17 @@
 
           <template v-for="item in personalNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx'"
+              v-if="item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              :disabled="onyxLaunching"
-              @click="handleOnyxLaunch"
+              :disabled="isActionLaunching(item.action)"
+              @click="handleActionLaunch(item.action)"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-                {{ onyxLaunching ? t('onyx.opening') : item.label }}
+                {{ actionLabel(item) }}
               </span>
             </button>
             <router-link
@@ -138,17 +138,17 @@
         <div class="sidebar-section">
           <template v-for="item in userNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx'"
+              v-if="item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              :disabled="onyxLaunching"
-              @click="handleOnyxLaunch"
+              :disabled="isActionLaunching(item.action)"
+              @click="handleActionLaunch(item.action)"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-                {{ onyxLaunching ? t('onyx.opening') : item.label }}
+                {{ actionLabel(item) }}
               </span>
             </button>
             <router-link
@@ -217,7 +217,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchOnyx } from '@/api/onyx'
+import { launchImagePlayground, launchOnyx } from '@/api/onyx'
 
 interface NavItem {
   path: string
@@ -231,7 +231,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'onyx'
+  action?: 'onyx' | 'imagePlayground'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -270,6 +270,7 @@ const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 const onyxLaunching = ref(false)
+const imagePlaygroundLaunching = ref(false)
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -395,6 +396,21 @@ const FolderIcon = {
           'stroke-linecap': 'round',
           'stroke-linejoin': 'round',
           d: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'
+        })
+      ]
+    )
+}
+
+const ImageIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'm2.25 15.75 5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z'
         })
       ]
     )
@@ -716,6 +732,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
+    { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'imagePlayground' },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -884,6 +901,41 @@ async function handleOnyxLaunch() {
   }
 }
 
+async function handleImagePlaygroundLaunch() {
+  if (imagePlaygroundLaunching.value) return
+  handleMenuItemClick('__image_playground__')
+  imagePlaygroundLaunching.value = true
+  try {
+    const result = await launchImagePlayground()
+    window.open(result.redirect_url, '_blank', 'noopener')
+  } catch (error) {
+    appStore.showError(resolveImagePlaygroundLaunchError(error))
+  } finally {
+    imagePlaygroundLaunching.value = false
+  }
+}
+
+function handleActionLaunch(action: NavItem['action']) {
+  if (action === 'onyx') {
+    return handleOnyxLaunch()
+  }
+  if (action === 'imagePlayground') {
+    return handleImagePlaygroundLaunch()
+  }
+}
+
+function isActionLaunching(action: NavItem['action']): boolean {
+  if (action === 'onyx') return onyxLaunching.value
+  if (action === 'imagePlayground') return imagePlaygroundLaunching.value
+  return false
+}
+
+function actionLabel(item: NavItem): string {
+  if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
+  if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
+  return item.label
+}
+
 function resolveOnyxLaunchError(error: unknown): string {
   const apiError = error as { status?: number; reason?: string; message?: string }
   if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
@@ -893,6 +945,17 @@ function resolveOnyxLaunchError(error: unknown): string {
     return t('onyx.notConfigured')
   }
   return apiError.message || t('onyx.openFailed')
+}
+
+function resolveImagePlaygroundLaunchError(error: unknown): string {
+  const apiError = error as { status?: number; reason?: string; message?: string }
+  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
+    return t('onyx.noAvailableApiKey')
+  }
+  if (apiError.status === 503) {
+    return t('imagePlayground.notConfigured')
+  }
+  return apiError.message || t('imagePlayground.openFailed')
 }
 
 function isActive(path: string): boolean {

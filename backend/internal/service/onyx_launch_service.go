@@ -31,6 +31,8 @@ type OnyxLaunchResult struct {
 	RedirectURL string `json:"redirect_url"`
 }
 
+const imagePlaygroundBaseURL = "https://xiaoni-ai.zle.ee/image_playground/"
+
 type OnyxLaunchPayload struct {
 	UserID         int64  `json:"user_id"`
 	Email          string `json:"email"`
@@ -88,6 +90,32 @@ func (s *OnyxLaunchService) CreateLaunch(ctx context.Context, userID int64) (*On
 		return nil, err
 	}
 	redirectURL, err := buildOnyxExchangeRedirectURL(settings.OnyxBaseURL, launchToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &OnyxLaunchResult{RedirectURL: redirectURL}, nil
+}
+
+func (s *OnyxLaunchService) CreateImagePlaygroundLaunch(ctx context.Context, userID int64) (*OnyxLaunchResult, error) {
+	if s.settingService == nil {
+		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_SETTINGS_UNAVAILABLE", "image playground settings unavailable")
+	}
+
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	apiBaseURL := normalizeOnyxOpenAICompatibleAPIBaseURL(settings.APIBaseURL)
+	if apiBaseURL == "" {
+		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_API_BASE_URL_MISSING", "api base url not configured")
+	}
+
+	selectedKey, err := s.selectFirstEligibleAPIKey(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	redirectURL, err := buildImagePlaygroundRedirectURL(imagePlaygroundBaseURL, apiBaseURL, selectedKey.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -256,5 +284,19 @@ func buildOnyxExchangeRedirectURL(baseURL, token string) (string, error) {
 	}
 	parsed.Path = path.Join(parsed.Path, "/api/sub2api/exchange")
 	parsed.RawQuery = url.Values{"token": []string{token}}.Encode()
+	return parsed.String(), nil
+}
+
+func buildImagePlaygroundRedirectURL(baseURL, apiBaseURL, apiKey string) (string, error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	query := parsed.Query()
+	query.Set("apiUrl", apiBaseURL)
+	query.Set("apiKey", apiKey)
+	query.Set("apiMode", "images")
+	query.Set("codexCli", "true")
+	parsed.RawQuery = query.Encode()
 	return parsed.String(), nil
 }

@@ -16,6 +16,7 @@ const onyxExchangeSecretHeader = "X-Sub2API-Onyx-Secret"
 
 type onyxLaunchService interface {
 	CreateLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error)
+	CreateImagePlaygroundLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error)
 	ConsumeLaunch(ctx context.Context, token string) (*service.OnyxLaunchPayload, error)
 }
 
@@ -36,6 +37,21 @@ func (h *OnyxHandler) Launch(c *gin.Context) {
 	}
 
 	result, err := h.launchService.CreateLaunch(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *OnyxHandler) ImagePlaygroundLaunch(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	result, err := h.launchService.CreateImagePlaygroundLaunch(c.Request.Context(), subject.UserID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
