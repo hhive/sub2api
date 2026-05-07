@@ -124,6 +124,15 @@ When using Docker Compose with `AUTO_SETUP=true`:
    docker compose logs sub2api | grep "admin password"
    ```
 
+### Reverse Proxy Notes
+
+If you put Nginx in front of Sub2API, raise the request body limit as well. Otherwise large `/responses` payloads will be rejected by Nginx before they reach the app.
+
+```nginx
+underscores_in_headers on;
+client_max_body_size 256m;
+```
+
 ### Database Migration Notes (PostgreSQL)
 
 - Migrations are applied in lexicographic order (e.g. `001_...sql`, `002_...sql`).

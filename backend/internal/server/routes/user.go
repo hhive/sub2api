@@ -76,7 +76,14 @@ func RegisterUserRoutes(
 			channels.GET("/available", h.AvailableChannel.List)
 		}
 
-		// 使用记录
+		// Chat console
+		chat := authenticated.Group("/chat")
+		{
+			chat.GET("/models", h.Chat.ListModels)
+			chat.POST("/completions", h.Chat.CreateCompletion)
+		}
+
+		// Usage records
 		usage := authenticated.Group("/usage")
 		{
 			usage.GET("", h.Usage.List)

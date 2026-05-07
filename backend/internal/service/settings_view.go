@@ -104,6 +104,14 @@ type SystemSettings struct {
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
 	CustomEndpoints             string // JSON array of custom endpoints
+	OnyxEnabled                 bool
+	OnyxBaseURL                 string
+	OnyxMenuLabel               string
+	OnyxExchangeSecret          string
+	OnyxLaunchTokenTTLSeconds   int
+	OnyxDefaultRedirectPath     string
+	OnyxDefaultTextModel        string
+	OnyxDefaultImageModel       string
 
 	DefaultConcurrency           int
 	DefaultBalance               float64
@@ -209,6 +217,9 @@ type PublicSettings struct {
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
 	CustomEndpoints             string // JSON array of custom endpoints
+	OnyxEnabled                 bool
+	OnyxMenuLabel               string
+	OnyxLaunchPath              string
 
 	LinuxDoOAuthEnabled      bool
 	WeChatOAuthEnabled       bool

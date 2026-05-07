@@ -30,3 +30,13 @@ describe('AppSidebar header styles', () => {
     expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
   })
 })
+
+describe('AppSidebar Onyx menu wiring', () => {
+  it('uses the backend launch endpoint instead of routing to a local page', () => {
+    expect(componentSource).toContain("import { launchOnyx } from '@/api/onyx'")
+    expect(componentSource).toContain('FeatureFlags.onyx')
+    expect(componentSource).toContain('handleOnyxLaunch')
+    expect(componentSource).toContain("window.open(result.redirect_url, '_blank', 'noopener')")
+    expect(componentSource).not.toContain("{ path: '/chat', label: t('nav.chat')")
+  })
+})

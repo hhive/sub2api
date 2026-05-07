@@ -29,8 +29,12 @@ server:
   trusted_proxies: []
   # Global max request body size in bytes (default: 256MB)
   # 全局最大请求体大小（字节，默认 256MB）
-  # Applies to all requests, especially important for h2c first request memory protection
-  # 适用于所有请求，对 h2c 第一请求的内存保护尤为重要
+  # Applies to all requests, especially important for h2c first request memory protection.
+  # If you run Sub2API behind Nginx or another reverse proxy, that proxy must be configured with
+  # a request body limit at least this large too, or it will return 413 before Sub2API sees the request.
+  # 适用于所有请求，对 h2c 第一请求的内存保护尤为重要。
+  # 如果 Sub2API 前面还挂了 Nginx 等反向代理，也要把代理层的请求体限制调到不低于这里，
+  # 否则请求会在到达 Sub2API 前就被 413 拒绝。
   max_request_body_size: 268435456
   # HTTP/2 Cleartext (h2c) configuration
   # HTTP/2 Cleartext (h2c) 配置
@@ -151,6 +155,8 @@ gateway:
   response_header_timeout: 600
   # Max request body size in bytes (default: 256MB)
   # 请求体最大字节数（默认 256MB）
+  # Must be <= any reverse proxy client_max_body_size in front of Sub2API.
+  # 必须不高于前置反向代理的 client_max_body_size。
   max_body_size: 268435456
   # Max bytes to read for non-stream upstream responses (default: 8MB)
   # 非流式上游响应体读取上限（默认 8MB）

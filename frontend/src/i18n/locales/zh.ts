@@ -339,12 +339,29 @@ export default {
     }
   },
 
+  chat: {
+    title: '聊天台',
+    subtitle: '直接使用你的可用 API Key 与大模型对话',
+    newChat: '新对话',
+    emptyTitle: '开始一次对话',
+    emptyDescription: '输入问题后，系统会自动使用你的可用分组和默认模型完成回答。',
+    inputPlaceholder: '输入你的问题，按 Enter 发送，Shift + Enter 换行',
+    send: '发送',
+    sending: '发送中...',
+    thinking: '模型正在思考...',
+    loadModelsFailed: '加载模型失败，请先创建并绑定可用分组的 API Key。',
+    sendFailed: '发送失败，请检查 API Key、余额或上游渠道状态。',
+    emptyReply: '模型没有返回内容'
+  },
+
   // Navigation
   nav: {
     dashboard: '仪表盘',
     announcements: '公告',
     apiKeys: 'API 密钥',
     usage: '使用记录',
+    chat: '聊天台',
+    onyx: 'Onyx',
     redeem: '兑换',
     affiliate: '邀请返利',
     affiliateManagement: '邀请返利',
@@ -382,6 +399,13 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
+  },
+
+  onyx: {
+    opening: '正在打开 Onyx',
+    noAvailableApiKey: '没有可用 API Key，请先创建一条启用、未过期且有额度的 API Key',
+    notConfigured: 'Onyx 尚未配置，请联系管理员',
+    openFailed: '打开 Onyx 失败'
   },
 
   // Auth

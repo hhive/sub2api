@@ -339,12 +339,29 @@ export default {
     }
   },
 
+  chat: {
+    title: 'Chat',
+    subtitle: 'Chat with models through your available API key',
+    newChat: 'New chat',
+    emptyTitle: 'Start a conversation',
+    emptyDescription: 'Ask a question and the system will use your available group and default model automatically.',
+    inputPlaceholder: 'Type your question. Enter to send, Shift + Enter for a new line',
+    send: 'Send',
+    sending: 'Sending...',
+    thinking: 'The model is thinking...',
+    loadModelsFailed: 'Failed to load models. Create an API key bound to an available group first.',
+    sendFailed: 'Failed to send. Check your API key, balance, or upstream channel status.',
+    emptyReply: 'The model returned no content'
+  },
+
   // Navigation
   nav: {
     dashboard: 'Dashboard',
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     usage: 'Usage',
+    chat: 'Chat',
+    onyx: 'Onyx',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     affiliateManagement: 'Affiliate Rebates',
@@ -382,6 +399,13 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
+  },
+
+  onyx: {
+    opening: 'Opening Onyx',
+    noAvailableApiKey: 'No available API key. Create an active, unexpired API key with remaining quota first.',
+    notConfigured: 'Onyx is not configured. Contact an administrator.',
+    openFailed: 'Failed to open Onyx'
   },
 
   // Auth
