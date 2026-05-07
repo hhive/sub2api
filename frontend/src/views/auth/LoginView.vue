@@ -155,8 +155,8 @@
     </div>
 
     <!-- Footer -->
-    <template v-if="!backendModeEnabled" #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+    <template #footer>
+      <p v-if="!backendModeEnabled" class="text-gray-500 dark:text-dark-400">
         {{ t('auth.dontHaveAccount') }}
         <router-link
           to="/register"
@@ -164,6 +164,9 @@
         >
           {{ t('auth.signUp') }}
         </router-link>
+      </p>
+      <p v-if="customerQq" class="mt-2 text-gray-500 dark:text-dark-400">
+        客户QQ：{{ customerQq }}
       </p>
     </template>
   </AuthLayout>
@@ -222,6 +225,7 @@ const oidcOAuthProviderName = ref<string>('OIDC')
 const githubOAuthEnabled = ref<boolean>(false)
 const googleOAuthEnabled = ref<boolean>(false)
 const passwordResetEnabled = ref<boolean>(false)
+const contactInfo = ref<string>('')
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -258,6 +262,8 @@ const showOAuthLogin = computed(
       googleOAuthEnabled.value)
 )
 
+const customerQq = computed(() => contactInfo.value.trim())
+
 watch(validationToastMessage, (value, previousValue) => {
   if (value && value !== previousValue) {
     appStore.showError(value)
@@ -288,6 +294,7 @@ onMounted(async () => {
     googleOAuthEnabled.value = settings.google_oauth_enabled
     backendModeEnabled.value = settings.backend_mode_enabled
     passwordResetEnabled.value = settings.password_reset_enabled
+    contactInfo.value = settings.contact_info || ''
   } catch (error) {
     console.error('Failed to load public settings:', error)
   }

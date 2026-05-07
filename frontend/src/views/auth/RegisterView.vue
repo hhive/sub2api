@@ -280,6 +280,9 @@
           {{ t('auth.signIn') }}
         </router-link>
       </p>
+      <p v-if="customerQq" class="mt-2 text-gray-500 dark:text-dark-400">
+        客户QQ：{{ customerQq }}
+      </p>
     </template>
   </AuthLayout>
 </template>
@@ -344,6 +347,7 @@ const oidcOAuthProviderName = ref<string>('OIDC')
 const githubOAuthEnabled = ref<boolean>(false)
 const googleOAuthEnabled = ref<boolean>(false)
 const registrationEmailSuffixWhitelist = ref<string[]>([])
+const contactInfo = ref<string>('')
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -402,6 +406,8 @@ const showOAuthLogin = computed(
     googleOAuthEnabled.value
 )
 
+const customerQq = computed(() => contactInfo.value.trim())
+
 watch(validationToastMessage, (value, previousValue) => {
   if (value && value !== previousValue) {
     appStore.showError(value)
@@ -436,6 +442,7 @@ onMounted(async () => {
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
     githubOAuthEnabled.value = settings.github_oauth_enabled
     googleOAuthEnabled.value = settings.google_oauth_enabled
+    contactInfo.value = settings.contact_info || ''
     registrationEmailSuffixWhitelist.value = normalizeRegistrationEmailSuffixWhitelist(
       settings.registration_email_suffix_whitelist || []
     )
