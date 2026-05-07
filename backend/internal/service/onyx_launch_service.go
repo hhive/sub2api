@@ -179,7 +179,7 @@ func isOnyxAPIKeyEligible(key APIKey, now time.Time) bool {
 		return false
 	}
 	if key.Quota <= 0 {
-		return false
+		return true
 	}
 	return key.QuotaUsed < key.Quota
 }

@@ -52,7 +52,7 @@
   - 优先使用本机已有的 PostgreSQL 实例，分别创建 `sub2api` 与 `onyx` 数据库；如果本机没有 PostgreSQL，则在本机新增部署一个实例。
   - Redis 仅供 Sub2API 使用；如果本机没有 Redis，则在本机新增部署一个实例。
   - Onyx Lite 使用 PostgreSQL 作为 cache/auth/file store，不启动 Redis、Vespa、OpenSearch、MinIO、model server、background worker。
-- Nginx 对外提供 HTTPS 和反向代理。
+- Nginx 对外提供 HTTP/HTTPS 和反向代理；如果服务器已有自定义 Nginx 主配置，直接把 Sub2API 与 Onyx 的 `server` 块合并进去，不强制新增独立站点配置文件。
 
 推荐本机端口规划：
 
@@ -69,6 +69,7 @@
 
 - 推荐让 Sub2API、Onyx API、Onyx Web 都只监听本机回环地址，再由 Nginx 暴露对外入口。
 - 如果你需要临时排查“浏览器直连 `IP:8080` 不通”这类问题，可以把 Sub2API 的 `SERVER_HOST` 临时改成 `0.0.0.0`，但这不应作为默认生产形态。
+- 如果没有可用 HTTPS 域名，也可以先用 `http://域名或IP:端口` 暴露 Onyx；此时 `WEB_DOMAIN`、Sub2API `onyx_base_url`、浏览器访问入口必须保持同一个外部 URL。
 
 推荐域名：
 
@@ -114,6 +115,8 @@ export SUB2API_ADMIN_EMAIL="admin@example.com"
 export SUB2API_ADMIN_PASSWORD="replace-with-strong-admin-password"
 export SUB2API_JWT_SECRET="replace-with-64-random-chars"
 export SUB2API_ONYX_SECRET="replace-with-64-random-chars"
+export ONYX_USER_AUTH_SECRET="replace-with-64-random-chars"
+export ONYX_DB_READONLY_PASSWORD="replace-with-strong-readonly-password"
 ```
 
 生成随机密钥示例：
@@ -439,9 +442,10 @@ sudo systemctl restart sub2api
 
 ```bash
 sudo useradd --system --home-dir /opt/onyx --shell /usr/sbin/nologin onyx || true
-sudo mkdir -p /opt/onyx /etc/onyx /var/log/onyx
+sudo mkdir -p /opt/onyx /etc/onyx /var/log/onyx /var/lib/onyx
 sudo chown -R "$USER:$USER" /opt/onyx
 sudo chown -R onyx:onyx /var/log/onyx
+sudo chown -R onyx:onyx /var/lib/onyx
 ```
 
 ### 6.2 拉取源码
@@ -476,24 +480,31 @@ uv sync --frozen --group backend
 
 ```bash
 sudo tee /etc/onyx/onyx.env >/dev/null <<EOF
-HOME=/tmp/onyx
-HF_HOME=/tmp/onyx/.cache/huggingface
+HOME=/var/lib/onyx
+HF_HOME=/var/lib/onyx/.cache/huggingface
 PYTHONPATH=${ONYX_DIR}/backend
 LD_PRELOAD=libjemalloc.so.2
 
 AUTH_TYPE=basic
 WEB_DOMAIN=https://${ONYX_DOMAIN}
+USER_AUTH_SECRET=${ONYX_USER_AUTH_SECRET}
 
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5432
 POSTGRES_USER=${ONYX_DB_USER}
 POSTGRES_PASSWORD=${ONYX_DB_PASSWORD}
 POSTGRES_DB=${ONYX_DB}
+DB_READONLY_USER=db_readonly_user
+DB_READONLY_PASSWORD=${ONYX_DB_READONLY_PASSWORD}
 
 DISABLE_VECTOR_DB=true
 FILE_STORE_BACKEND=postgres
 CACHE_BACKEND=postgres
 AUTH_BACKEND=postgres
+
+LITELLM_LOCAL_MODEL_COST_MAP=true
+ONYX_SKIP_LITELLM_INIT=true
+ONYX_SKIP_LITELLM_OLLAMA_REGISTER=true
 
 SUB2API_INTEGRATION_ENABLED=true
 SUB2API_BASE_URL=http://127.0.0.1:8080
@@ -515,8 +526,32 @@ sudo chown root:onyx /etc/onyx/onyx.env
 
 - `HOME` 和 `HF_HOME` 必须显式设置到可写目录。否则 Onyx 首次加载 tokenizer 或 Hugging Face 缓存时，可能默认落到 `/opt/onyx` 并触发权限错误。
 - 如果你采用的是 IP + 端口入口，而不是域名 + HTTPS，这里的 `WEB_DOMAIN` 应替换成实际外部入口，例如 `http://108.187.32.100:81`。
+- `LITELLM_LOCAL_MODEL_COST_MAP=true` 用于避免 LiteLLM 在启动或首次聊天时访问 GitHub 拉取模型成本表；裸机服务器 DNS 或外网不可用时必须设置。
+- `ONYX_SKIP_LITELLM_INIT=true` 和 `ONYX_SKIP_LITELLM_OLLAMA_REGISTER=true` 用于 Lite 部署路径跳过不需要的 LiteLLM 附加初始化与 Ollama 模型注册；当前 Sub2API 集成只走 OpenAI-compatible 聊天链路，不依赖这两段初始化。
+- `USER_AUTH_SECRET` 必须稳定，不能每次重启变化；否则已登录 cookie 会失效。
+- `DB_READONLY_USER` 与 `DB_READONLY_PASSWORD` 是 Onyx 启动时读取的只读数据库账号配置。若该用户不存在，按下一小节创建。
 
 ### 6.5 执行 Onyx 数据库迁移
+
+如果 `/etc/onyx/onyx.env` 配置了 `DB_READONLY_USER`，先创建或更新只读数据库账号：
+
+```bash
+sudo -u postgres psql -d "${ONYX_DB}" <<SQL
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'db_readonly_user') THEN
+    CREATE ROLE db_readonly_user LOGIN PASSWORD '${ONYX_DB_READONLY_PASSWORD}';
+  ELSE
+    ALTER ROLE db_readonly_user WITH PASSWORD '${ONYX_DB_READONLY_PASSWORD}';
+  END IF;
+END
+\$\$;
+GRANT CONNECT ON DATABASE ${ONYX_DB} TO db_readonly_user;
+GRANT USAGE ON SCHEMA public TO db_readonly_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_readonly_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO db_readonly_user;
+SQL
+```
 
 ```bash
 cd "${ONYX_DIR}/backend"
@@ -559,7 +594,7 @@ SyslogIdentifier=onyx-api
 
 NoNewPrivileges=true
 PrivateTmp=true
-ReadWritePaths=/var/log/onyx ${ONYX_DIR}/backend
+ReadWritePaths=/var/log/onyx /var/lib/onyx ${ONYX_DIR}/backend
 
 [Install]
 WantedBy=multi-user.target
@@ -724,14 +759,24 @@ sudo systemctl restart sub2api
 
 ### 7.2 创建可供 Onyx 使用的 Sub2API API Key
 
-Onyx exchange 会选择当前 Sub2API 用户下第一条符合条件的 API Key：
+Onyx exchange 会使用用户从 Sub2API 页面点击 Onyx 时携带过去的 API Key 绑定信息。不要在 Onyx 侧单独手填 API Key，也不要为了验证而直接读取明文 key；需要确认时，直接在 Sub2API 页面验证该 key 是否可调用模型。
+
+可供 Onyx 使用的 API Key 应满足：
 
 - `status = active`
 - 未过期
-- `quota > 0`
-- `quota_used < quota`
+- 未超额；如果当前 Sub2API 版本把 `quota = 0` 定义为不限额，则 `quota = 0` 也应视为可用
+- 具备目标模型所在分组或渠道权限
 
 推荐通过 Sub2API Web UI 登录后创建 API Key。不要直接手写 `api_keys` 表，除非已经确认当前版本表结构。
+
+Onyx 聊天页的模型列表应来自当前用户 API Key 对应的 Sub2API OpenAI-compatible 模型接口，即：
+
+```text
+GET https://${SUB2API_DOMAIN}/v1/models
+```
+
+不要用 LiteLLM 的模型成本表或 Onyx 内置模型枚举作为 Sub2API 模型列表来源。
 
 ### 7.3 Onyx 侧校验环境变量
 
@@ -746,6 +791,15 @@ sudo systemctl restart onyx-api onyx-web
 ## 8. 配置 Nginx
 
 ### 8.1 Sub2API 站点
+
+如果服务器已有统一 Nginx 配置文件，例如面板或自定义安装的 Nginx 使用 `/app/data/nginx/conf/nginx.conf`，不要再新增独立站点文件。直接把本节和 8.2 的 `server` 块合并进现有 `http { ... }` 配置即可。验证和重载也要使用实际运行中的 Nginx 二进制，例如：
+
+```bash
+/app/data/nginx/sbin/nginx -t
+/app/data/nginx/sbin/nginx -s reload
+```
+
+如果使用 Ubuntu apt 安装的默认 Nginx，再按下面的 `/etc/nginx/sites-available/*` 方式创建站点。
 
 创建 `/etc/nginx/sites-available/sub2api.conf`：
 
@@ -852,7 +906,23 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 8.3 配置 HTTPS
+### 8.3 非 HTTPS 或非 80/443 入口
+
+如果部署初期只使用 `http://域名或IP:端口`，例如 `http://onyx.example.com:81`，需要保持三处完全一致：
+
+- `/etc/onyx/onyx.env` 的 `WEB_DOMAIN`
+- `/etc/onyx/web.env` 的 `WEB_DOMAIN`
+- Sub2API settings 里的 `onyx_base_url`
+
+修改后重启：
+
+```bash
+sudo systemctl restart sub2api onyx-api onyx-web
+```
+
+这种方式可以用于内网或临时验证；生产环境仍建议配置 HTTPS。
+
+### 8.4 配置 HTTPS
 
 域名 DNS 已解析到服务器后执行：
 
@@ -965,7 +1035,34 @@ limit 5;
 - `text_model_name = gpt-5.5`
 - `image_model_name = gpt-image-2`
 
-### 9.7 浏览器验证
+### 9.7 验证 Onyx 模型列表来自 Sub2API
+
+页面登录后，Onyx 获取 persona 可用模型时应返回 `Sub2API` provider，且 Sub2API 日志应出现 `/v1/models`。
+
+服务端可用同等链路验证：
+
+```bash
+sudo journalctl -u sub2api --since "5 minutes ago" --no-pager | grep '/v1/models'
+```
+
+期望看到：
+
+```text
+path": "/v1/models", "method": "GET", ... "status_code": 200
+```
+
+Onyx API 返回的 provider 应类似：
+
+```json
+{
+  "id": -2001,
+  "name": "sub2api",
+  "provider": "openai_compatible",
+  "provider_display_name": "Sub2API"
+}
+```
+
+### 9.8 验证 Onyx 聊天调用 Sub2API
 
 1. 打开 `https://sub2api.example.com`。
 2. 使用 Sub2API 用户登录。
@@ -975,7 +1072,21 @@ limit 5;
 6. 在 Onyx 聊天页发起文本聊天。
 7. 如果已配置生图模型，继续验证 Image Generation。
 
-如果文本聊天或生图失败，先检查 Sub2API 中该用户 API Key 是否可用，以及上游模型账号是否已配置。
+发起文本聊天后，Sub2API 日志应出现 `/v1/chat/completions`：
+
+```bash
+sudo journalctl -u sub2api --since "5 minutes ago" --no-pager | grep '/v1/chat/completions'
+```
+
+期望看到：
+
+```text
+path": "/v1/chat/completions", "method": "POST", ... "status_code": 200
+```
+
+如果 Onyx 页面长时间无回复，但 Sub2API 日志没有 `/v1/chat/completions`，问题在 Onyx 调用 Sub2API 之前；优先看 Onyx API 日志和 LiteLLM 初始化相关配置。
+
+如果 Sub2API 已收到 `/v1/chat/completions` 但返回失败，再检查 Sub2API 中该用户 API Key 是否可用，以及上游模型账号是否已配置。
 
 ---
 
@@ -1095,7 +1206,7 @@ sudo journalctl -u onyx-api -n 200 --no-pager
 Sub2API exchange endpoint returned an invalid payload
 ```
 
-说明 Onyx client 需要兼容 Sub2API 的标准响应包装 `{code,message,data}`。确认当前代码包含该修复后重启 Onyx API。
+说明 Onyx 需要兼容 Sub2API 的标准响应包装 `{code,message,data}`。确认当前部署版本支持该响应格式后重启 Onyx API。
 
 ### 11.3 Onyx exchange 返回 400，邮箱非法
 
@@ -1123,7 +1234,30 @@ sudo -u postgres psql -d "${SUB2API_DB}" -c "insert into settings (key,value,upd
 
 然后重新 exchange。
 
-### 11.5 Onyx Web 页面 404 或 API 调用 404
+### 11.5 Onyx 模型列表没有显示 Sub2API 模型
+
+先确认当前用户是从 Sub2API 页面点击 Onyx 进入，而不是直接打开 Onyx 域名。正常 exchange 后，Onyx DB 应写入用户级 Sub2API 凭证：
+
+```bash
+sudo -u postgres psql -d "${ONYX_DB}" -c "
+select user_id, sub2api_user_id, api_key_id, api_base_url, text_model_name, updated_at
+from sub2api_user_credential
+order by updated_at desc
+limit 5;
+"
+```
+
+再确认 Sub2API 模型接口本身可用：
+
+```bash
+sudo journalctl -u sub2api --since "10 minutes ago" --no-pager | grep '/v1/models'
+```
+
+如果 Onyx providers 接口没有触发 `/v1/models`，通常是 exchange 未完成、cookie 失效、用户级凭证未写入，或当前部署版本未启用 Sub2API provider。
+
+如果 `/v1/models` 返回 401，说明传入的 Sub2API API Key 不可用或不是从页面跳转绑定的 key。回到 Sub2API 页面验证该 key，不要在 Onyx 侧手填 key。
+
+### 11.6 Onyx Web 页面 404 或 API 调用 404
 
 确认 Nginx `/api` 转发时执行了：
 
@@ -1134,7 +1268,7 @@ proxy_pass http://127.0.0.1:8081;
 
 Onyx 后端路由本身不带 `/api` 前缀，Nginx 必须去掉该前缀。
 
-### 11.6 Redis NOAUTH
+### 11.7 Redis NOAUTH
 
 Sub2API Redis 配置中的 password 必须与 `/etc/redis/redis.conf` 的 `requirepass` 一致：
 
@@ -1143,7 +1277,7 @@ redis-cli -a "${REDIS_PASSWORD}" ping
 sudo journalctl -u sub2api -n 100 --no-pager
 ```
 
-### 11.7 Nginx 502
+### 11.8 Nginx 502
 
 检查本地端口：
 
@@ -1155,7 +1289,7 @@ curl -i http://127.0.0.1:3000/
 
 哪个失败就优先查看对应服务日志。
 
-### 11.8 本机 PostgreSQL 未启动或拒绝连接
+### 11.9 本机 PostgreSQL 未启动或拒绝连接
 
 现象：
 
@@ -1197,7 +1331,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart postgresql sub2api onyx-api
 ```
 
-### 11.9 Sub2API 误进入 setup wizard
+### 11.10 Sub2API 误进入 setup wizard
 
 现象：
 
@@ -1229,7 +1363,7 @@ sudo systemctl restart sub2api
 sudo journalctl -u sub2api -n 100 --no-pager
 ```
 
-### 11.10 Onyx API 报 Hugging Face 缓存权限错误
+### 11.11 Onyx API 报 Hugging Face 缓存权限错误
 
 现象：
 
@@ -1246,8 +1380,8 @@ sudo grep -E '^(HOME|HF_HOME)=' /etc/onyx/onyx.env
 如果没有下面两行，就补上后重启：
 
 ```text
-HOME=/tmp/onyx
-HF_HOME=/tmp/onyx/.cache/huggingface
+HOME=/var/lib/onyx
+HF_HOME=/var/lib/onyx/.cache/huggingface
 ```
 
 ```bash
@@ -1255,7 +1389,38 @@ sudo systemctl restart onyx-api
 sudo journalctl -u onyx-api -n 100 --no-pager
 ```
 
-### 11.11 Onyx Web 构建被 OOM 杀掉
+### 11.12 Onyx API 启动或首次聊天长时间卡住
+
+现象：
+
+- `curl http://127.0.0.1:8081/health` 长时间无法连接，或启动很久才监听。
+- Onyx 聊天请求长时间无回复。
+- Sub2API 日志没有 `/v1/chat/completions`，说明请求尚未到达 Sub2API。
+
+先确认 LiteLLM 相关离线/跳过配置：
+
+```bash
+sudo grep -E 'LITELLM_LOCAL_MODEL_COST_MAP|ONYX_SKIP_LITELLM' /etc/onyx/onyx.env
+```
+
+期望至少包含：
+
+```text
+LITELLM_LOCAL_MODEL_COST_MAP=true
+ONYX_SKIP_LITELLM_INIT=true
+ONYX_SKIP_LITELLM_OLLAMA_REGISTER=true
+```
+
+如果缺失，补上后重启：
+
+```bash
+sudo systemctl restart onyx-api
+sudo journalctl -u onyx-api -n 100 --no-pager
+```
+
+`LITELLM_LOCAL_MODEL_COST_MAP=true` 用来避免访问 GitHub 拉取模型成本表；后两项用于 Lite 部署跳过不需要的 LiteLLM 附加初始化和 Ollama 模型注册。当前 Sub2API 集成只需要 OpenAI-compatible 聊天调用。
+
+### 11.13 Onyx Web 构建被 OOM 杀掉
 
 现象：
 
@@ -1270,7 +1435,7 @@ exit code 137
 - 构建时显式设置 `NODE_OPTIONS=--max-old-space-size=3072`。
 - 优先使用 `npx next build --webpack`，与本次成功部署路径保持一致。
 
-### 11.12 生图工具未显示或不可用
+### 11.14 生图工具未显示或不可用
 
 先确认 Sub2API 与 Onyx 两侧都具备前提条件：
 
@@ -1278,9 +1443,9 @@ exit code 137
 - 当前用户至少有一条可用的 Sub2API API Key。
 - `onyx_default_image_model` 已配置，例如 `gpt-image-2`。
 
-如果这些都满足，但 Onyx 前端仍不显示 Image Generation，检查你部署的 Onyx 代码是否包含 Sub2API 用户级图片凭证可用性判断修复。旧代码会只看全局 `image_generation_config`，而忽略用户级 Sub2API 图片凭证。
+如果这些都满足，但 Onyx 前端仍不显示 Image Generation，检查当前部署版本是否支持 Sub2API 用户级图片凭证作为 Image Generation 可用性来源。
 
-### 11.13 Onyx migration 缺少角色权限
+### 11.15 Onyx migration 缺少角色权限
 
 部分环境下，Onyx migration 可能要求数据库用户临时具备更高权限。如果 `alembic upgrade head` 日志明确提示角色或权限不足，先为 `onyx` 用户临时补权，迁移完成后再收回：
 
@@ -1306,10 +1471,14 @@ sudo -u postgres psql -c "ALTER ROLE ${ONYX_DB_USER} NOCREATEROLE;"
 6. 不要给 `sub2api` 二进制传 `--config`，当前版本不支持该参数。
 7. Onyx API 监听 `127.0.0.1:8081`。
 8. Onyx Web 监听 `127.0.0.1:3000`。
-9. Nginx 对外暴露两个域名。
+9. Nginx 对外暴露两个域名；已有统一 Nginx 主配置时，直接合并 `server` 块，不必新建独立配置文件。
 10. Onyx 域名的 `/api/*` 必须去掉 `/api` 前缀后转发到 Onyx API。
 11. 两边 exchange secret 必须完全一致。
 12. Sub2API `api_base_url` 应为 `https://${SUB2API_DOMAIN}/v1`。
 13. Onyx `SUB2API_BASE_URL` 应为 `http://127.0.0.1:8080`。
-14. Onyx Web 应从 `.next/standalone` 运行，而不是 `npm run start`。
-15. 验证成功标准是 launch 返回 exchange URL、exchange 返回 `302 /chat`、Onyx DB 写入 `sub2api_user_credential`。
+14. Onyx `HOME` 和 `HF_HOME` 应指向 `/var/lib/onyx` 这类服务用户可写目录。
+15. Onyx Lite 裸机部署建议设置 `LITELLM_LOCAL_MODEL_COST_MAP=true`，避免启动或首次聊天时访问外网模型成本表。
+16. Onyx Web 应从 `.next/standalone` 运行，而不是 `npm run start`。
+17. 验证成功标准是 launch 返回 exchange URL、exchange 返回 `302 /chat`、Onyx DB 写入 `sub2api_user_credential`。
+18. 模型列表成功标准是 Onyx providers 返回 `Sub2API` provider，Sub2API 日志出现 `/v1/models 200`。
+19. 聊天成功标准是 Onyx 聊天返回内容，Sub2API 日志出现 `/v1/chat/completions 200`。

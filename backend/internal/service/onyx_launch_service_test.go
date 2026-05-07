@@ -75,7 +75,7 @@ func (s *onyxLaunchAPIKeyRepoStub) GetByID(ctx context.Context, id int64) (*APIK
 	return s.getByIDResult, nil
 }
 
-func TestOnyxLaunchService_SelectFirstEligibleAPIKey_PicksEarliestCreatedEligibleKey(t *testing.T) {
+func TestOnyxLaunchService_SelectFirstEligibleAPIKey_TreatsUnlimitedQuotaAsEligibleAndPicksEarliestCreatedKey(t *testing.T) {
 	now := time.Now()
 	repo := &onyxLaunchAPIKeyRepoStub{
 		listByUserIDResult: []APIKey{
@@ -135,7 +135,7 @@ func TestOnyxLaunchService_SelectFirstEligibleAPIKey_PicksEarliestCreatedEligibl
 	key, err := svc.selectFirstEligibleAPIKey(context.Background(), 42)
 	require.NoError(t, err)
 	require.NotNil(t, key)
-	require.Equal(t, int64(105), key.ID)
+	require.Equal(t, int64(101), key.ID)
 	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
 }
 
@@ -155,8 +155,8 @@ func TestOnyxLaunchService_SelectFirstEligibleAPIKey_ReturnsConflictWhenNoEligib
 				ID:        202,
 				UserID:    42,
 				Status:    StatusActive,
-				Quota:     0,
-				QuotaUsed: 0,
+				Quota:     5,
+				QuotaUsed: 5,
 				CreatedAt: now.Add(-2 * time.Hour),
 			},
 			{
