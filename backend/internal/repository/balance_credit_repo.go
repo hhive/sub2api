@@ -9,6 +9,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
@@ -56,6 +57,99 @@ INSERT INTO user_balance_credits (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW(), NOW())
 `, credit.UserID, sourceType, strings.TrimSpace(credit.SourceID), strings.TrimSpace(credit.SourceCode), credit.Amount, credit.Amount, credit.ExpiresAt)
 	return err
+}
+
+func (r *balanceCreditRepository) ListUserCredits(ctx context.Context, userID int64, params pagination.PaginationParams) ([]service.BalanceCredit, int64, error) {
+	if userID <= 0 {
+		return []service.BalanceCredit{}, 0, nil
+	}
+	db, err := r.execer(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var total int64
+	countRows, err := db.QueryContext(ctx, `
+SELECT COUNT(*)
+FROM user_balance_credits
+WHERE user_id = $1
+`, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if countRows.Next() {
+		if err := countRows.Scan(&total); err != nil {
+			_ = countRows.Close()
+			return nil, 0, err
+		}
+	}
+	if err := countRows.Err(); err != nil {
+		_ = countRows.Close()
+		return nil, 0, err
+	}
+	_ = countRows.Close()
+
+	rows, err := db.QueryContext(ctx, `
+SELECT id,
+       user_id,
+       source_type,
+       source_id,
+       source_code,
+       amount::double precision,
+       remaining_amount::double precision,
+       settled_until_date,
+       expires_at,
+       expired_at,
+       status,
+       created_at,
+       updated_at
+FROM user_balance_credits
+WHERE user_id = $1
+ORDER BY created_at DESC, id DESC
+OFFSET $2
+LIMIT $3
+`, userID, params.Offset(), params.Limit())
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	credits := make([]service.BalanceCredit, 0, params.Limit())
+	for rows.Next() {
+		var credit service.BalanceCredit
+		var settledUntilDate, expiresAt, expiredAt sql.NullTime
+		if err := rows.Scan(
+			&credit.ID,
+			&credit.UserID,
+			&credit.SourceType,
+			&credit.SourceID,
+			&credit.SourceCode,
+			&credit.Amount,
+			&credit.RemainingAmount,
+			&settledUntilDate,
+			&expiresAt,
+			&expiredAt,
+			&credit.Status,
+			&credit.CreatedAt,
+			&credit.UpdatedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		if settledUntilDate.Valid {
+			credit.SettledUntilDate = &settledUntilDate.Time
+		}
+		if expiresAt.Valid {
+			credit.ExpiresAt = &expiresAt.Time
+		}
+		if expiredAt.Valid {
+			credit.ExpiredAt = &expiredAt.Time
+		}
+		credits = append(credits, credit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return credits, total, nil
 }
 
 func (r *balanceCreditRepository) ListDailyBalanceUsage(ctx context.Context, start, end time.Time) ([]service.DailyBalanceUsage, error) {

@@ -428,6 +428,29 @@ func (h *UserHandler) GetBalanceHistory(c *gin.Context) {
 	})
 }
 
+// GetBalanceCredits handles getting user's balance credit ledger.
+// GET /api/v1/admin/users/:id/balance-credits
+func (h *UserHandler) GetBalanceCredits(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	page, pageSize := response.ParsePagination(c)
+	credits, total, err := h.adminService.GetUserBalanceCredits(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]dto.UserBalanceCredit, 0, len(credits))
+	for i := range credits {
+		out = append(out, *dto.UserBalanceCreditFromService(&credits[i]))
+	}
+	response.Paginated(c, out, total, page, pageSize)
+}
+
 // ReplaceGroupRequest represents the request to replace a user's exclusive group
 type ReplaceGroupRequest struct {
 	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`

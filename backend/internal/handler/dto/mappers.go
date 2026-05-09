@@ -521,6 +521,27 @@ func RedeemCodeFromServiceAdmin(rc *service.RedeemCode) *AdminRedeemCode {
 	}
 }
 
+func UserBalanceCreditFromService(credit *service.BalanceCredit) *UserBalanceCredit {
+	if credit == nil {
+		return nil
+	}
+	return &UserBalanceCredit{
+		ID:               credit.ID,
+		UserID:           credit.UserID,
+		SourceType:       credit.SourceType,
+		SourceID:         credit.SourceID,
+		SourceCode:       credit.SourceCode,
+		Amount:           credit.Amount,
+		RemainingAmount:  credit.RemainingAmount,
+		SettledUntilDate: credit.SettledUntilDate,
+		ExpiresAt:        credit.ExpiresAt,
+		ExpiredAt:        credit.ExpiredAt,
+		Status:           credit.Status,
+		CreatedAt:        credit.CreatedAt,
+		UpdatedAt:        credit.UpdatedAt,
+	}
+}
+
 func redeemCodeFromServiceBase(rc *service.RedeemCode) RedeemCode {
 	out := RedeemCode{
 		ID:           rc.ID,

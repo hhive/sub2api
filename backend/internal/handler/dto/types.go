@@ -355,6 +355,22 @@ type AdminRedeemCode struct {
 	Notes string `json:"notes"`
 }
 
+type UserBalanceCredit struct {
+	ID               int64      `json:"id"`
+	UserID           int64      `json:"user_id"`
+	SourceType       string     `json:"source_type"`
+	SourceID         string     `json:"source_id"`
+	SourceCode       string     `json:"source_code"`
+	Amount           float64    `json:"amount"`
+	RemainingAmount  float64    `json:"remaining_amount"`
+	SettledUntilDate *time.Time `json:"settled_until_date"`
+	ExpiresAt        *time.Time `json:"expires_at"`
+	ExpiredAt        *time.Time `json:"expired_at"`
+	Status           string     `json:"status"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
 // UsageLog 是普通用户接口使用的 usage log DTO（不包含管理员字段）。
 type UsageLog struct {
 	ID        int64  `json:"id"`

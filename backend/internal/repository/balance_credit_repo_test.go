@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
 )
@@ -70,6 +71,45 @@ func TestBalanceCreditRepositoryListDailyBalanceUsageAggregatesUsageLogs(t *test
 		{UserID: 7, Amount: 6.5},
 		{UserID: 9, Amount: 2.25},
 	}, usages)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBalanceCreditRepositoryListUserCreditsReturnsPaginatedCredits(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	createdAt := time.Date(2026, 5, 9, 1, 2, 3, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Hour)
+	expiresAt := createdAt.AddDate(0, 0, 30)
+	settledUntil := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
+	mock.ExpectQuery("SELECT id,").
+		WithArgs(int64(7), 20, 20).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "source_type", "source_id", "source_code", "amount",
+			"remaining_amount", "settled_until_date", "expires_at", "expired_at",
+			"status", "created_at", "updated_at",
+		}).AddRow(
+			int64(3), int64(7), service.BalanceCreditSourceRedeem, "redeem-3", "CODE-3",
+			12.5, 8.25, settledUntil, expiresAt, nil, service.BalanceCreditStatusActive,
+			createdAt, updatedAt,
+		))
+
+	repo := NewBalanceCreditRepository(nil, db)
+	credits, total, err := repo.ListUserCredits(context.Background(), 7, pagination.PaginationParams{Page: 2, PageSize: 20})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), total)
+	require.Len(t, credits, 1)
+	require.Equal(t, int64(3), credits[0].ID)
+	require.Equal(t, 12.5, credits[0].Amount)
+	require.Equal(t, 8.25, credits[0].RemainingAmount)
+	require.NotNil(t, credits[0].SettledUntilDate)
+	require.NotNil(t, credits[0].ExpiresAt)
+	require.Nil(t, credits[0].ExpiredAt)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

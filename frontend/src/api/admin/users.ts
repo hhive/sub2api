@@ -244,6 +244,22 @@ export interface BalanceHistoryResponse extends PaginatedResponse<BalanceHistory
   total_recharged: number
 }
 
+export interface UserBalanceCredit {
+  id: number
+  user_id: number
+  source_type: string
+  source_id: string
+  source_code: string
+  amount: number
+  remaining_amount: number
+  settled_until_date: string | null
+  expires_at: string | null
+  expired_at: string | null
+  status: string
+  created_at: string
+  updated_at: string
+}
+
 /**
  * Get user's balance/concurrency change history
  * @param id - User ID
@@ -263,6 +279,18 @@ export async function getUserBalanceHistory(
   const { data } = await apiClient.get<BalanceHistoryResponse>(
     `/admin/users/${id}/balance-history`,
     { params }
+  )
+  return data
+}
+
+export async function getUserBalanceCredits(
+  id: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<PaginatedResponse<UserBalanceCredit>> {
+  const { data } = await apiClient.get<PaginatedResponse<UserBalanceCredit>>(
+    `/admin/users/${id}/balance-credits`,
+    { params: { page, page_size: pageSize } }
   )
   return data
 }
@@ -309,6 +337,7 @@ export const usersAPI = {
   getUserApiKeys,
   getUserUsageStats,
   getUserBalanceHistory,
+  getUserBalanceCredits,
   replaceGroup,
   bindUserAuthIdentity
 }

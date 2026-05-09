@@ -45,9 +45,11 @@
         <SubscriptionProgressMini v-if="user" />
 
         <!-- Balance Display -->
-        <div
+        <button
           v-if="user"
-          class="hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
+          class="hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 transition-colors hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 sm:flex"
+          :title="t('admin.users.balanceLedger')"
+          @click="openBalanceLedger"
         >
           <svg
             class="h-4 w-4 text-primary-600 dark:text-primary-400"
@@ -65,7 +67,7 @@
           <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
             ${{ user.balance?.toFixed(2) || '0.00' }}
           </span>
-        </div>
+        </button>
 
         <!-- User Dropdown -->
         <div v-if="user" class="relative" ref="dropdownRef">
@@ -106,14 +108,17 @@
               </div>
 
               <!-- Balance (mobile only) -->
-              <div class="border-b border-gray-100 px-4 py-2 dark:border-dark-700 sm:hidden">
+              <button
+                class="block w-full border-b border-gray-100 px-4 py-2 text-left transition-colors hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-800 sm:hidden"
+                @click="openBalanceLedger"
+              >
                 <div class="text-xs text-gray-500 dark:text-dark-400">
                   {{ t('common.balance') }}
                 </div>
                 <div class="text-sm font-semibold text-primary-600 dark:text-primary-400">
                   ${{ user.balance?.toFixed(2) || '0.00' }}
                 </div>
-              </div>
+              </button>
 
               <div class="py-1">
                 <router-link to="/profile" @click="closeDropdown" class="dropdown-item">
@@ -210,6 +215,12 @@
       </div>
     </div>
   </header>
+  <UserBalanceLedgerModal
+    :show="showBalanceLedgerModal"
+    :user="user"
+    scope="self"
+    @close="showBalanceLedgerModal = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -221,6 +232,7 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import UserBalanceLedgerModal from '@/components/admin/user/UserBalanceLedgerModal.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const router = useRouter()
@@ -233,6 +245,7 @@ const onboardingStore = useOnboardingStore()
 
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
+const showBalanceLedgerModal = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => appStore.docUrl)
@@ -296,6 +309,11 @@ function toggleDropdown() {
 
 function closeDropdown() {
   dropdownOpen.value = false
+}
+
+function openBalanceLedger() {
+  closeDropdown()
+  showBalanceLedgerModal.value = true
 }
 
 async function handleLogout() {

@@ -15,7 +15,8 @@ import type {
   NotifyEmailEntry,
   UserAuthProvider,
   UserAffiliateDetail,
-  AffiliateTransferResponse
+  AffiliateTransferResponse,
+  PaginatedResponse
 } from '@/types'
 
 /**
@@ -24,6 +25,33 @@ import type {
  */
 export async function getProfile(): Promise<User> {
   const { data } = await apiClient.get<User>('/user/profile')
+  return data
+}
+
+export interface UserBalanceCredit {
+  id: number
+  user_id: number
+  source_type: string
+  source_id: string
+  source_code: string
+  amount: number
+  remaining_amount: number
+  settled_until_date: string | null
+  expires_at: string | null
+  expired_at: string | null
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export async function getBalanceCredits(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<PaginatedResponse<UserBalanceCredit>> {
+  const { data } = await apiClient.get<PaginatedResponse<UserBalanceCredit>>(
+    '/user/balance-credits',
+    { params: { page, page_size: pageSize } }
+  )
   return data
 }
 
@@ -186,8 +214,9 @@ export async function transferAffiliateQuota(): Promise<AffiliateTransferRespons
 }
 
 export const userAPI = {
-  getProfile,
-  updateProfile,
+ getProfile,
+ getBalanceCredits,
+ updateProfile,
   changePassword,
   sendNotifyEmailCode,
   verifyNotifyEmail,

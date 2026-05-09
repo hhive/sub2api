@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -14,11 +15,12 @@ import (
 
 // UserHandler handles user-related requests
 type UserHandler struct {
-	userService      *service.UserService
-	authService      *service.AuthService
-	emailService     *service.EmailService
-	emailCache       service.EmailCache
-	affiliateService *service.AffiliateService
+	userService       *service.UserService
+	authService       *service.AuthService
+	emailService      *service.EmailService
+	emailCache        service.EmailCache
+	affiliateService  *service.AffiliateService
+	balanceCreditRepo service.BalanceCreditRepository
 }
 
 // NewUserHandler creates a new UserHandler
@@ -28,13 +30,15 @@ func NewUserHandler(
 	emailService *service.EmailService,
 	emailCache service.EmailCache,
 	affiliateService *service.AffiliateService,
+	balanceCreditRepo service.BalanceCreditRepository,
 ) *UserHandler {
 	return &UserHandler{
-		userService:      userService,
-		authService:      authService,
-		emailService:     emailService,
-		emailCache:       emailCache,
-		affiliateService: affiliateService,
+		userService:       userService,
+		authService:       authService,
+		emailService:      emailService,
+		emailCache:        emailCache,
+		affiliateService:  affiliateService,
+		balanceCreditRepo: balanceCreditRepo,
 	}
 }
 
@@ -96,6 +100,37 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	response.Success(c, profileResp)
+}
+
+// GetBalanceCredits handles getting the current user's balance credit ledger.
+// GET /api/v1/user/balance-credits
+func (h *UserHandler) GetBalanceCredits(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	page, pageSize := response.ParsePagination(c)
+	if h.balanceCreditRepo == nil {
+		response.Paginated(c, []dto.UserBalanceCredit{}, 0, page, pageSize)
+		return
+	}
+
+	credits, total, err := h.balanceCreditRepo.ListUserCredits(
+		c.Request.Context(),
+		subject.UserID,
+		pagination.PaginationParams{Page: page, PageSize: pageSize},
+	)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]dto.UserBalanceCredit, 0, len(credits))
+	for i := range credits {
+		out = append(out, *dto.UserBalanceCreditFromService(&credits[i]))
+	}
+	response.Paginated(c, out, total, page, pageSize)
 }
 
 // ChangePassword handles changing user password
