@@ -91,6 +91,8 @@ type RedeemService struct {
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	affiliateService     *AffiliateService
+	balanceCreditRepo    BalanceCreditRepository
+	settingService       *SettingService
 }
 
 // NewRedeemService 创建兑换码服务实例
@@ -103,6 +105,8 @@ func NewRedeemService(
 	entClient *dbent.Client,
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
 	affiliateService *AffiliateService,
+	balanceCreditRepo BalanceCreditRepository,
+	settingService *SettingService,
 ) *RedeemService {
 	return &RedeemService{
 		redeemRepo:           redeemRepo,
@@ -113,6 +117,8 @@ func NewRedeemService(
 		entClient:            entClient,
 		authCacheInvalidator: authCacheInvalidator,
 		affiliateService:     affiliateService,
+		balanceCreditRepo:    balanceCreditRepo,
+		settingService:       settingService,
 	}
 }
 
@@ -336,6 +342,11 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		if err := s.userRepo.UpdateBalance(txCtx, userID, amount); err != nil {
 			return nil, fmt.Errorf("update user balance: %w", err)
 		}
+		if amount > 0 {
+			if err := s.createBalanceCredit(txCtx, userID, redeemCode, amount); err != nil {
+				return nil, fmt.Errorf("create balance credit: %w", err)
+			}
+		}
 
 	case RedeemTypeConcurrency:
 		delta := int(redeemCode.Value)
@@ -394,6 +405,28 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	}
 
 	return redeemCode, nil
+}
+
+func (s *RedeemService) createBalanceCredit(ctx context.Context, userID int64, redeemCode *RedeemCode, amount float64) error {
+	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || redeemCode == nil || amount <= 0 {
+		return nil
+	}
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return err
+	}
+	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
+	if expiresAt == nil {
+		return nil
+	}
+	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
+		UserID:     userID,
+		SourceType: BalanceCreditSourceRedeem,
+		SourceID:   fmt.Sprintf("%d", redeemCode.ID),
+		SourceCode: redeemCode.Code,
+		Amount:     amount,
+		ExpiresAt:  expiresAt,
+	})
 }
 
 // invalidateRedeemCaches 失效兑换相关的缓存

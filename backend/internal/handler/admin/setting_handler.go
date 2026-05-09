@@ -60,10 +60,11 @@ type SettingHandler struct {
 	opsService           *service.OpsService
 	paymentConfigService *service.PaymentConfigService
 	paymentService       *service.PaymentService
+	balanceExpiryService *service.BalanceExpiryService
 }
 
 // NewSettingHandler 创建系统设置处理器
-func NewSettingHandler(settingService *service.SettingService, emailService *service.EmailService, turnstileService *service.TurnstileService, opsService *service.OpsService, paymentConfigService *service.PaymentConfigService, paymentService *service.PaymentService) *SettingHandler {
+func NewSettingHandler(settingService *service.SettingService, emailService *service.EmailService, turnstileService *service.TurnstileService, opsService *service.OpsService, paymentConfigService *service.PaymentConfigService, paymentService *service.PaymentService, balanceExpiryService *service.BalanceExpiryService) *SettingHandler {
 	return &SettingHandler{
 		settingService:       settingService,
 		emailService:         emailService,
@@ -71,6 +72,7 @@ func NewSettingHandler(settingService *service.SettingService, emailService *ser
 		opsService:           opsService,
 		paymentConfigService: paymentConfigService,
 		paymentService:       paymentService,
+		balanceExpiryService: balanceExpiryService,
 	}
 }
 
@@ -204,6 +206,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		OnyxDefaultImageModel:                  settings.OnyxDefaultImageModel,
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
+		BalanceCreditValidityDays:              settings.BalanceCreditValidityDays,
+		BalanceCreditDailySettlementHour:       settings.BalanceCreditDailySettlementHour,
 		RiskControlEnabled:                     settings.RiskControlEnabled,
 		AffiliateRebateRate:                    settings.AffiliateRebateRate,
 		AffiliateRebateFreezeHours:             settings.AffiliateRebateFreezeHours,
@@ -427,6 +431,8 @@ type UpdateSettingsRequest struct {
 	// 默认配置
 	DefaultConcurrency                       int                               `json:"default_concurrency"`
 	DefaultBalance                           float64                           `json:"default_balance"`
+	BalanceCreditValidityDays                *int                              `json:"balance_credit_validity_days"`
+	BalanceCreditDailySettlementHour         *int                              `json:"balance_credit_daily_settlement_hour"`
 	AffiliateRebateRate                      *float64                          `json:"affiliate_rebate_rate"`
 	AffiliateRebateFreezeHours               *int                              `json:"affiliate_rebate_freeze_hours"`
 	AffiliateRebateDurationDays              *int                              `json:"affiliate_rebate_duration_days"`
@@ -580,6 +586,25 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	if req.DefaultBalance < 0 {
 		req.DefaultBalance = 0
+	}
+	balanceCreditValidityDays := previousSettings.BalanceCreditValidityDays
+	if req.BalanceCreditValidityDays != nil {
+		balanceCreditValidityDays = *req.BalanceCreditValidityDays
+	}
+	if balanceCreditValidityDays < 0 {
+		balanceCreditValidityDays = 0
+	}
+	balanceCreditDailySettlementHour := previousSettings.BalanceCreditDailySettlementHour
+	if req.BalanceCreditDailySettlementHour != nil {
+		hour := *req.BalanceCreditDailySettlementHour
+		if hour < 0 {
+			balanceCreditDailySettlementHour = nil
+		} else if hour > 23 {
+			hour = 5
+			balanceCreditDailySettlementHour = &hour
+		} else {
+			balanceCreditDailySettlementHour = &hour
+		}
 	}
 	affiliateRebateRate := previousSettings.AffiliateRebateRate
 	if req.AffiliateRebateRate != nil {
@@ -1358,6 +1383,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		OnyxDefaultImageModel:            onyxDefaultImageModel,
 		DefaultConcurrency:               req.DefaultConcurrency,
 		DefaultBalance:                   req.DefaultBalance,
+		BalanceCreditValidityDays:        balanceCreditValidityDays,
+		BalanceCreditDailySettlementHour: balanceCreditDailySettlementHour,
 		AffiliateRebateRate:              affiliateRebateRate,
 		AffiliateRebateFreezeHours:       affiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:      affiliateRebateDurationDays,
@@ -1564,6 +1591,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	if h.balanceExpiryService != nil {
+		if err := h.balanceExpiryService.ReloadSchedule(c.Request.Context()); err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+	}
 
 	// Update OpenAI fast policy (stored under dedicated key, only when provided).
 	if req.OpenAIFastPolicySettings != nil {
@@ -1727,6 +1760,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomEndpoints:                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
 		DefaultConcurrency:                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                         updatedSettings.DefaultBalance,
+		BalanceCreditValidityDays:              updatedSettings.BalanceCreditValidityDays,
+		BalanceCreditDailySettlementHour:       updatedSettings.BalanceCreditDailySettlementHour,
 		AffiliateRebateRate:                    updatedSettings.AffiliateRebateRate,
 		AffiliateRebateFreezeHours:             updatedSettings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            updatedSettings.AffiliateRebateDurationDays,

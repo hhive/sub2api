@@ -530,6 +530,7 @@ type adminServiceImpl struct {
 	defaultSubAssigner   DefaultSubscriptionAssigner
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
+	balanceCreditRepo    BalanceCreditRepository
 }
 
 type userGroupRateBatchReader interface {
@@ -555,6 +556,7 @@ func NewAdminService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
+	balanceCreditRepo BalanceCreditRepository,
 ) AdminService {
 	return &adminServiceImpl{
 		userRepo:             userRepo,
@@ -574,6 +576,7 @@ func NewAdminService(
 		defaultSubAssigner:   defaultSubAssigner,
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
+		balanceCreditRepo:    balanceCreditRepo,
 	}
 }
 
@@ -872,10 +875,54 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, user.Balance)
 	}
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	balanceDiff := user.Balance - oldBalance
+	opCtx := ctx
+	var tx *dbent.Tx
+	if balanceDiff != 0 && s.entClient != nil {
+		tx, err = s.entClient.Tx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = tx.Rollback() }()
+		opCtx = dbent.NewTxContext(ctx, tx)
+	}
+
+	if err := s.userRepo.Update(opCtx, user); err != nil {
 		return nil, err
 	}
-	balanceDiff := user.Balance - oldBalance
+
+	if balanceDiff != 0 {
+		code, err := GenerateRedeemCode()
+		if err != nil {
+			return nil, fmt.Errorf("generate adjustment redeem code: %w", err)
+		}
+
+		adjustmentRecord := &RedeemCode{
+			Code:   code,
+			Type:   AdjustmentTypeAdminBalance,
+			Value:  balanceDiff,
+			Status: StatusUsed,
+			UsedBy: &user.ID,
+			Notes:  notes,
+		}
+		now := time.Now()
+		adjustmentRecord.UsedAt = &now
+
+		if err := s.redeemCodeRepo.Create(opCtx, adjustmentRecord); err != nil {
+			return nil, fmt.Errorf("create balance adjustment redeem code: %w", err)
+		}
+		if balanceDiff > 0 {
+			if err := s.createAdminBalanceCredit(opCtx, user.ID, adjustmentRecord, balanceDiff); err != nil {
+				return nil, fmt.Errorf("create balance credit: %w", err)
+			}
+		}
+	}
+	if tx != nil {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+	}
+
 	if s.authCacheInvalidator != nil && balanceDiff != 0 {
 		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 	}
@@ -890,30 +937,29 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		}()
 	}
 
-	if balanceDiff != 0 {
-		code, err := GenerateRedeemCode()
-		if err != nil {
-			logger.LegacyPrintf("service.admin", "failed to generate adjustment redeem code: %v", err)
-			return user, nil
-		}
-
-		adjustmentRecord := &RedeemCode{
-			Code:   code,
-			Type:   AdjustmentTypeAdminBalance,
-			Value:  balanceDiff,
-			Status: StatusUsed,
-			UsedBy: &user.ID,
-			Notes:  notes,
-		}
-		now := time.Now()
-		adjustmentRecord.UsedAt = &now
-
-		if err := s.redeemCodeRepo.Create(ctx, adjustmentRecord); err != nil {
-			logger.LegacyPrintf("service.admin", "failed to create balance adjustment redeem code: %v", err)
-		}
-	}
-
 	return user, nil
+}
+
+func (s *adminServiceImpl) createAdminBalanceCredit(ctx context.Context, userID int64, record *RedeemCode, amount float64) error {
+	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || record == nil || amount <= 0 {
+		return nil
+	}
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return err
+	}
+	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
+	if expiresAt == nil {
+		return nil
+	}
+	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
+		UserID:     userID,
+		SourceType: BalanceCreditSourceAdmin,
+		SourceID:   fmt.Sprintf("%d", record.ID),
+		SourceCode: record.Code,
+		Amount:     amount,
+		ExpiresAt:  expiresAt,
+	})
 }
 
 func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {

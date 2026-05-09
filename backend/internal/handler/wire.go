@@ -148,6 +148,7 @@ var ProviderSet = wire.NewSet(
 	NewPaymentHandler,
 	NewPaymentWebhookHandler,
 	NewAvailableChannelHandler,
+	ProvideOnyxLaunchService,
 	NewOnyxHandler,
 
 	// Admin handlers

@@ -29,6 +29,8 @@ type PromoService struct {
 	billingCacheService  *BillingCacheService
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
+	balanceCreditRepo    BalanceCreditRepository
+	settingService       *SettingService
 }
 
 // NewPromoService 创建优惠码服务实例
@@ -38,6 +40,8 @@ func NewPromoService(
 	billingCacheService *BillingCacheService,
 	entClient *dbent.Client,
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
+	balanceCreditRepo BalanceCreditRepository,
+	settingService *SettingService,
 ) *PromoService {
 	return &PromoService{
 		promoRepo:            promoRepo,
@@ -45,6 +49,8 @@ func NewPromoService(
 		billingCacheService:  billingCacheService,
 		entClient:            entClient,
 		authCacheInvalidator: authCacheInvalidator,
+		balanceCreditRepo:    balanceCreditRepo,
+		settingService:       settingService,
 	}
 }
 
@@ -127,6 +133,9 @@ func (s *PromoService) ApplyPromoCode(ctx context.Context, userID int64, code st
 	if err := s.userRepo.UpdateBalance(txCtx, userID, promoCode.BonusAmount); err != nil {
 		return fmt.Errorf("update user balance: %w", err)
 	}
+	if err := s.createPromoBalanceCredit(txCtx, userID, promoCode); err != nil {
+		return fmt.Errorf("create balance credit: %w", err)
+	}
 
 	// 创建使用记录
 	usage := &PromoCodeUsage{
@@ -160,6 +169,28 @@ func (s *PromoService) ApplyPromoCode(ctx context.Context, userID int64, code st
 	}
 
 	return nil
+}
+
+func (s *PromoService) createPromoBalanceCredit(ctx context.Context, userID int64, promoCode *PromoCode) error {
+	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || promoCode == nil || promoCode.BonusAmount <= 0 {
+		return nil
+	}
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return err
+	}
+	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
+	if expiresAt == nil {
+		return nil
+	}
+	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
+		UserID:     userID,
+		SourceType: BalanceCreditSourcePromo,
+		SourceID:   fmt.Sprintf("%d", promoCode.ID),
+		SourceCode: promoCode.Code,
+		Amount:     promoCode.BonusAmount,
+		ExpiresAt:  expiresAt,
+	})
 }
 
 func (s *PromoService) invalidatePromoCaches(ctx context.Context, userID int64, bonusAmount float64) {

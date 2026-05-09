@@ -81,6 +81,8 @@ const (
 	EdgePromoCodeUsages = "promo_code_usages"
 	// EdgePaymentOrders holds the string denoting the payment_orders edge name in mutations.
 	EdgePaymentOrders = "payment_orders"
+	// EdgeBalanceCredits holds the string denoting the balance_credits edge name in mutations.
+	EdgeBalanceCredits = "balance_credits"
 	// EdgeAuthIdentities holds the string denoting the auth_identities edge name in mutations.
 	EdgeAuthIdentities = "auth_identities"
 	// EdgePendingAuthSessions holds the string denoting the pending_auth_sessions edge name in mutations.
@@ -157,6 +159,13 @@ const (
 	PaymentOrdersInverseTable = "payment_orders"
 	// PaymentOrdersColumn is the table column denoting the payment_orders relation/edge.
 	PaymentOrdersColumn = "user_id"
+	// BalanceCreditsTable is the table that holds the balance_credits relation/edge.
+	BalanceCreditsTable = "user_balance_credits"
+	// BalanceCreditsInverseTable is the table name for the UserBalanceCredit entity.
+	// It exists in this package in order to avoid circular dependency with the "userbalancecredit" package.
+	BalanceCreditsInverseTable = "user_balance_credits"
+	// BalanceCreditsColumn is the table column denoting the balance_credits relation/edge.
+	BalanceCreditsColumn = "user_id"
 	// AuthIdentitiesTable is the table that holds the auth_identities relation/edge.
 	AuthIdentitiesTable = "auth_identities"
 	// AuthIdentitiesInverseTable is the table name for the AuthIdentity entity.
@@ -541,6 +550,20 @@ func ByPaymentOrders(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByBalanceCreditsCount orders the results by balance_credits count.
+func ByBalanceCreditsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newBalanceCreditsStep(), opts...)
+	}
+}
+
+// ByBalanceCredits orders the results by balance_credits terms.
+func ByBalanceCredits(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBalanceCreditsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAuthIdentitiesCount orders the results by auth_identities count.
 func ByAuthIdentitiesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -650,6 +673,13 @@ func newPaymentOrdersStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PaymentOrdersInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PaymentOrdersTable, PaymentOrdersColumn),
+	)
+}
+func newBalanceCreditsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BalanceCreditsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, BalanceCreditsTable, BalanceCreditsColumn),
 	)
 }
 func newAuthIdentitiesStep() *sqlgraph.Step {

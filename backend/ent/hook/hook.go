@@ -405,6 +405,18 @@ func (f UserAttributeValueFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserAttributeValueMutation", m)
 }
 
+// The UserBalanceCreditFunc type is an adapter to allow the use of ordinary
+// function as UserBalanceCredit mutator.
+type UserBalanceCreditFunc func(context.Context, *ent.UserBalanceCreditMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserBalanceCreditFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserBalanceCreditMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserBalanceCreditMutation", m)
+}
+
 // The UserSubscriptionFunc type is an adapter to allow the use of ordinary
 // function as UserSubscription mutator.
 type UserSubscriptionFunc func(context.Context, *ent.UserSubscriptionMutation) (ent.Value, error)

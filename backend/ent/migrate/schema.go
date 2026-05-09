@@ -1590,6 +1590,58 @@ var (
 			},
 		},
 	}
+	// UserBalanceCreditsColumns holds the columns for the "user_balance_credits" table.
+	UserBalanceCreditsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "source_type", Type: field.TypeString, Size: 32},
+		{Name: "source_id", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "source_code", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "amount", Type: field.TypeFloat64, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "remaining_amount", Type: field.TypeFloat64, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "settled_until_date", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "date"}},
+		{Name: "expires_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "expired_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "status", Type: field.TypeString, Size: 20, Default: "active"},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// UserBalanceCreditsTable holds the schema information for the "user_balance_credits" table.
+	UserBalanceCreditsTable = &schema.Table{
+		Name:       "user_balance_credits",
+		Columns:    UserBalanceCreditsColumns,
+		PrimaryKey: []*schema.Column{UserBalanceCreditsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_balance_credits_users_balance_credits",
+				Columns:    []*schema.Column{UserBalanceCreditsColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "userbalancecredit_user_id_status_settled_until_date_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{UserBalanceCreditsColumns[12], UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[6], UserBalanceCreditsColumns[7]},
+			},
+			{
+				Name:    "userbalancecredit_user_id_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{UserBalanceCreditsColumns[12], UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[7]},
+			},
+			{
+				Name:    "userbalancecredit_status_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[7]},
+			},
+			{
+				Name:    "userbalancecredit_source_type_source_id",
+				Unique:  false,
+				Columns: []*schema.Column{UserBalanceCreditsColumns[1], UserBalanceCreditsColumns[2]},
+			},
+		},
+	}
 	// UserSubscriptionsColumns holds the columns for the "user_subscriptions" table.
 	UserSubscriptionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -1714,6 +1766,7 @@ var (
 		UserAllowedGroupsTable,
 		UserAttributeDefinitionsTable,
 		UserAttributeValuesTable,
+		UserBalanceCreditsTable,
 		UserSubscriptionsTable,
 	}
 )
@@ -1846,6 +1899,10 @@ func init() {
 	UserAttributeValuesTable.ForeignKeys[1].RefTable = UserAttributeDefinitionsTable
 	UserAttributeValuesTable.Annotation = &entsql.Annotation{
 		Table: "user_attribute_values",
+	}
+	UserBalanceCreditsTable.ForeignKeys[0].RefTable = UsersTable
+	UserBalanceCreditsTable.Annotation = &entsql.Annotation{
+		Table: "user_balance_credits",
 	}
 	UserSubscriptionsTable.ForeignKeys[0].RefTable = GroupsTable
 	UserSubscriptionsTable.ForeignKeys[1].RefTable = UsersTable

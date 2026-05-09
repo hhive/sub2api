@@ -1370,6 +1370,15 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	// 默认配置
 	updates[SettingKeyDefaultConcurrency] = strconv.Itoa(settings.DefaultConcurrency)
 	updates[SettingKeyDefaultBalance] = strconv.FormatFloat(settings.DefaultBalance, 'f', 8, 64)
+	if settings.BalanceCreditValidityDays < 0 {
+		settings.BalanceCreditValidityDays = 0
+	}
+	updates[SettingKeyBalanceCreditValidityDays] = strconv.Itoa(settings.BalanceCreditValidityDays)
+	if settings.BalanceCreditDailySettlementHour != nil && *settings.BalanceCreditDailySettlementHour >= 0 && *settings.BalanceCreditDailySettlementHour <= 23 {
+		updates[SettingKeyBalanceCreditDailySettlementHour] = strconv.Itoa(*settings.BalanceCreditDailySettlementHour)
+	} else {
+		updates[SettingKeyBalanceCreditDailySettlementHour] = ""
+	}
 	settings.AffiliateRebateRate = clampAffiliateRebateRate(settings.AffiliateRebateRate)
 	updates[SettingKeyAffiliateRebateRate] = strconv.FormatFloat(settings.AffiliateRebateRate, 'f', 8, 64)
 	if settings.AffiliateRebateFreezeHours < 0 {
@@ -2147,6 +2156,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyOIDCConnectUserInfoUsernamePath:          "",
 		SettingKeyDefaultConcurrency:                       strconv.Itoa(s.cfg.Default.UserConcurrency),
 		SettingKeyDefaultBalance:                           strconv.FormatFloat(s.cfg.Default.UserBalance, 'f', 8, 64),
+		SettingKeyBalanceCreditValidityDays:                "0",
 		SettingKeyAffiliateRebateRate:                      strconv.FormatFloat(AffiliateRebateRateDefault, 'f', 8, 64),
 		SettingKeyAffiliateRebateFreezeHours:               strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:              strconv.Itoa(AffiliateRebateDurationDaysDefault),
@@ -2295,6 +2305,12 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 
 	if rpm, err := strconv.Atoi(settings[SettingKeyDefaultUserRPMLimit]); err == nil && rpm >= 0 {
 		result.DefaultUserRPMLimit = rpm
+	}
+	if days, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyBalanceCreditValidityDays])); err == nil && days >= 0 {
+		result.BalanceCreditValidityDays = days
+	}
+	if hour, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyBalanceCreditDailySettlementHour])); err == nil && hour >= 0 && hour <= 23 {
+		result.BalanceCreditDailySettlementHour = &hour
 	}
 
 	if ttl, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyOnyxLaunchTokenTTLSeconds])); err == nil && ttl > 0 {

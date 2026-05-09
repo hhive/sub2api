@@ -691,6 +691,10 @@ func (r *userRepository) filterUsersByAttributes(ctx context.Context, attrs map[
 }
 
 func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount float64) error {
+	return r.updateBalanceInContext(ctx, id, amount)
+}
+
+func (r *userRepository) updateBalanceInContext(ctx context.Context, id int64, amount float64) error {
 	client := clientFromContext(ctx, r.client)
 	update := client.User.Update().Where(dbuser.IDEQ(id)).AddBalance(amount)
 	// Track cumulative recharge amount for percentage-based notifications
@@ -711,6 +715,13 @@ func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount flo
 // 透支策略：允许余额变为负数，确保当前请求能够完成
 // 中间件会阻止余额 <= 0 的用户发起后续请求
 func (r *userRepository) DeductBalance(ctx context.Context, id int64, amount float64) error {
+	if amount <= 0 {
+		return nil
+	}
+	return r.deductBalanceInContext(ctx, id, amount)
+}
+
+func (r *userRepository) deductBalanceInContext(ctx context.Context, id int64, amount float64) error {
 	client := clientFromContext(ctx, r.client)
 	n, err := client.User.Update().
 		Where(dbuser.IDEQ(id)).

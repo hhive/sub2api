@@ -68,6 +68,7 @@ const (
 const (
 	AdjustmentTypeAdminBalance     = domain.AdjustmentTypeAdminBalance     // 管理员调整余额
 	AdjustmentTypeAdminConcurrency = domain.AdjustmentTypeAdminConcurrency // 管理员调整并发数
+	AdjustmentTypeBalanceExpired   = domain.AdjustmentTypeBalanceExpired   // 余额过期清零
 )
 
 // Group subscription type constants
@@ -203,20 +204,22 @@ const (
 	SettingKeyTablePageSizeOptions        = "table_page_size_options"       // 表格可选每页条数（JSON 数组）
 	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
 	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
-	SettingKeyOnyxEnabled                 = "onyx_enabled"                 // 是否启用 Onyx 菜单集成
-	SettingKeyOnyxBaseURL                 = "onyx_base_url"                // Onyx 访问地址
-	SettingKeyOnyxMenuLabel               = "onyx_menu_label"              // Onyx 菜单显示名称
-	SettingKeyOnyxExchangeSecret          = "onyx_exchange_secret"         // Onyx 后端交换密钥
+	SettingKeyOnyxEnabled                 = "onyx_enabled"                  // 是否启用 Onyx 菜单集成
+	SettingKeyOnyxBaseURL                 = "onyx_base_url"                 // Onyx 访问地址
+	SettingKeyOnyxMenuLabel               = "onyx_menu_label"               // Onyx 菜单显示名称
+	SettingKeyOnyxExchangeSecret          = "onyx_exchange_secret"          // Onyx 后端交换密钥
 	SettingKeyOnyxLaunchTokenTTLSeconds   = "onyx_launch_token_ttl_seconds" // Onyx 跳转 token 有效期（秒）
-	SettingKeyOnyxDefaultRedirectPath     = "onyx_default_redirect_path"   // Onyx 登录后默认路径
-	SettingKeyOnyxDefaultTextModel        = "onyx_default_text_model"      // Onyx 默认文本模型
-	SettingKeyOnyxDefaultImageModel       = "onyx_default_image_model"     // Onyx 默认图片模型
+	SettingKeyOnyxDefaultRedirectPath     = "onyx_default_redirect_path"    // Onyx 登录后默认路径
+	SettingKeyOnyxDefaultTextModel        = "onyx_default_text_model"       // Onyx 默认文本模型
+	SettingKeyOnyxDefaultImageModel       = "onyx_default_image_model"      // Onyx 默认图片模型
 
 	// 默认配置
-	SettingKeyDefaultConcurrency   = "default_concurrency"    // 新用户默认并发量
-	SettingKeyDefaultBalance       = "default_balance"        // 新用户默认余额
-	SettingKeyDefaultSubscriptions = "default_subscriptions"  // 新用户默认订阅列表（JSON）
-	SettingKeyDefaultUserRPMLimit  = "default_user_rpm_limit" // 新用户默认 RPM 限制（0 = 不限制）
+	SettingKeyDefaultConcurrency               = "default_concurrency"                  // 新用户默认并发量
+	SettingKeyDefaultBalance                   = "default_balance"                      // 新用户默认余额
+	SettingKeyBalanceCreditValidityDays        = "balance_credit_validity_days"         // 余额批次有效期（天，0=永不过期）
+	SettingKeyBalanceCreditDailySettlementHour = "balance_credit_daily_settlement_hour" // 余额日终结算执行小时（0-23，未配置=不执行）
+	SettingKeyDefaultSubscriptions             = "default_subscriptions"                // 新用户默认订阅列表（JSON）
+	SettingKeyDefaultUserRPMLimit              = "default_user_rpm_limit"               // 新用户默认 RPM 限制（0 = 不限制）
 
 	// 第三方认证来源默认授予配置
 	SettingKeyAuthSourceDefaultEmailBalance            = "auth_source_default_email_balance"

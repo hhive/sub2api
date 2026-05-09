@@ -127,16 +127,18 @@ type SystemSettings struct {
 	OnyxDefaultTextModel        string
 	OnyxDefaultImageModel       string
 
-	DefaultConcurrency           int
-	DefaultBalance               float64
-	RiskControlEnabled           bool
-	AffiliateEnabled             bool
-	AffiliateRebateRate          float64
-	AffiliateRebateFreezeHours   int
-	AffiliateRebateDurationDays  int
-	AffiliateRebatePerInviteeCap float64
-	DefaultUserRPMLimit          int
-	DefaultSubscriptions         []DefaultSubscriptionSetting
+	DefaultConcurrency               int
+	DefaultBalance                   float64
+	BalanceCreditValidityDays        int
+	BalanceCreditDailySettlementHour *int
+	RiskControlEnabled               bool
+	AffiliateEnabled                 bool
+	AffiliateRebateRate              float64
+	AffiliateRebateFreezeHours       int
+	AffiliateRebateDurationDays      int
+	AffiliateRebatePerInviteeCap     float64
+	DefaultUserRPMLimit              int
+	DefaultSubscriptions             []DefaultSubscriptionSetting
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

@@ -22,6 +22,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/ent/userbalancecredit"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 )
 
@@ -487,6 +488,21 @@ func (_c *UserCreate) AddPaymentOrders(v ...*PaymentOrder) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddPaymentOrderIDs(ids...)
+}
+
+// AddBalanceCreditIDs adds the "balance_credits" edge to the UserBalanceCredit entity by IDs.
+func (_c *UserCreate) AddBalanceCreditIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddBalanceCreditIDs(ids...)
+	return _c
+}
+
+// AddBalanceCredits adds the "balance_credits" edges to the UserBalanceCredit entity.
+func (_c *UserCreate) AddBalanceCredits(v ...*UserBalanceCredit) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBalanceCreditIDs(ids...)
 }
 
 // AddAuthIdentityIDs adds the "auth_identities" edge to the AuthIdentity entity by IDs.
@@ -984,6 +1000,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(paymentorder.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BalanceCreditsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.BalanceCreditsTable,
+			Columns: []string{user.BalanceCreditsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userbalancecredit.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

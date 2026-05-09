@@ -39,6 +39,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userallowedgroup"
 	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/ent/userbalancecredit"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
@@ -1973,6 +1974,54 @@ func init() {
 	userattributevalueDescValue := userattributevalueFields[2].Descriptor()
 	// userattributevalue.DefaultValue holds the default value on creation for the value field.
 	userattributevalue.DefaultValue = userattributevalueDescValue.Default.(string)
+	userbalancecreditFields := schema.UserBalanceCredit{}.Fields()
+	_ = userbalancecreditFields
+	// userbalancecreditDescSourceType is the schema descriptor for source_type field.
+	userbalancecreditDescSourceType := userbalancecreditFields[1].Descriptor()
+	// userbalancecredit.SourceTypeValidator is a validator for the "source_type" field. It is called by the builders before save.
+	userbalancecredit.SourceTypeValidator = func() func(string) error {
+		validators := userbalancecreditDescSourceType.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(source_type string) error {
+			for _, fn := range fns {
+				if err := fn(source_type); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// userbalancecreditDescSourceID is the schema descriptor for source_id field.
+	userbalancecreditDescSourceID := userbalancecreditFields[2].Descriptor()
+	// userbalancecredit.DefaultSourceID holds the default value on creation for the source_id field.
+	userbalancecredit.DefaultSourceID = userbalancecreditDescSourceID.Default.(string)
+	// userbalancecredit.SourceIDValidator is a validator for the "source_id" field. It is called by the builders before save.
+	userbalancecredit.SourceIDValidator = userbalancecreditDescSourceID.Validators[0].(func(string) error)
+	// userbalancecreditDescSourceCode is the schema descriptor for source_code field.
+	userbalancecreditDescSourceCode := userbalancecreditFields[3].Descriptor()
+	// userbalancecredit.DefaultSourceCode holds the default value on creation for the source_code field.
+	userbalancecredit.DefaultSourceCode = userbalancecreditDescSourceCode.Default.(string)
+	// userbalancecredit.SourceCodeValidator is a validator for the "source_code" field. It is called by the builders before save.
+	userbalancecredit.SourceCodeValidator = userbalancecreditDescSourceCode.Validators[0].(func(string) error)
+	// userbalancecreditDescStatus is the schema descriptor for status field.
+	userbalancecreditDescStatus := userbalancecreditFields[9].Descriptor()
+	// userbalancecredit.DefaultStatus holds the default value on creation for the status field.
+	userbalancecredit.DefaultStatus = userbalancecreditDescStatus.Default.(string)
+	// userbalancecredit.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	userbalancecredit.StatusValidator = userbalancecreditDescStatus.Validators[0].(func(string) error)
+	// userbalancecreditDescCreatedAt is the schema descriptor for created_at field.
+	userbalancecreditDescCreatedAt := userbalancecreditFields[10].Descriptor()
+	// userbalancecredit.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userbalancecredit.DefaultCreatedAt = userbalancecreditDescCreatedAt.Default.(func() time.Time)
+	// userbalancecreditDescUpdatedAt is the schema descriptor for updated_at field.
+	userbalancecreditDescUpdatedAt := userbalancecreditFields[11].Descriptor()
+	// userbalancecredit.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userbalancecredit.DefaultUpdatedAt = userbalancecreditDescUpdatedAt.Default.(func() time.Time)
+	// userbalancecredit.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userbalancecredit.UpdateDefaultUpdatedAt = userbalancecreditDescUpdatedAt.UpdateDefault.(func() time.Time)
 	usersubscriptionMixin := schema.UserSubscription{}.Mixin()
 	usersubscriptionMixinHooks1 := usersubscriptionMixin[1].Hooks()
 	usersubscription.Hooks[0] = usersubscriptionMixinHooks1[0]

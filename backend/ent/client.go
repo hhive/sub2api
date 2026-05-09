@@ -48,6 +48,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userallowedgroup"
 	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/ent/userbalancecredit"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 
 	stdsql "database/sql"
@@ -124,6 +125,8 @@ type Client struct {
 	UserAttributeDefinition *UserAttributeDefinitionClient
 	// UserAttributeValue is the client for interacting with the UserAttributeValue builders.
 	UserAttributeValue *UserAttributeValueClient
+	// UserBalanceCredit is the client for interacting with the UserBalanceCredit builders.
+	UserBalanceCredit *UserBalanceCreditClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
 }
@@ -170,6 +173,7 @@ func (c *Client) init() {
 	c.UserAllowedGroup = NewUserAllowedGroupClient(c.config)
 	c.UserAttributeDefinition = NewUserAttributeDefinitionClient(c.config)
 	c.UserAttributeValue = NewUserAttributeValueClient(c.config)
+	c.UserBalanceCredit = NewUserBalanceCreditClient(c.config)
 	c.UserSubscription = NewUserSubscriptionClient(c.config)
 }
 
@@ -296,6 +300,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		UserAllowedGroup:              NewUserAllowedGroupClient(cfg),
 		UserAttributeDefinition:       NewUserAttributeDefinitionClient(cfg),
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
+		UserBalanceCredit:             NewUserBalanceCreditClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
 	}, nil
 }
@@ -349,6 +354,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		UserAllowedGroup:              NewUserAllowedGroupClient(cfg),
 		UserAttributeDefinition:       NewUserAttributeDefinitionClient(cfg),
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
+		UserBalanceCredit:             NewUserBalanceCreditClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
 	}, nil
 }
@@ -388,7 +394,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
 		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
 		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserSubscription,
+		c.UserBalanceCredit, c.UserSubscription,
 	} {
 		n.Use(hooks...)
 	}
@@ -407,7 +413,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
 		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
 		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserSubscription,
+		c.UserBalanceCredit, c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -482,6 +488,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserAttributeDefinition.mutate(ctx, m)
 	case *UserAttributeValueMutation:
 		return c.UserAttributeValue.mutate(ctx, m)
+	case *UserBalanceCreditMutation:
+		return c.UserBalanceCredit.mutate(ctx, m)
 	case *UserSubscriptionMutation:
 		return c.UserSubscription.mutate(ctx, m)
 	default:
@@ -5309,6 +5317,22 @@ func (c *UserClient) QueryPaymentOrders(_m *User) *PaymentOrderQuery {
 	return query
 }
 
+// QueryBalanceCredits queries the balance_credits edge of a User.
+func (c *UserClient) QueryBalanceCredits(_m *User) *UserBalanceCreditQuery {
+	query := (&UserBalanceCreditClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(userbalancecredit.Table, userbalancecredit.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.BalanceCreditsTable, user.BalanceCreditsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAuthIdentities queries the auth_identities edge of a User.
 func (c *UserClient) QueryAuthIdentities(_m *User) *AuthIdentityQuery {
 	query := (&AuthIdentityClient{config: c.config}).Query()
@@ -5816,6 +5840,155 @@ func (c *UserAttributeValueClient) mutate(ctx context.Context, m *UserAttributeV
 	}
 }
 
+// UserBalanceCreditClient is a client for the UserBalanceCredit schema.
+type UserBalanceCreditClient struct {
+	config
+}
+
+// NewUserBalanceCreditClient returns a client for the UserBalanceCredit from the given config.
+func NewUserBalanceCreditClient(c config) *UserBalanceCreditClient {
+	return &UserBalanceCreditClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userbalancecredit.Hooks(f(g(h())))`.
+func (c *UserBalanceCreditClient) Use(hooks ...Hook) {
+	c.hooks.UserBalanceCredit = append(c.hooks.UserBalanceCredit, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `userbalancecredit.Intercept(f(g(h())))`.
+func (c *UserBalanceCreditClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UserBalanceCredit = append(c.inters.UserBalanceCredit, interceptors...)
+}
+
+// Create returns a builder for creating a UserBalanceCredit entity.
+func (c *UserBalanceCreditClient) Create() *UserBalanceCreditCreate {
+	mutation := newUserBalanceCreditMutation(c.config, OpCreate)
+	return &UserBalanceCreditCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserBalanceCredit entities.
+func (c *UserBalanceCreditClient) CreateBulk(builders ...*UserBalanceCreditCreate) *UserBalanceCreditCreateBulk {
+	return &UserBalanceCreditCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserBalanceCreditClient) MapCreateBulk(slice any, setFunc func(*UserBalanceCreditCreate, int)) *UserBalanceCreditCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserBalanceCreditCreateBulk{err: fmt.Errorf("calling to UserBalanceCreditClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserBalanceCreditCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserBalanceCreditCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserBalanceCredit.
+func (c *UserBalanceCreditClient) Update() *UserBalanceCreditUpdate {
+	mutation := newUserBalanceCreditMutation(c.config, OpUpdate)
+	return &UserBalanceCreditUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserBalanceCreditClient) UpdateOne(_m *UserBalanceCredit) *UserBalanceCreditUpdateOne {
+	mutation := newUserBalanceCreditMutation(c.config, OpUpdateOne, withUserBalanceCredit(_m))
+	return &UserBalanceCreditUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserBalanceCreditClient) UpdateOneID(id int64) *UserBalanceCreditUpdateOne {
+	mutation := newUserBalanceCreditMutation(c.config, OpUpdateOne, withUserBalanceCreditID(id))
+	return &UserBalanceCreditUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserBalanceCredit.
+func (c *UserBalanceCreditClient) Delete() *UserBalanceCreditDelete {
+	mutation := newUserBalanceCreditMutation(c.config, OpDelete)
+	return &UserBalanceCreditDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserBalanceCreditClient) DeleteOne(_m *UserBalanceCredit) *UserBalanceCreditDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserBalanceCreditClient) DeleteOneID(id int64) *UserBalanceCreditDeleteOne {
+	builder := c.Delete().Where(userbalancecredit.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserBalanceCreditDeleteOne{builder}
+}
+
+// Query returns a query builder for UserBalanceCredit.
+func (c *UserBalanceCreditClient) Query() *UserBalanceCreditQuery {
+	return &UserBalanceCreditQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUserBalanceCredit},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UserBalanceCredit entity by its id.
+func (c *UserBalanceCreditClient) Get(ctx context.Context, id int64) (*UserBalanceCredit, error) {
+	return c.Query().Where(userbalancecredit.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserBalanceCreditClient) GetX(ctx context.Context, id int64) *UserBalanceCredit {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a UserBalanceCredit.
+func (c *UserBalanceCreditClient) QueryUser(_m *UserBalanceCredit) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userbalancecredit.Table, userbalancecredit.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, userbalancecredit.UserTable, userbalancecredit.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserBalanceCreditClient) Hooks() []Hook {
+	return c.hooks.UserBalanceCredit
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserBalanceCreditClient) Interceptors() []Interceptor {
+	return c.inters.UserBalanceCredit
+}
+
+func (c *UserBalanceCreditClient) mutate(ctx context.Context, m *UserBalanceCreditMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserBalanceCreditCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserBalanceCreditUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserBalanceCreditUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserBalanceCreditDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UserBalanceCredit mutation op: %q", m.Op())
+	}
+}
+
 // UserSubscriptionClient is a client for the UserSubscription schema.
 type UserSubscriptionClient struct {
 	config
@@ -6025,7 +6198,8 @@ type (
 		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
-		UserAttributeDefinition, UserAttributeValue, UserSubscription []ent.Hook
+		UserAttributeDefinition, UserAttributeValue, UserBalanceCredit,
+		UserSubscription []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -6035,7 +6209,8 @@ type (
 		PaymentOrder, PaymentProviderInstance, PendingAuthSession, PromoCode,
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
-		UserAttributeDefinition, UserAttributeValue, UserSubscription []ent.Interceptor
+		UserAttributeDefinition, UserAttributeValue, UserBalanceCredit,
+		UserSubscription []ent.Interceptor
 	}
 )
 

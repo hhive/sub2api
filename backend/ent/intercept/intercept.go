@@ -42,6 +42,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userallowedgroup"
 	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/ent/userbalancecredit"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 )
 
@@ -992,6 +993,33 @@ func (f TraverseUserAttributeValue) Traverse(ctx context.Context, q ent.Query) e
 	return fmt.Errorf("unexpected query type %T. expect *ent.UserAttributeValueQuery", q)
 }
 
+// The UserBalanceCreditFunc type is an adapter to allow the use of ordinary function as a Querier.
+type UserBalanceCreditFunc func(context.Context, *ent.UserBalanceCreditQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f UserBalanceCreditFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.UserBalanceCreditQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.UserBalanceCreditQuery", q)
+}
+
+// The TraverseUserBalanceCredit type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseUserBalanceCredit func(context.Context, *ent.UserBalanceCreditQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseUserBalanceCredit) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseUserBalanceCredit) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.UserBalanceCreditQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.UserBalanceCreditQuery", q)
+}
+
 // The UserSubscriptionFunc type is an adapter to allow the use of ordinary function as a Querier.
 type UserSubscriptionFunc func(context.Context, *ent.UserSubscriptionQuery) (ent.Value, error)
 
@@ -1088,6 +1116,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.UserAttributeDefinitionQuery, predicate.UserAttributeDefinition, userattributedefinition.OrderOption]{typ: ent.TypeUserAttributeDefinition, tq: q}, nil
 	case *ent.UserAttributeValueQuery:
 		return &query[*ent.UserAttributeValueQuery, predicate.UserAttributeValue, userattributevalue.OrderOption]{typ: ent.TypeUserAttributeValue, tq: q}, nil
+	case *ent.UserBalanceCreditQuery:
+		return &query[*ent.UserBalanceCreditQuery, predicate.UserBalanceCredit, userbalancecredit.OrderOption]{typ: ent.TypeUserBalanceCredit, tq: q}, nil
 	case *ent.UserSubscriptionQuery:
 		return &query[*ent.UserSubscriptionQuery, predicate.UserSubscription, usersubscription.OrderOption]{typ: ent.TypeUserSubscription, tq: q}, nil
 	default:

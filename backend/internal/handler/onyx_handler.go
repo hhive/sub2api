@@ -29,6 +29,10 @@ func NewOnyxHandler(launchService onyxLaunchService, settingService *service.Set
 	return &OnyxHandler{launchService: launchService, settingService: settingService}
 }
 
+func ProvideOnyxLaunchService(s *service.OnyxLaunchService) onyxLaunchService {
+	return s
+}
+
 func (h *OnyxHandler) Launch(c *gin.Context) {
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {

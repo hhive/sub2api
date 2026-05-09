@@ -2769,6 +2769,41 @@
                   <label
                     class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                   >
+                    {{ t("admin.settings.defaults.balanceCreditValidityDays") }}
+                  </label>
+                  <input
+                    v-model.number="form.balance_credit_validity_days"
+                    type="number"
+                    min="0"
+                    class="input"
+                    placeholder="0"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.defaults.balanceCreditValidityDaysHint") }}
+                  </p>
+                </div>
+                <div>
+                  <label
+                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {{ t("admin.settings.defaults.balanceCreditDailySettlementHour") }}
+                  </label>
+                  <input
+                    v-model.number="form.balance_credit_daily_settlement_hour"
+                    type="number"
+                    min="0"
+                    max="23"
+                    class="input"
+                    placeholder="5"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.defaults.balanceCreditDailySettlementHourHint") }}
+                  </p>
+                </div>
+                <div>
+                  <label
+                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
                     {{ t("admin.settings.defaults.defaultConcurrency") }}
                   </label>
                   <input
@@ -6100,6 +6135,8 @@ const form = reactive<SettingsForm>({
   default_subscriptions: [],
   force_email_on_third_party_signup: false,
   default_user_rpm_limit: 0,
+  balance_credit_validity_days: 0,
+  balance_credit_daily_settlement_hour: null,
   site_name: "Sub2API",
   site_logo: "",
   site_subtitle: "Subscription to API Conversion Platform",
@@ -7110,6 +7147,7 @@ async function saveSettings() {
       password_reset_enabled: form.password_reset_enabled,
       totp_enabled: form.totp_enabled,
       default_balance: form.default_balance,
+      balance_credit_validity_days: Math.max(0, Math.floor(Number(form.balance_credit_validity_days) || 0)),
       affiliate_rebate_rate: Math.min(
         100,
         Math.max(0, Number(form.affiliate_rebate_rate) || 0),
@@ -7277,6 +7315,21 @@ async function saveSettings() {
       // Affiliate (邀请返利) feature switch
       affiliate_enabled: form.affiliate_enabled,
     };
+    const rawSettlementHour = form.balance_credit_daily_settlement_hour;
+    const settlementHour = Number(rawSettlementHour);
+    if (
+      rawSettlementHour !== null &&
+      rawSettlementHour !== undefined &&
+      String(rawSettlementHour).trim() !== "" &&
+      Number.isFinite(settlementHour)
+    ) {
+      payload.balance_credit_daily_settlement_hour = Math.max(
+        0,
+        Math.min(23, Math.floor(settlementHour)),
+      );
+    } else {
+      payload.balance_credit_daily_settlement_hour = -1;
+    }
 
     // 仅当 openai_fast_policy_settings 已成功从后端加载时才回写，
     // 否则省略整个字段，让后端保留既有规则（含默认值）。
