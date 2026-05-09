@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -209,14 +210,16 @@ type AffiliateService struct {
 	settingService       *SettingService
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	billingCacheService  *BillingCacheService
+	balanceCreditRepo    BalanceCreditRepository
 }
 
-func NewAffiliateService(repo AffiliateRepository, settingService *SettingService, authCacheInvalidator APIKeyAuthCacheInvalidator, billingCacheService *BillingCacheService) *AffiliateService {
+func NewAffiliateService(repo AffiliateRepository, settingService *SettingService, authCacheInvalidator APIKeyAuthCacheInvalidator, billingCacheService *BillingCacheService, balanceCreditRepo BalanceCreditRepository) *AffiliateService {
 	return &AffiliateService{
 		repo:                 repo,
 		settingService:       settingService,
 		authCacheInvalidator: authCacheInvalidator,
 		billingCacheService:  billingCacheService,
+		balanceCreditRepo:    balanceCreditRepo,
 	}
 }
 
@@ -418,9 +421,32 @@ func (s *AffiliateService) TransferAffiliateQuota(ctx context.Context, userID in
 		return 0, 0, err
 	}
 	if transferred > 0 {
+		if err := s.createAffiliateBalanceCredit(ctx, userID, transferred); err != nil {
+			return 0, 0, err
+		}
 		s.invalidateAffiliateCaches(ctx, userID)
 	}
 	return transferred, balance, nil
+}
+
+func (s *AffiliateService) createAffiliateBalanceCredit(ctx context.Context, userID int64, amount float64) error {
+	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || userID <= 0 || amount <= 0 {
+		return nil
+	}
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, now)
+	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
+		UserID:     userID,
+		SourceType: BalanceCreditSourceAffiliate,
+		SourceID:   fmt.Sprintf("affiliate-transfer-%d-%d", userID, now.UnixNano()),
+		SourceCode: "AFFILIATE-TRANSFER",
+		Amount:     amount,
+		ExpiresAt:  expiresAt,
+	})
 }
 
 func (s *AffiliateService) listInvitees(ctx context.Context, inviterID int64) ([]AffiliateInvitee, error) {

@@ -189,6 +189,8 @@ const sourceLabel = (source: string) => {
       return t('admin.users.ledgerSourceAdmin')
     case 'promo':
       return t('admin.users.ledgerSourcePromo')
+    case 'affiliate':
+      return t('admin.users.ledgerSourceAffiliate')
     case 'initial':
       return t('admin.users.ledgerSourceInitial')
     default:

@@ -12,9 +12,10 @@ const (
 	BalanceCreditStatusConsumed = "consumed"
 	BalanceCreditStatusExpired  = "expired"
 
-	BalanceCreditSourceRedeem = "redeem"
-	BalanceCreditSourceAdmin  = "admin"
-	BalanceCreditSourcePromo  = "promo"
+	BalanceCreditSourceRedeem    = "redeem"
+	BalanceCreditSourceAdmin     = "admin"
+	BalanceCreditSourcePromo     = "promo"
+	BalanceCreditSourceAffiliate = "affiliate"
 )
 
 type BalanceCreditCreate struct {
