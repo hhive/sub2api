@@ -1955,7 +1955,7 @@ export default {
       ledgerConsumed: '已结算',
       ledgerStatus: '状态',
       ledgerSettlement: '结算日期',
-      ledgerExpiry: '过期情况',
+      ledgerExpiry: '过期时间',
       ledgerExpiredAt: '过期清零',
       ledgerNeverExpires: '永不过期',
       ledgerSourceRedeem: '兑换码',

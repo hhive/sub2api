@@ -1898,7 +1898,7 @@ export default {
       ledgerConsumed: 'Settled',
       ledgerStatus: 'Status',
       ledgerSettlement: 'Settlement Date',
-      ledgerExpiry: 'Expiry',
+      ledgerExpiry: 'Expiry Time',
       ledgerExpiredAt: 'Expired at',
       ledgerNeverExpires: 'Never expires',
       ledgerSourceRedeem: 'Redeem Code',
