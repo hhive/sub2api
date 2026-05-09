@@ -1904,6 +1904,7 @@ export default {
       ledgerSourceRedeem: 'Redeem Code',
       ledgerSourceAdmin: 'Admin Credit',
       ledgerSourcePromo: 'Promotion',
+      ledgerSourceInitial: 'Initial Balance',
       ledgerStatusActive: 'Active',
       ledgerStatusConsumed: 'Consumed',
       ledgerStatusExpired: 'Expired',

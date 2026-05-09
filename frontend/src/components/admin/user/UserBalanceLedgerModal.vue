@@ -50,7 +50,7 @@
               <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerAmount') }}</th>
               <th class="px-4 py-3 text-right font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerRemaining') }}</th>
               <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerStatus') }}</th>
-              <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerSettlement') }}</th>
+              <th v-if="showSettlementColumn" class="px-4 py-3 text-left font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerSettlement') }}</th>
               <th class="px-4 py-3 text-left font-medium text-gray-500 dark:text-dark-300">{{ t('admin.users.ledgerExpiry') }}</th>
             </tr>
           </thead>
@@ -58,8 +58,8 @@
             <tr v-for="credit in credits" :key="credit.id">
               <td class="px-4 py-3">
                 <div class="font-medium text-gray-900 dark:text-white">{{ sourceLabel(credit.source_type) }}</div>
-                <div class="mt-0.5 max-w-[12rem] truncate font-mono text-xs text-gray-400 dark:text-dark-500" :title="credit.source_code || credit.source_id || String(credit.id)">
-                  {{ credit.source_code || credit.source_id || `#${credit.id}` }}
+                <div class="mt-0.5 text-xs text-gray-400 dark:text-dark-500">
+                  {{ formatDateTime(credit.created_at) }}
                 </div>
               </td>
               <td class="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
@@ -76,7 +76,7 @@
                   {{ statusLabel(credit.status) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-500 dark:text-dark-300">
+              <td v-if="showSettlementColumn" class="px-4 py-3 text-gray-500 dark:text-dark-300">
                 {{ formatSettledDate(credit.settled_until_date) }}
               </td>
               <td class="px-4 py-3 text-gray-500 dark:text-dark-300">
@@ -146,6 +146,7 @@ const total = ref(0)
 const pageSize = 15
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1)
+const showSettlementColumn = computed(() => props.scope === 'admin')
 
 watch(() => props.show, (v) => {
   if (v && props.user) {
@@ -188,6 +189,8 @@ const sourceLabel = (source: string) => {
       return t('admin.users.ledgerSourceAdmin')
     case 'promo':
       return t('admin.users.ledgerSourcePromo')
+    case 'initial':
+      return t('admin.users.ledgerSourceInitial')
     default:
       return source || t('common.unknown')
   }

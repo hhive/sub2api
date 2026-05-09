@@ -1961,6 +1961,7 @@ export default {
       ledgerSourceRedeem: '兑换码',
       ledgerSourceAdmin: '管理员充值',
       ledgerSourcePromo: '活动赠送',
+      ledgerSourceInitial: '初始余额',
       ledgerStatusActive: '有效',
       ledgerStatusConsumed: '已用完',
       ledgerStatusExpired: '已过期',
