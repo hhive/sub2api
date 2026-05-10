@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ var (
 	ErrImagePlaygroundTaskAPIKeyQueueFull  = infraerrors.TooManyRequests("IMAGE_PLAYGROUND_TASK_API_KEY_QUEUE_FULL", "too many queued image playground tasks for this api key")
 	ErrImagePlaygroundTaskGlobalQueueFull  = infraerrors.TooManyRequests("IMAGE_PLAYGROUND_TASK_GLOBAL_QUEUE_FULL", "too many queued image playground tasks")
 	ErrImagePlaygroundTaskExecutorMissing  = infraerrors.BadRequest("IMAGE_PLAYGROUND_TASK_EXECUTOR_MISSING", "image playground task executor is not configured")
+	ErrImagePlaygroundTaskNotFound         = infraerrors.NotFound("IMAGE_PLAYGROUND_TASK_NOT_FOUND", "image playground task not found")
 )
 
 type ImagePlaygroundTaskCreateRequest struct {
@@ -105,6 +107,56 @@ func (s *ImagePlaygroundTaskService) CreateTask(ctx context.Context, req ImagePl
 		return nil, err
 	}
 	return task, nil
+}
+
+func (s *ImagePlaygroundTaskService) GetTask(ctx context.Context, userID, taskID int64) (*ImagePlaygroundTask, error) {
+	task, err := s.repo.GetTaskByOwner(ctx, userID, taskID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrImagePlaygroundTaskNotFound
+		}
+		return nil, err
+	}
+	if task.ExpiresAt.After(s.now()) {
+		return task, nil
+	}
+	if task.Status == ImagePlaygroundTaskStatusQueued || task.Status == ImagePlaygroundTaskStatusRunning {
+		if ok, err := s.repo.MarkTaskExpired(ctx, task.ID, s.now()); err != nil {
+			return nil, err
+		} else if ok {
+			task.Status = ImagePlaygroundTaskStatusExpired
+			now := s.now()
+			task.FinishedAt = &now
+			task.UpdatedAt = now
+		}
+	}
+	return task, nil
+}
+
+func (s *ImagePlaygroundTaskService) CancelTask(ctx context.Context, userID, taskID int64) (*ImagePlaygroundTask, error) {
+	ok, err := s.repo.CancelTask(ctx, userID, taskID, s.now())
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return s.GetTask(ctx, userID, taskID)
+	}
+	return s.GetTask(ctx, userID, taskID)
+}
+
+func (s *ImagePlaygroundTaskService) ListRecentTasks(ctx context.Context, userID int64, limit int) ([]ImagePlaygroundTask, error) {
+	tasks, err := s.repo.ListRecentTasksByOwner(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	out := tasks[:0]
+	for i := range tasks {
+		if tasks[i].ExpiresAt.After(now) {
+			out = append(out, tasks[i])
+		}
+	}
+	return out, nil
 }
 
 func (s *ImagePlaygroundTaskService) StartWorkerPool(ctx context.Context) *ImagePlaygroundTaskWorkerPool {

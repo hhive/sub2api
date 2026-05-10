@@ -275,6 +275,70 @@ func TestImagePlaygroundTaskServiceWorkerPoolUsesBoundedConcurrency(t *testing.T
 	require.LessOrEqual(t, executor.maxInflight(), 2)
 }
 
+func TestImagePlaygroundTaskServiceGetTaskMarksExpiredQueuedTask(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	task := &ImagePlaygroundTask{
+		ID:        10,
+		UserID:    7,
+		APIKeyID:  9,
+		Status:    ImagePlaygroundTaskStatusQueued,
+		Endpoint:  ImagePlaygroundEndpointGenerations,
+		ExpiresAt: now.Add(-time.Minute),
+	}
+	repo := newImagePlaygroundTaskRepoStubWithTasks(task)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		ResultTTL: time.Hour,
+		Clock:     func() time.Time { return now },
+	})
+
+	got, err := svc.GetTask(context.Background(), 7, 10)
+
+	require.NoError(t, err)
+	require.Equal(t, ImagePlaygroundTaskStatusExpired, got.Status)
+	require.Equal(t, ImagePlaygroundTaskStatusExpired, repo.mustTask(10).Status)
+}
+
+func TestImagePlaygroundTaskServiceCancelExpiredQueuedTaskReturnsExpired(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	task := &ImagePlaygroundTask{
+		ID:        10,
+		UserID:    7,
+		APIKeyID:  9,
+		Status:    ImagePlaygroundTaskStatusQueued,
+		Endpoint:  ImagePlaygroundEndpointGenerations,
+		ExpiresAt: now.Add(-time.Minute),
+	}
+	repo := newImagePlaygroundTaskRepoStubWithTasks(task)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		ResultTTL: time.Hour,
+		Clock:     func() time.Time { return now },
+	})
+
+	got, err := svc.CancelTask(context.Background(), 7, 10)
+
+	require.NoError(t, err)
+	require.Equal(t, ImagePlaygroundTaskStatusExpired, got.Status)
+	require.Equal(t, ImagePlaygroundTaskStatusExpired, repo.mustTask(10).Status)
+}
+
+func TestImagePlaygroundTaskServiceListRecentTasksFiltersExpired(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	repo := newImagePlaygroundTaskRepoStubWithTasks(
+		&ImagePlaygroundTask{ID: 10, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, ExpiresAt: now.Add(time.Hour)},
+		&ImagePlaygroundTask{ID: 11, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, ExpiresAt: now.Add(-time.Minute)},
+	)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		ResultTTL: time.Hour,
+		Clock:     func() time.Time { return now },
+	})
+
+	got, err := svc.ListRecentTasks(context.Background(), 7, 20)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, int64(10), got[0].ID)
+}
+
 type imagePlaygroundTaskRepoStub struct {
 	mu               sync.Mutex
 	nextID           int64
@@ -359,7 +423,15 @@ func (r *imagePlaygroundTaskRepoStub) GetTaskByOwner(ctx context.Context, userID
 }
 
 func (r *imagePlaygroundTaskRepoStub) ListRecentTasksByOwner(ctx context.Context, userID int64, limit int) ([]ImagePlaygroundTask, error) {
-	return nil, nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]ImagePlaygroundTask, 0, len(r.tasks))
+	for _, task := range r.tasks {
+		if task.UserID == userID {
+			out = append(out, *cloneImagePlaygroundTask(task))
+		}
+	}
+	return out, nil
 }
 
 func (r *imagePlaygroundTaskRepoStub) CountQueuedTasks(ctx context.Context, userID int64, apiKeyID int64, now time.Time) (ImagePlaygroundQueuedTaskCounts, error) {
@@ -396,6 +468,9 @@ func (r *imagePlaygroundTaskRepoStub) CancelTask(ctx context.Context, userID int
 		return false, nil
 	}
 	if task.Status != ImagePlaygroundTaskStatusQueued && task.Status != ImagePlaygroundTaskStatusRunning {
+		return false, nil
+	}
+	if !task.ExpiresAt.After(now) {
 		return false, nil
 	}
 	task.Status = ImagePlaygroundTaskStatusCanceled
@@ -471,7 +546,19 @@ func (r *imagePlaygroundTaskRepoStub) MarkTaskFailed(ctx context.Context, taskID
 }
 
 func (r *imagePlaygroundTaskRepoStub) MarkTaskExpired(ctx context.Context, taskID int64, now time.Time) (bool, error) {
-	return false, nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	task, ok := r.tasks[taskID]
+	if !ok {
+		return false, nil
+	}
+	if task.Status != ImagePlaygroundTaskStatusQueued && task.Status != ImagePlaygroundTaskStatusRunning {
+		return false, nil
+	}
+	task.Status = ImagePlaygroundTaskStatusExpired
+	task.FinishedAt = &now
+	task.UpdatedAt = now
+	return true, nil
 }
 
 func (r *imagePlaygroundTaskRepoStub) mustTask(taskID int64) *ImagePlaygroundTask {

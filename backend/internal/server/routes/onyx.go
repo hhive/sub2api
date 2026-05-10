@@ -29,6 +29,12 @@ func RegisterOnyxRoutes(
 		imagePlayground := authenticated.Group("/image-playground")
 		{
 			imagePlayground.POST("/launch", h.Onyx.ImagePlaygroundLaunch)
+			if h.ImagePlayground != nil {
+				imagePlayground.POST("/tasks", h.ImagePlayground.Create)
+				imagePlayground.GET("/tasks/recent", h.ImagePlayground.Recent)
+				imagePlayground.GET("/tasks/:id", h.ImagePlayground.Get)
+				imagePlayground.POST("/tasks/:id/cancel", h.ImagePlayground.Cancel)
+			}
 		}
 	}
 }

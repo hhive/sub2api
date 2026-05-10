@@ -58,6 +58,7 @@ type Handlers struct {
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
 	Onyx             *OnyxHandler
+	ImagePlayground  *ImagePlaygroundTaskHandler
 }
 
 // BuildInfo contains build-time information
