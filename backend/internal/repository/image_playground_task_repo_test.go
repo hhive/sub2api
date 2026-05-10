@@ -135,6 +135,100 @@ func TestImagePlaygroundTaskRepositoryListRecentTasksByOwnerFiltersOwner(t *test
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestImagePlaygroundTaskRepositoryCountQueuedTasks(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Date(2026, 5, 10, 1, 2, 3, 0, time.UTC)
+	mock.ExpectQuery("SELECT\\s+COUNT\\(\\*\\) FILTER \\(WHERE user_id = \\$1\\),\\s+COUNT\\(\\*\\) FILTER \\(WHERE api_key_id = \\$2\\),\\s+COUNT\\(\\*\\)\\s+FROM image_playground_tasks\\s+WHERE status = \\$3\\s+AND expires_at > \\$4").
+		WithArgs(int64(7), int64(9), service.ImagePlaygroundTaskStatusQueued, now).
+		WillReturnRows(sqlmock.NewRows([]string{"user_count", "api_key_count", "global_count"}).
+			AddRow(2, 3, 4))
+
+	repo := NewImagePlaygroundTaskRepository(db)
+	counts, err := repo.CountQueuedTasks(context.Background(), 7, 9, now)
+	require.NoError(t, err)
+	require.Equal(t, service.ImagePlaygroundQueuedTaskCounts{User: 2, APIKey: 3, Global: 4}, counts)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestImagePlaygroundTaskRepositoryCreateTaskIfQueueAvailableUsesTransactionLockAndInserts(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Date(2026, 5, 10, 1, 2, 3, 0, time.UTC)
+	expiresAt := now.Add(time.Hour)
+	mock.ExpectBegin()
+	mock.ExpectExec("SELECT pg_advisory_xact_lock\\(\\$1\\)").
+		WithArgs(int64(472019050210)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT\\s+COUNT\\(\\*\\) FILTER \\(WHERE user_id = \\$1\\),\\s+COUNT\\(\\*\\) FILTER \\(WHERE api_key_id = \\$2\\),\\s+COUNT\\(\\*\\)\\s+FROM image_playground_tasks\\s+WHERE status = \\$3\\s+AND expires_at > \\$4").
+		WithArgs(int64(7), int64(9), service.ImagePlaygroundTaskStatusQueued, now).
+		WillReturnRows(sqlmock.NewRows([]string{"user_count", "api_key_count", "global_count"}).
+			AddRow(1, 1, 1))
+	mock.ExpectQuery("INSERT INTO image_playground_tasks[\\s\\S]+SELECT api_keys.user_id, api_keys.id, api_keys.group_id").
+		WithArgs(int64(7), int64(9), service.ImagePlaygroundEndpointGenerations, []byte(`{"prompt":"x"}`), expiresAt).
+		WillReturnRows(imagePlaygroundTaskRows().
+			AddRow(int64(11), int64(7), int64(9), nil, service.ImagePlaygroundEndpointGenerations,
+				service.ImagePlaygroundTaskStatusQueued, []byte(`{"prompt":"x"}`), nil, nil, nil,
+				now, nil, nil, expiresAt, nil, now))
+	mock.ExpectCommit()
+
+	repo := NewImagePlaygroundTaskRepository(db)
+	task := &service.ImagePlaygroundTask{
+		UserID:      7,
+		APIKeyID:    9,
+		Endpoint:    service.ImagePlaygroundEndpointGenerations,
+		RequestJSON: []byte(`{"prompt":"x"}`),
+		ExpiresAt:   expiresAt,
+	}
+	err = repo.CreateTaskIfQueueAvailable(context.Background(), task, service.ImagePlaygroundTaskQueueLimits{
+		MaxQueuedPerUser:   2,
+		MaxQueuedPerAPIKey: 2,
+		MaxQueuedGlobal:    2,
+	}, now)
+	require.NoError(t, err)
+	require.Equal(t, int64(11), task.ID)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestImagePlaygroundTaskRepositoryCreateTaskIfQueueAvailableRollsBackWhenLimitReached(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Date(2026, 5, 10, 1, 2, 3, 0, time.UTC)
+	mock.ExpectBegin()
+	mock.ExpectExec("SELECT pg_advisory_xact_lock\\(\\$1\\)").
+		WithArgs(int64(472019050210)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT\\s+COUNT\\(\\*\\) FILTER").
+		WithArgs(int64(7), int64(9), service.ImagePlaygroundTaskStatusQueued, now).
+		WillReturnRows(sqlmock.NewRows([]string{"user_count", "api_key_count", "global_count"}).
+			AddRow(2, 1, 1))
+	mock.ExpectRollback()
+
+	repo := NewImagePlaygroundTaskRepository(db)
+	err = repo.CreateTaskIfQueueAvailable(context.Background(), &service.ImagePlaygroundTask{
+		UserID:      7,
+		APIKeyID:    9,
+		Endpoint:    service.ImagePlaygroundEndpointGenerations,
+		RequestJSON: []byte(`{"prompt":"x"}`),
+		ExpiresAt:   now.Add(time.Hour),
+	}, service.ImagePlaygroundTaskQueueLimits{
+		MaxQueuedPerUser:   2,
+		MaxQueuedPerAPIKey: 2,
+		MaxQueuedGlobal:    2,
+	}, now)
+	require.ErrorIs(t, err, service.ErrImagePlaygroundTaskUserQueueFull)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestImagePlaygroundTaskRepositoryClaimNextQueuedTaskClaimsOldestUnexpired(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()

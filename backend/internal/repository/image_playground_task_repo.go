@@ -15,6 +15,12 @@ type imagePlaygroundTaskRepository struct {
 	sql sqlExecutor
 }
 
+type sqlTxBeginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+}
+
+const imagePlaygroundTaskQueueAdvisoryLockKey int64 = 472019050210
+
 func NewImagePlaygroundTaskRepository(sqlDB *sql.DB) service.ImagePlaygroundTaskRepository {
 	return newImagePlaygroundTaskRepositoryWithSQL(sqlDB)
 }
@@ -49,6 +55,54 @@ func (r *imagePlaygroundTaskRepository) CreateTask(ctx context.Context, task *se
 		task.RequestJSON,
 		task.ExpiresAt,
 	}, task)
+}
+
+func (r *imagePlaygroundTaskRepository) CreateTaskIfQueueAvailable(ctx context.Context, task *service.ImagePlaygroundTask, limits service.ImagePlaygroundTaskQueueLimits, now time.Time) error {
+	if task == nil {
+		return nil
+	}
+	if err := validateImagePlaygroundEndpoint(task.Endpoint); err != nil {
+		return err
+	}
+
+	if beginner, ok := r.sql.(sqlTxBeginner); ok {
+		tx, err := beginner.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		txRepo := newImagePlaygroundTaskRepositoryWithSQL(tx)
+		if err := txRepo.createTaskIfQueueAvailableInTx(ctx, task, limits, now); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	}
+	return r.createTaskIfQueueAvailableInTx(ctx, task, limits, now)
+}
+
+func (r *imagePlaygroundTaskRepository) createTaskIfQueueAvailableInTx(ctx context.Context, task *service.ImagePlaygroundTask, limits service.ImagePlaygroundTaskQueueLimits, now time.Time) error {
+	if err := r.lockImagePlaygroundTaskQueue(ctx); err != nil {
+		return err
+	}
+	counts, err := r.CountQueuedTasks(ctx, task.UserID, task.APIKeyID, now)
+	if err != nil {
+		return err
+	}
+	if limits.MaxQueuedPerUser > 0 && counts.User >= limits.MaxQueuedPerUser {
+		return service.ErrImagePlaygroundTaskUserQueueFull
+	}
+	if limits.MaxQueuedPerAPIKey > 0 && counts.APIKey >= limits.MaxQueuedPerAPIKey {
+		return service.ErrImagePlaygroundTaskAPIKeyQueueFull
+	}
+	if limits.MaxQueuedGlobal > 0 && counts.Global >= limits.MaxQueuedGlobal {
+		return service.ErrImagePlaygroundTaskGlobalQueueFull
+	}
+	return r.CreateTask(ctx, task)
+}
+
+func (r *imagePlaygroundTaskRepository) lockImagePlaygroundTaskQueue(ctx context.Context) error {
+	_, err := r.sql.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, imagePlaygroundTaskQueueAdvisoryLockKey)
+	return err
 }
 
 func (r *imagePlaygroundTaskRepository) GetTaskByOwner(ctx context.Context, userID int64, taskID int64) (*service.ImagePlaygroundTask, error) {
@@ -99,6 +153,41 @@ func (r *imagePlaygroundTaskRepository) ListRecentTasksByOwner(ctx context.Conte
 		return nil, err
 	}
 	return tasks, nil
+}
+
+func (r *imagePlaygroundTaskRepository) CountQueuedTasks(ctx context.Context, userID int64, apiKeyID int64, now time.Time) (service.ImagePlaygroundQueuedTaskCounts, error) {
+	var counts service.ImagePlaygroundQueuedTaskCounts
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE user_id = $1),
+			COUNT(*) FILTER (WHERE api_key_id = $2),
+			COUNT(*)
+		FROM image_playground_tasks
+		WHERE status = $3
+			AND expires_at > $4
+	`,
+		userID,
+		apiKeyID,
+		service.ImagePlaygroundTaskStatusQueued,
+		now,
+	)
+	if err != nil {
+		return service.ImagePlaygroundQueuedTaskCounts{}, err
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return service.ImagePlaygroundQueuedTaskCounts{}, err
+		}
+		return counts, nil
+	}
+	if err := rows.Scan(&counts.User, &counts.APIKey, &counts.Global); err != nil {
+		return service.ImagePlaygroundQueuedTaskCounts{}, err
+	}
+	if err := rows.Err(); err != nil {
+		return service.ImagePlaygroundQueuedTaskCounts{}, err
+	}
+	return counts, nil
 }
 
 func (r *imagePlaygroundTaskRepository) CancelTask(ctx context.Context, userID int64, taskID int64, now time.Time) (bool, error) {
