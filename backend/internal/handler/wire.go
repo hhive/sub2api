@@ -104,6 +104,7 @@ func ProvideHandlers(
 	paymentWebhookHandler *PaymentWebhookHandler,
 	availableChannelHandler *AvailableChannelHandler,
 	onyxHandler *OnyxHandler,
+	imagePlaygroundHandler *ImagePlaygroundTaskHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 ) *Handlers {
@@ -126,6 +127,7 @@ func ProvideHandlers(
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
 		Onyx:             onyxHandler,
+		ImagePlayground:  imagePlaygroundHandler,
 	}
 }
 
@@ -150,6 +152,8 @@ var ProviderSet = wire.NewSet(
 	NewAvailableChannelHandler,
 	ProvideOnyxLaunchService,
 	NewOnyxHandler,
+	NewImagePlaygroundOpenAIImagesTaskExecutor,
+	NewImagePlaygroundTaskHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

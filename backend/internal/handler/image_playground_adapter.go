@@ -49,7 +49,7 @@ type ImagePlaygroundSubscriptionAuthorizer interface {
 	DoWindowMaintenance(sub *service.UserSubscription)
 }
 
-func NewImagePlaygroundOpenAIImagesTaskExecutor(handler *OpenAIGatewayHandler, subscriptionAuthorizer ImagePlaygroundSubscriptionAuthorizer) service.ImagePlaygroundTaskExecutor {
+func NewImagePlaygroundOpenAIImagesTaskExecutor(handler *OpenAIGatewayHandler, subscriptionAuthorizer *service.SubscriptionService) service.ImagePlaygroundTaskExecutor {
 	adapter := &openAIImagesTaskAdapter{handler: handler}
 	if subscriptionAuthorizer != nil {
 		adapter.loadSubscription = subscriptionAuthorizer.GetActiveSubscription

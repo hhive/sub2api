@@ -427,6 +427,17 @@ func ProvideAPIKeyService(
 	return svc
 }
 
+func ProvideImagePlaygroundTaskService(repo ImagePlaygroundTaskRepository, executor ImagePlaygroundTaskExecutor) *ImagePlaygroundTaskService {
+	return NewImagePlaygroundTaskService(repo, executor, ImagePlaygroundTaskServiceOptions{})
+}
+
+func ProvideImagePlaygroundTaskWorkerPool(svc *ImagePlaygroundTaskService) *ImagePlaygroundTaskWorkerPool {
+	if svc == nil {
+		return nil
+	}
+	return svc.StartWorkerPool(context.Background())
+}
+
 // ProviderSet is the Wire provider set for all services
 var ProviderSet = wire.NewSet(
 	// Core services
@@ -521,6 +532,8 @@ var ProviderSet = wire.NewSet(
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
 	NewChannelMonitorRequestTemplateService,
+	ProvideImagePlaygroundTaskService,
+	ProvideImagePlaygroundTaskWorkerPool,
 )
 
 // ProvidePaymentConfigService wraps NewPaymentConfigService to accept the named

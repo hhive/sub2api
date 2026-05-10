@@ -32,7 +32,14 @@ type ImagePlaygroundTaskHandler struct {
 	apiKeyLookup imagePlaygroundAPIKeyResolver
 }
 
-func NewImagePlaygroundTaskHandler(taskService imagePlaygroundTaskManager, apiKeyLookup imagePlaygroundAPIKeyResolver) *ImagePlaygroundTaskHandler {
+func NewImagePlaygroundTaskHandler(taskService *service.ImagePlaygroundTaskService, apiKeyLookup *service.APIKeyService) *ImagePlaygroundTaskHandler {
+	return &ImagePlaygroundTaskHandler{
+		taskService:  taskService,
+		apiKeyLookup: apiKeyLookup,
+	}
+}
+
+func newImagePlaygroundTaskHandlerForTest(taskService imagePlaygroundTaskManager, apiKeyLookup imagePlaygroundAPIKeyResolver) *ImagePlaygroundTaskHandler {
 	return &ImagePlaygroundTaskHandler{
 		taskService:  taskService,
 		apiKeyLookup: apiKeyLookup,

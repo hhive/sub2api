@@ -113,7 +113,7 @@ func TestImagePlaygroundTaskHandlerGetExpiredSucceededDoesNotReturnResult(t *tes
 func TestImagePlaygroundTaskHandlerMissingServiceReturns500(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	handler := NewImagePlaygroundTaskHandler(nil, nil)
+	handler := newImagePlaygroundTaskHandlerForTest(nil, nil)
 	router.Use(func(c *gin.Context) {
 		c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 7})
 		c.Next()
@@ -186,7 +186,7 @@ func newImagePlaygroundTaskHandlerTestRouter(t *testing.T) (*gin.Engine, *imageP
 		byID:  map[int64]*service.APIKey{9: {ID: 9, UserID: 7}},
 		byKey: map[string]*service.APIKey{"sk-secret": {ID: 9, UserID: 7}},
 	}
-	h := NewImagePlaygroundTaskHandler(tasks, keys)
+	h := newImagePlaygroundTaskHandlerForTest(tasks, keys)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 7, Concurrency: 3})
