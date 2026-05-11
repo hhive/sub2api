@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const defaultImagePlaygroundTaskPollAfterMS = 1000
+const defaultImagePlaygroundTaskPollAfterMS = 10_000
 
 type imagePlaygroundTaskManager interface {
 	CreateTask(ctx context.Context, req service.ImagePlaygroundTaskCreateRequest) (*service.ImagePlaygroundTask, error)
