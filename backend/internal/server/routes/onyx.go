@@ -11,6 +11,7 @@ func RegisterOnyxRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
+	apiKeyAuth middleware.APIKeyAuthMiddleware,
 	settingService *service.SettingService,
 ) {
 	onyxPublic := v1.Group("/onyx")
@@ -29,12 +30,18 @@ func RegisterOnyxRoutes(
 		imagePlayground := authenticated.Group("/image-playground")
 		{
 			imagePlayground.POST("/launch", h.Onyx.ImagePlaygroundLaunch)
-			if h.ImagePlayground != nil {
-				imagePlayground.POST("/tasks", h.ImagePlayground.Create)
-				imagePlayground.GET("/tasks/recent", h.ImagePlayground.Recent)
-				imagePlayground.GET("/tasks/:id", h.ImagePlayground.Get)
-				imagePlayground.POST("/tasks/:id/cancel", h.ImagePlayground.Cancel)
-			}
+		}
+	}
+
+	if h.ImagePlayground != nil {
+		imagePlaygroundTasks := v1.Group("/image-playground")
+		imagePlaygroundTasks.Use(gin.HandlerFunc(apiKeyAuth))
+		imagePlaygroundTasks.Use(middleware.BackendModeUserGuard(settingService))
+		{
+			imagePlaygroundTasks.POST("/tasks", h.ImagePlayground.Create)
+			imagePlaygroundTasks.GET("/tasks/recent", h.ImagePlayground.Recent)
+			imagePlaygroundTasks.GET("/tasks/:id", h.ImagePlayground.Get)
+			imagePlaygroundTasks.POST("/tasks/:id/cancel", h.ImagePlayground.Cancel)
 		}
 	}
 }

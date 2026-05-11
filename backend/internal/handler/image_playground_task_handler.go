@@ -85,7 +85,7 @@ func (h *ImagePlaygroundTaskHandler) Create(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	apiKey, err := h.resolveAPIKey(c.Request.Context(), req)
+	apiKey, err := h.resolveAPIKey(c, req)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -185,12 +185,27 @@ func (h *ImagePlaygroundTaskHandler) Recent(c *gin.Context) {
 	response.Success(c, out)
 }
 
-func (h *ImagePlaygroundTaskHandler) resolveAPIKey(ctx context.Context, req imagePlaygroundCreateTaskRequest) (*service.APIKey, error) {
+func (h *ImagePlaygroundTaskHandler) resolveAPIKey(c *gin.Context, req imagePlaygroundCreateTaskRequest) (*service.APIKey, error) {
+	if apiKey, ok := middleware2.GetAPIKeyFromContext(c); ok && apiKey != nil {
+		if req.APIKeyID > 0 && req.APIKeyID != apiKey.ID {
+			return nil, service.ErrAPIKeyNotFound
+		}
+		if strings.TrimSpace(req.APIKey) != "" {
+			requested, err := h.apiKeyLookup.GetByKey(c.Request.Context(), strings.TrimSpace(req.APIKey))
+			if err != nil {
+				return nil, err
+			}
+			if requested.ID != apiKey.ID {
+				return nil, service.ErrAPIKeyNotFound
+			}
+		}
+		return apiKey, nil
+	}
 	if strings.TrimSpace(req.APIKey) != "" {
-		return h.apiKeyLookup.GetByKey(ctx, strings.TrimSpace(req.APIKey))
+		return h.apiKeyLookup.GetByKey(c.Request.Context(), strings.TrimSpace(req.APIKey))
 	}
 	if req.APIKeyID > 0 {
-		return h.apiKeyLookup.GetByID(ctx, req.APIKeyID)
+		return h.apiKeyLookup.GetByID(c.Request.Context(), req.APIKeyID)
 	}
 	return nil, service.ErrAPIKeyNotFound
 }

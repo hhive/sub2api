@@ -41,6 +41,36 @@ func TestImagePlaygroundTaskHandlerCreateUsesAPIKeyAndDoesNotEchoSecret(t *testi
 	require.Equal(t, float64(defaultImagePlaygroundTaskPollAfterMS), data["poll_after_ms"])
 }
 
+func TestImagePlaygroundTaskHandlerCreateUsesAuthenticatedAPIKeyContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tasks := &imagePlaygroundTaskManagerStub{}
+	keys := &imagePlaygroundAPIKeyResolverStub{
+		byID:  map[int64]*service.APIKey{9: {ID: 9, UserID: 7}},
+		byKey: map[string]*service.APIKey{"sk-secret": {ID: 9, UserID: 7}},
+	}
+	h := newImagePlaygroundTaskHandlerForTest(tasks, keys)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 7, Concurrency: 3})
+		c.Set(string(middleware.ContextKeyAPIKey), &service.APIKey{ID: 9, UserID: 7})
+		c.Next()
+	})
+	router.POST("/image-playground/tasks", h.Create)
+	tasks.createTask = func(ctx context.Context, req service.ImagePlaygroundTaskCreateRequest) (*service.ImagePlaygroundTask, error) {
+		require.Equal(t, int64(7), req.UserID)
+		require.Equal(t, int64(9), req.APIKeyID)
+		return imagePlaygroundTaskHandlerTestTask(101, 7, service.ImagePlaygroundTaskStatusQueued), nil
+	}
+
+	resp := performImagePlaygroundTaskRequest(router, http.MethodPost, "/image-playground/tasks", `{
+		"endpoint":"/v1/images/generations",
+		"request":{"prompt":"draw"}
+	}`)
+
+	require.Equal(t, http.StatusAccepted, resp.Code)
+	require.NotContains(t, resp.Body.String(), "api_key")
+}
+
 func TestImagePlaygroundTaskHandlerCreateQueueLimitReturns429(t *testing.T) {
 	router, tasks, _ := newImagePlaygroundTaskHandlerTestRouter(t)
 	tasks.createTask = func(ctx context.Context, req service.ImagePlaygroundTaskCreateRequest) (*service.ImagePlaygroundTask, error) {
