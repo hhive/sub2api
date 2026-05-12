@@ -533,10 +533,13 @@ launch token 设计：
 
 - `SUB2API_INTEGRATION_ENABLED=true`
 - `SUB2API_BASE_URL=http://localhost:<sub2api-port>`
+- `SUB2API_LLM_BASE_URL=http://localhost:<sub2api-port>/v1`
 - `SUB2API_EXCHANGE_SECRET=<same-secret>`
 - `SUB2API_DEFAULT_TEXT_MODEL=gpt-5.5`
 - `SUB2API_DEFAULT_IMAGE_MODEL=gpt-image-2`
 - `SUB2API_ONYX_REDIRECT_PATH=/chat`
+
+`SUB2API_BASE_URL` 用于 Onyx 调用 sub2api exchange 接口。`SUB2API_LLM_BASE_URL` 用于 Onyx 聊天模型调用，可设置为内网或本机地址；sub2api 返回给外部客户端的公开 `api_base_url` 不应因此改成本机地址。
 
 如果 Onyx 容器访问宿主机上的 sub2api，Windows Docker 环境通常使用 `host.docker.internal`。
 

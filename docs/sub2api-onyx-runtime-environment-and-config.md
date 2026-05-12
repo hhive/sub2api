@@ -159,6 +159,7 @@ AUTH_BACKEND=postgres
 
 SUB2API_INTEGRATION_ENABLED=true
 SUB2API_BASE_URL=http://127.0.0.1:8080
+SUB2API_LLM_BASE_URL=http://127.0.0.1:8080/v1
 SUB2API_EXCHANGE_SECRET=1914d828a7188b5701d1bb979d43ac3d841f655564f77345d554f030f076d7e6
 SUB2API_DEFAULT_TEXT_MODEL=gpt-5.5
 SUB2API_DEFAULT_IMAGE_MODEL=gpt-image-2
@@ -168,6 +169,12 @@ API_SERVER_PROTOCOL=http
 API_SERVER_HOST=127.0.0.1
 API_SERVER_PORT=8081
 ```
+
+说明：
+
+- `SUB2API_BASE_URL` 只用于 Onyx 后端调用 Sub2API 的 launch token exchange 接口。
+- `SUB2API_LLM_BASE_URL` 只用于 Onyx 聊天模型请求，当前同机部署固定走本机 `127.0.0.1`，避免绕公网入口。
+- Sub2API 公开设置中的 `api_base_url` 面向外部客户端和 API Key 配置展示，不应改成本机 `127.0.0.1`。
 
 ## 7. Onyx Web 环境文件
 
@@ -393,6 +400,8 @@ Redis：
   "onyx_launch_path": "/api/v1/onyx/launch"
 }
 ```
+
+`api_base_url` 是外部客户端使用的公开 OpenAI-compatible endpoint。Onyx 服务端内部聊天调用由 `/etc/onyx/onyx.env` 中的 `SUB2API_LLM_BASE_URL` 控制。
 
 ## 12. 当前已知未完成项
 
