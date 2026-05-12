@@ -91,6 +91,7 @@ type Config struct {
 	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
 	Update                  UpdateConfig                  `mapstructure:"update"`
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
+	ImagePlaygroundTasks    ImagePlaygroundTasksConfig    `mapstructure:"image_playground_tasks"`
 }
 
 type LogConfig struct {
@@ -171,6 +172,24 @@ type IdempotencyConfig struct {
 	CleanupIntervalSeconds int `mapstructure:"cleanup_interval_seconds"`
 	// CleanupBatchSize 每次清理的最大记录数。
 	CleanupBatchSize int `mapstructure:"cleanup_batch_size"`
+}
+
+type ImagePlaygroundTasksConfig struct {
+	// ResultTTLHours controls how long async image task payloads remain readable.
+	ResultTTLHours int `mapstructure:"result_ttl_hours"`
+	// CleanupEnabled enables automatic cleanup of expired task request/result payloads.
+	CleanupEnabled bool `mapstructure:"cleanup_enabled"`
+	// CleanupIntervalSeconds controls the background cleanup cadence.
+	CleanupIntervalSeconds int `mapstructure:"cleanup_interval_seconds"`
+	// CleanupBatchSize limits rows updated by one cleanup pass.
+	CleanupBatchSize int `mapstructure:"cleanup_batch_size"`
+}
+
+func (c ImagePlaygroundTasksConfig) ResultTTL() time.Duration {
+	if c.ResultTTLHours <= 0 {
+		return 24 * time.Hour
+	}
+	return time.Duration(c.ResultTTLHours) * time.Hour
 }
 
 type LinuxDoConnectConfig struct {
@@ -1658,6 +1677,12 @@ func setDefaults() {
 	viper.SetDefault("idempotency.cleanup_interval_seconds", 60)
 	viper.SetDefault("idempotency.cleanup_batch_size", 500)
 
+	// Image Playground async tasks
+	viper.SetDefault("image_playground_tasks.result_ttl_hours", 24)
+	viper.SetDefault("image_playground_tasks.cleanup_enabled", true)
+	viper.SetDefault("image_playground_tasks.cleanup_interval_seconds", 3600)
+	viper.SetDefault("image_playground_tasks.cleanup_batch_size", 200)
+
 	// Gateway
 	viper.SetDefault("gateway.response_header_timeout", 600) // 600秒(10分钟)等待上游响应头，LLM高负载时可能排队较久
 	viper.SetDefault("gateway.log_upstream_error_body", true)
@@ -2271,6 +2296,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Idempotency.CleanupBatchSize <= 0 {
 		return fmt.Errorf("idempotency.cleanup_batch_size must be positive")
+	}
+	if c.ImagePlaygroundTasks.ResultTTLHours <= 0 {
+		return fmt.Errorf("image_playground_tasks.result_ttl_hours must be positive")
+	}
+	if c.ImagePlaygroundTasks.CleanupIntervalSeconds <= 0 {
+		return fmt.Errorf("image_playground_tasks.cleanup_interval_seconds must be positive")
+	}
+	if c.ImagePlaygroundTasks.CleanupBatchSize <= 0 {
+		return fmt.Errorf("image_playground_tasks.cleanup_batch_size must be positive")
 	}
 	if c.Gateway.MaxBodySize <= 0 {
 		return fmt.Errorf("gateway.max_body_size must be positive")

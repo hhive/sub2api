@@ -211,6 +211,54 @@ func TestLoadIdempotencyConfigFromEnv(t *testing.T) {
 	}
 }
 
+func TestLoadDefaultImagePlaygroundTasksConfig(t *testing.T) {
+	resetViperWithJWTSecret(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.ImagePlaygroundTasks.ResultTTLHours != 24 {
+		t.Fatalf("ImagePlaygroundTasks.ResultTTLHours = %d, want 24", cfg.ImagePlaygroundTasks.ResultTTLHours)
+	}
+	if !cfg.ImagePlaygroundTasks.CleanupEnabled {
+		t.Fatalf("ImagePlaygroundTasks.CleanupEnabled = false, want true")
+	}
+	if cfg.ImagePlaygroundTasks.CleanupIntervalSeconds != 3600 {
+		t.Fatalf("ImagePlaygroundTasks.CleanupIntervalSeconds = %d, want 3600", cfg.ImagePlaygroundTasks.CleanupIntervalSeconds)
+	}
+	if cfg.ImagePlaygroundTasks.CleanupBatchSize != 200 {
+		t.Fatalf("ImagePlaygroundTasks.CleanupBatchSize = %d, want 200", cfg.ImagePlaygroundTasks.CleanupBatchSize)
+	}
+}
+
+func TestLoadImagePlaygroundTasksConfigFromEnv(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	t.Setenv("IMAGE_PLAYGROUND_TASKS_RESULT_TTL_HOURS", "6")
+	t.Setenv("IMAGE_PLAYGROUND_TASKS_CLEANUP_ENABLED", "false")
+	t.Setenv("IMAGE_PLAYGROUND_TASKS_CLEANUP_INTERVAL_SECONDS", "120")
+	t.Setenv("IMAGE_PLAYGROUND_TASKS_CLEANUP_BATCH_SIZE", "17")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.ImagePlaygroundTasks.ResultTTLHours != 6 {
+		t.Fatalf("ImagePlaygroundTasks.ResultTTLHours = %d, want 6", cfg.ImagePlaygroundTasks.ResultTTLHours)
+	}
+	if cfg.ImagePlaygroundTasks.CleanupEnabled {
+		t.Fatalf("ImagePlaygroundTasks.CleanupEnabled = true, want false")
+	}
+	if cfg.ImagePlaygroundTasks.CleanupIntervalSeconds != 120 {
+		t.Fatalf("ImagePlaygroundTasks.CleanupIntervalSeconds = %d, want 120", cfg.ImagePlaygroundTasks.CleanupIntervalSeconds)
+	}
+	if cfg.ImagePlaygroundTasks.CleanupBatchSize != 17 {
+		t.Fatalf("ImagePlaygroundTasks.CleanupBatchSize = %d, want 17", cfg.ImagePlaygroundTasks.CleanupBatchSize)
+	}
+}
+
 func TestLoadSchedulingConfigFromEnv(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	t.Setenv("GATEWAY_SCHEDULING_STICKY_SESSION_MAX_WAITING", "5")

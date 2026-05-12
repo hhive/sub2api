@@ -430,6 +430,42 @@ func TestImagePlaygroundTaskRepositoryStateTransitionsReturnFalseWhenCompareAndS
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestImagePlaygroundTaskRepositoryCleanupExpiredPayloads(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Date(2026, 5, 10, 1, 2, 3, 0, time.UTC)
+	mock.ExpectExec("WITH expired AS \\(\\s+SELECT id\\s+FROM image_playground_tasks\\s+WHERE expires_at <= \\$1\\s+AND \\(request_json <> '\\{\\}'::jsonb OR result_json IS NOT NULL\\)[\\s\\S]+request_json = '\\{\\}'::jsonb,[\\s\\S]+result_json = NULL").
+		WithArgs(now, 25, service.ImagePlaygroundTaskStatusQueued, service.ImagePlaygroundTaskStatusRunning, service.ImagePlaygroundTaskStatusExpired).
+		WillReturnResult(sqlmock.NewResult(0, 3))
+
+	repo := NewImagePlaygroundTaskRepository(db)
+	deleted, err := repo.CleanupExpiredPayloads(context.Background(), now, 25)
+	require.NoError(t, err)
+	require.Equal(t, int64(3), deleted)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestImagePlaygroundTaskRepositoryCleanupExpiredPayloadsDefaultBatch(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Date(2026, 5, 10, 1, 2, 3, 0, time.UTC)
+	mock.ExpectExec("WITH expired AS").
+		WithArgs(now, 200, service.ImagePlaygroundTaskStatusQueued, service.ImagePlaygroundTaskStatusRunning, service.ImagePlaygroundTaskStatusExpired).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	repo := NewImagePlaygroundTaskRepository(db)
+	deleted, err := repo.CleanupExpiredPayloads(context.Background(), now, 0)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), deleted)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestImagePlaygroundTaskRepositoryGetTaskByOwnerNotFound(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()

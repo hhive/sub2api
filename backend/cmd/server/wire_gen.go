@@ -257,7 +257,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	onyxHandler := handler.NewOnyxHandler(handlerOnyxLaunchService, settingService)
 	imagePlaygroundTaskRepository := repository.NewImagePlaygroundTaskRepository(db)
 	imagePlaygroundTaskExecutor := handler.NewImagePlaygroundOpenAIImagesTaskExecutor(openAIGatewayHandler, subscriptionService)
-	imagePlaygroundTaskService := service.ProvideImagePlaygroundTaskService(imagePlaygroundTaskRepository, imagePlaygroundTaskExecutor)
+	imagePlaygroundTaskService := service.ProvideImagePlaygroundTaskService(imagePlaygroundTaskRepository, imagePlaygroundTaskExecutor, configConfig)
 	imagePlaygroundTaskHandler := handler.NewImagePlaygroundTaskHandler(imagePlaygroundTaskService, apiKeyService)
 	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)

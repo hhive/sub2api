@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -134,6 +135,32 @@ func TestImagePlaygroundTaskServiceCreateTaskZeroTTLUsesDefault(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, now.Add(defaultImagePlaygroundTaskResultTTL), task.ExpiresAt)
+}
+
+func TestImagePlaygroundTaskServiceOptionsFromConfigUses24HourDefault(t *testing.T) {
+	opts := ImagePlaygroundTaskServiceOptionsFromConfig(nil)
+	normalized := normalizeImagePlaygroundTaskServiceOptions(opts)
+
+	require.Equal(t, 24*time.Hour, normalized.ResultTTL)
+	require.True(t, normalized.CleanupEnabled)
+	require.Equal(t, defaultImagePlaygroundCleanupInterval, normalized.CleanupInterval)
+	require.Equal(t, defaultImagePlaygroundCleanupBatchSize, normalized.CleanupBatchSize)
+}
+
+func TestImagePlaygroundTaskServiceOptionsFromConfigOverride(t *testing.T) {
+	opts := ImagePlaygroundTaskServiceOptionsFromConfig(&config.Config{
+		ImagePlaygroundTasks: config.ImagePlaygroundTasksConfig{
+			ResultTTLHours:         6,
+			CleanupEnabled:         false,
+			CleanupIntervalSeconds: 120,
+			CleanupBatchSize:       17,
+		},
+	})
+
+	require.Equal(t, 6*time.Hour, opts.ResultTTL)
+	require.False(t, opts.CleanupEnabled)
+	require.Equal(t, 120*time.Second, opts.CleanupInterval)
+	require.Equal(t, 17, opts.CleanupBatchSize)
 }
 
 func TestImagePlaygroundTaskServiceWorkerClaimsAndPersistsSuccess(t *testing.T) {
@@ -339,6 +366,82 @@ func TestImagePlaygroundTaskServiceListRecentTasksFiltersExpired(t *testing.T) {
 	require.Equal(t, int64(10), got[0].ID)
 }
 
+func TestImagePlaygroundTaskServiceCleanupExpiredPayloads(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	repo := newImagePlaygroundTaskRepoStubWithTasks(
+		&ImagePlaygroundTask{ID: 10, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, RequestJSON: []byte(`{"prompt":"old"}`), ResultJSON: []byte(`{"data":[{"b64_json":"big"}]}`), ExpiresAt: now.Add(-time.Minute)},
+		&ImagePlaygroundTask{ID: 11, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusRunning, Endpoint: ImagePlaygroundEndpointGenerations, RequestJSON: []byte(`{"prompt":"running"}`), ResultJSON: []byte(`{"data":[]}`), ExpiresAt: now.Add(-time.Minute)},
+		&ImagePlaygroundTask{ID: 12, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, RequestJSON: []byte(`{"prompt":"fresh"}`), ResultJSON: []byte(`{"data":[{"b64_json":"keep"}]}`), ExpiresAt: now.Add(time.Hour)},
+	)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		Clock:            func() time.Time { return now },
+		CleanupEnabled:   true,
+		CleanupBatchSize: 10,
+	})
+
+	svc.cleanupExpiredPayloads(context.Background())
+
+	expiredDone := repo.mustTask(10)
+	require.JSONEq(t, `{}`, string(expiredDone.RequestJSON))
+	require.Nil(t, expiredDone.ResultJSON)
+	require.Equal(t, ImagePlaygroundTaskStatusSucceeded, expiredDone.Status)
+
+	expiredRunning := repo.mustTask(11)
+	require.JSONEq(t, `{}`, string(expiredRunning.RequestJSON))
+	require.Nil(t, expiredRunning.ResultJSON)
+	require.Equal(t, ImagePlaygroundTaskStatusExpired, expiredRunning.Status)
+	require.NotNil(t, expiredRunning.FinishedAt)
+
+	fresh := repo.mustTask(12)
+	require.JSONEq(t, `{"prompt":"fresh"}`, string(fresh.RequestJSON))
+	require.JSONEq(t, `{"data":[{"b64_json":"keep"}]}`, string(fresh.ResultJSON))
+	require.Equal(t, 1, repo.cleanupCalls)
+}
+
+func TestImagePlaygroundTaskServiceCleanupDisabled(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	repo := newImagePlaygroundTaskRepoStubWithTasks(
+		&ImagePlaygroundTask{ID: 10, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, RequestJSON: []byte(`{"prompt":"old"}`), ResultJSON: []byte(`{"data":[]}`), ExpiresAt: now.Add(-time.Minute)},
+	)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		Clock:          func() time.Time { return now },
+		CleanupEnabled: false,
+	})
+
+	svc.cleanupExpiredPayloads(context.Background())
+
+	task := repo.mustTask(10)
+	require.JSONEq(t, `{"prompt":"old"}`, string(task.RequestJSON))
+	require.JSONEq(t, `{"data":[]}`, string(task.ResultJSON))
+	require.Equal(t, 0, repo.cleanupCalls)
+}
+
+func TestImagePlaygroundTaskServiceWorkerPoolStartsCleanupLoop(t *testing.T) {
+	now := time.Date(2026, 5, 10, 10, 0, 0, 0, time.UTC)
+	repo := newImagePlaygroundTaskRepoStubWithTasks(
+		&ImagePlaygroundTask{ID: 10, UserID: 7, APIKeyID: 9, Status: ImagePlaygroundTaskStatusSucceeded, Endpoint: ImagePlaygroundEndpointGenerations, RequestJSON: []byte(`{"prompt":"old"}`), ResultJSON: []byte(`{"data":[]}`), ExpiresAt: now.Add(-time.Minute)},
+	)
+	svc := NewImagePlaygroundTaskService(repo, nil, ImagePlaygroundTaskServiceOptions{
+		Clock:                func() time.Time { return now },
+		WorkerCount:          1,
+		WorkerPollInterval:   time.Hour,
+		WorkerEmptyBackoff:   time.Millisecond,
+		WorkerExecuteTimeout: time.Second,
+		CleanupEnabled:       true,
+		CleanupInterval:      time.Hour,
+		CleanupBatchSize:     10,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	pool := svc.StartWorkerPool(ctx)
+	require.NotNil(t, pool)
+	require.Eventually(t, func() bool {
+		return repo.mustTask(10).ResultJSON == nil
+	}, time.Second, 10*time.Millisecond)
+	cancel()
+	pool.Stop()
+}
+
 type imagePlaygroundTaskRepoStub struct {
 	mu               sync.Mutex
 	nextID           int64
@@ -350,6 +453,7 @@ type imagePlaygroundTaskRepoStub struct {
 	tasks            map[int64]*ImagePlaygroundTask
 	created          []ImagePlaygroundTask
 	cancelAfterClaim bool
+	cleanupCalls     int
 }
 
 func newImagePlaygroundTaskRepoStubWithTasks(tasks ...*ImagePlaygroundTask) *imagePlaygroundTaskRepoStub {
@@ -559,6 +663,36 @@ func (r *imagePlaygroundTaskRepoStub) MarkTaskExpired(ctx context.Context, taskI
 	task.FinishedAt = &now
 	task.UpdatedAt = now
 	return true, nil
+}
+
+func (r *imagePlaygroundTaskRepoStub) CleanupExpiredPayloads(ctx context.Context, now time.Time, batchSize int) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	r.cleanupCalls++
+	var cleaned int64
+	for _, task := range r.tasks {
+		if batchSize > 0 && int(cleaned) >= batchSize {
+			break
+		}
+		if task.ExpiresAt.After(now) {
+			continue
+		}
+		if string(task.RequestJSON) == "{}" && task.ResultJSON == nil {
+			continue
+		}
+		task.RequestJSON = []byte(`{}`)
+		task.ResultJSON = nil
+		if task.Status == ImagePlaygroundTaskStatusQueued || task.Status == ImagePlaygroundTaskStatusRunning {
+			task.Status = ImagePlaygroundTaskStatusExpired
+			task.FinishedAt = &now
+		}
+		task.UpdatedAt = now
+		cleaned++
+	}
+	return cleaned, nil
 }
 
 func (r *imagePlaygroundTaskRepoStub) mustTask(taskID int64) *ImagePlaygroundTask {

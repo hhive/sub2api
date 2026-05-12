@@ -48,6 +48,7 @@ type ImagePlaygroundTaskRepository interface {
 	MarkTaskSucceeded(ctx context.Context, taskID int64, resultJSON []byte, now time.Time) (bool, error)
 	MarkTaskFailed(ctx context.Context, taskID int64, errorCode string, errorMessage string, now time.Time) (bool, error)
 	MarkTaskExpired(ctx context.Context, taskID int64, now time.Time) (bool, error)
+	CleanupExpiredPayloads(ctx context.Context, now time.Time, batchSize int) (int64, error)
 }
 
 type ImagePlaygroundQueuedTaskCounts struct {

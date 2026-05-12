@@ -330,6 +330,48 @@ func (r *imagePlaygroundTaskRepository) MarkTaskExpired(ctx context.Context, tas
 	)
 }
 
+func (r *imagePlaygroundTaskRepository) CleanupExpiredPayloads(ctx context.Context, now time.Time, batchSize int) (int64, error) {
+	if batchSize <= 0 {
+		batchSize = 200
+	}
+	query := `
+		WITH expired AS (
+			SELECT id
+			FROM image_playground_tasks
+			WHERE expires_at <= $1
+				AND (request_json <> '{}'::jsonb OR result_json IS NOT NULL)
+			ORDER BY expires_at ASC, id ASC
+			LIMIT $2
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE image_playground_tasks AS tasks
+		SET request_json = '{}'::jsonb,
+			result_json = NULL,
+			status = CASE
+				WHEN tasks.status IN ($3, $4) THEN $5
+				ELSE tasks.status
+			END,
+			finished_at = CASE
+				WHEN tasks.status IN ($3, $4) THEN COALESCE(tasks.finished_at, $1)
+				ELSE tasks.finished_at
+			END,
+			updated_at = $1
+		FROM expired
+		WHERE tasks.id = expired.id
+	`
+	result, err := r.sql.ExecContext(ctx, query,
+		now,
+		batchSize,
+		service.ImagePlaygroundTaskStatusQueued,
+		service.ImagePlaygroundTaskStatusRunning,
+		service.ImagePlaygroundTaskStatusExpired,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 func (r *imagePlaygroundTaskRepository) scanTask(ctx context.Context, query string, args []any, task *service.ImagePlaygroundTask) error {
 	rows, err := r.sql.QueryContext(ctx, query, args...)
 	if err != nil {

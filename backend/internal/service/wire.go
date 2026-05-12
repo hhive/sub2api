@@ -427,8 +427,8 @@ func ProvideAPIKeyService(
 	return svc
 }
 
-func ProvideImagePlaygroundTaskService(repo ImagePlaygroundTaskRepository, executor ImagePlaygroundTaskExecutor) *ImagePlaygroundTaskService {
-	return NewImagePlaygroundTaskService(repo, executor, ImagePlaygroundTaskServiceOptions{})
+func ProvideImagePlaygroundTaskService(repo ImagePlaygroundTaskRepository, executor ImagePlaygroundTaskExecutor, cfg *config.Config) *ImagePlaygroundTaskService {
+	return NewImagePlaygroundTaskService(repo, executor, ImagePlaygroundTaskServiceOptionsFromConfig(cfg))
 }
 
 func ProvideImagePlaygroundTaskWorkerPool(svc *ImagePlaygroundTaskService) *ImagePlaygroundTaskWorkerPool {

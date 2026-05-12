@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
 
@@ -22,6 +24,9 @@ const (
 	defaultImagePlaygroundWorkerEmptyBackoff = time.Second
 	defaultImagePlaygroundWorkerExecTimeout  = 10 * time.Minute
 	defaultImagePlaygroundTerminalWriteTTL   = 5 * time.Second
+	defaultImagePlaygroundCleanupInterval    = time.Hour
+	defaultImagePlaygroundCleanupBatchSize   = 200
+	defaultImagePlaygroundCleanupTimeout     = 30 * time.Second
 )
 
 var (
@@ -68,6 +73,9 @@ type ImagePlaygroundTaskServiceOptions struct {
 	WorkerPollInterval   time.Duration
 	WorkerEmptyBackoff   time.Duration
 	WorkerExecuteTimeout time.Duration
+	CleanupEnabled       bool
+	CleanupInterval      time.Duration
+	CleanupBatchSize     int
 	Clock                func() time.Time
 }
 
@@ -84,6 +92,25 @@ func NewImagePlaygroundTaskService(repo ImagePlaygroundTaskRepository, executor 
 		executor: executor,
 		opts:     opts,
 	}
+}
+
+func ImagePlaygroundTaskServiceOptionsFromConfig(cfg *config.Config) ImagePlaygroundTaskServiceOptions {
+	opts := ImagePlaygroundTaskServiceOptions{
+		CleanupEnabled: true,
+	}
+	if cfg == nil {
+		return opts
+	}
+	taskCfg := cfg.ImagePlaygroundTasks
+	opts.ResultTTL = taskCfg.ResultTTL()
+	opts.CleanupEnabled = taskCfg.CleanupEnabled
+	if taskCfg.CleanupIntervalSeconds > 0 {
+		opts.CleanupInterval = time.Duration(taskCfg.CleanupIntervalSeconds) * time.Second
+	}
+	if taskCfg.CleanupBatchSize > 0 {
+		opts.CleanupBatchSize = taskCfg.CleanupBatchSize
+	}
+	return opts
 }
 
 func (s *ImagePlaygroundTaskService) CreateTask(ctx context.Context, req ImagePlaygroundTaskCreateRequest) (*ImagePlaygroundTask, error) {
@@ -179,6 +206,13 @@ func (s *ImagePlaygroundTaskService) StartWorkerPool(ctx context.Context) *Image
 			s.runWorker(pool.ctx)
 		}()
 	}
+	if s.opts.CleanupEnabled {
+		pool.wg.Add(1)
+		go func() {
+			defer pool.wg.Done()
+			s.runCleanup(pool.ctx)
+		}()
+	}
 	return pool
 }
 
@@ -206,6 +240,37 @@ func (s *ImagePlaygroundTaskService) runWorker(ctx context.Context) {
 			sleepContext(ctx, s.opts.WorkerEmptyBackoff)
 			continue
 		}
+	}
+}
+
+func (s *ImagePlaygroundTaskService) runCleanup(ctx context.Context) {
+	s.cleanupExpiredPayloads(ctx)
+	ticker := time.NewTicker(s.opts.CleanupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.cleanupExpiredPayloads(ctx)
+		}
+	}
+}
+
+func (s *ImagePlaygroundTaskService) cleanupExpiredPayloads(ctx context.Context) {
+	if s == nil || s.repo == nil || !s.opts.CleanupEnabled {
+		return
+	}
+	cleanupCtx, cancel := context.WithTimeout(ctx, defaultImagePlaygroundCleanupTimeout)
+	defer cancel()
+
+	deleted, err := s.repo.CleanupExpiredPayloads(cleanupCtx, s.now(), s.opts.CleanupBatchSize)
+	if err != nil {
+		slog.Warn("image_playground_task.cleanup_failed", "error", err)
+		return
+	}
+	if deleted > 0 {
+		slog.Info("image_playground_task.cleanup_payloads", "count", deleted)
 	}
 }
 
@@ -298,6 +363,12 @@ func normalizeImagePlaygroundTaskServiceOptions(opts ImagePlaygroundTaskServiceO
 	}
 	if opts.WorkerExecuteTimeout <= 0 {
 		opts.WorkerExecuteTimeout = defaultImagePlaygroundWorkerExecTimeout
+	}
+	if opts.CleanupInterval <= 0 {
+		opts.CleanupInterval = defaultImagePlaygroundCleanupInterval
+	}
+	if opts.CleanupBatchSize <= 0 {
+		opts.CleanupBatchSize = defaultImagePlaygroundCleanupBatchSize
 	}
 	if opts.Clock == nil {
 		opts.Clock = time.Now
