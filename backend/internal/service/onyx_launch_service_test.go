@@ -305,7 +305,7 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPI
 	redirectURL, parseErr := url.Parse(result.RedirectURL)
 	require.NoError(t, parseErr)
 	require.Equal(t, "https", redirectURL.Scheme)
-	require.Equal(t, "xiaoni-ai.zle.ee", redirectURL.Host)
+	require.Equal(t, "xiaoni-ai.top", redirectURL.Host)
 	require.Equal(t, "/image_playground/", redirectURL.Path)
 	require.Equal(t, "https://xiaoni-ai.zle.ee/v1", redirectURL.Query().Get("apiUrl"))
 	require.Equal(t, "sk-user-image-key", redirectURL.Query().Get("apiKey"))
@@ -443,14 +443,14 @@ func TestNormalizeOnyxOpenAICompatibleAPIBaseURL(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "windows host loopback becomes docker host with v1",
+			name:     "loopback gets v1 path",
 			input:    "http://127.0.0.1:8080",
-			expected: "http://host.docker.internal:8080/v1",
+			expected: "http://127.0.0.1:8080/v1",
 		},
 		{
-			name:     "localhost becomes docker host with v1",
+			name:     "localhost gets v1 path",
 			input:    "http://localhost:8080/",
-			expected: "http://host.docker.internal:8080/v1",
+			expected: "http://localhost:8080/v1",
 		},
 		{
 			name:     "external base gets v1 path",

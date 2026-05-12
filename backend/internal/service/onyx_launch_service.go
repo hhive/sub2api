@@ -31,7 +31,7 @@ type OnyxLaunchResult struct {
 	RedirectURL string `json:"redirect_url"`
 }
 
-const imagePlaygroundBaseURL = "https://xiaoni-ai.zle.ee/image_playground/"
+const imagePlaygroundBaseURL = "https://xiaoni-ai.top/image_playground/"
 
 type OnyxLaunchPayload struct {
 	UserID         int64  `json:"user_id"`
@@ -260,14 +260,6 @@ func normalizeOnyxOpenAICompatibleAPIBaseURL(rawBaseURL string) string {
 	parsed, err := url.Parse(rawBaseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return rawBaseURL
-	}
-
-	if parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost" {
-		host := "host.docker.internal"
-		if port := parsed.Port(); port != "" {
-			host += ":" + port
-		}
-		parsed.Host = host
 	}
 
 	if strings.TrimRight(parsed.Path, "/") != "/v1" {
