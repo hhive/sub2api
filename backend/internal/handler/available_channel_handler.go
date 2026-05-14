@@ -3,6 +3,7 @@ package handler
 import (
 	"sort"
 
+	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -62,35 +63,13 @@ type userAvailableGroup struct {
 }
 
 // userSupportedModelPricing 用户可见的定价字段白名单。
-type userSupportedModelPricing struct {
-	BillingMode      string                   `json:"billing_mode"`
-	InputPrice       *float64                 `json:"input_price"`
-	OutputPrice      *float64                 `json:"output_price"`
-	CacheWritePrice  *float64                 `json:"cache_write_price"`
-	CacheReadPrice   *float64                 `json:"cache_read_price"`
-	ImageOutputPrice *float64                 `json:"image_output_price"`
-	PerRequestPrice  *float64                 `json:"per_request_price"`
-	Intervals        []userPricingIntervalDTO `json:"intervals"`
-}
+type userSupportedModelPricing = dto.UserSupportedModelPricing
 
 // userPricingIntervalDTO 定价区间白名单（去掉内部 ID、SortOrder 等前端不渲染的字段）。
-type userPricingIntervalDTO struct {
-	MinTokens       int      `json:"min_tokens"`
-	MaxTokens       *int     `json:"max_tokens"`
-	TierLabel       string   `json:"tier_label,omitempty"`
-	InputPrice      *float64 `json:"input_price"`
-	OutputPrice     *float64 `json:"output_price"`
-	CacheWritePrice *float64 `json:"cache_write_price"`
-	CacheReadPrice  *float64 `json:"cache_read_price"`
-	PerRequestPrice *float64 `json:"per_request_price"`
-}
+type userPricingIntervalDTO = dto.UserPricingIntervalDTO
 
 // userSupportedModel 用户可见的支持模型条目。
-type userSupportedModel struct {
-	Name     string                     `json:"name"`
-	Platform string                     `json:"platform"`
-	Pricing  *userSupportedModelPricing `json:"pricing"`
-}
+type userSupportedModel = dto.UserSupportedModel
 
 // userChannelPlatformSection 单渠道内某个平台的子视图：用户可见的分组 + 该平台
 // 支持的模型。按 platform 聚合后让前端可以把渠道名作为 row-group 一次渲染，
@@ -243,6 +222,59 @@ func toUserSupportedModels(
 			Name:     m.Name,
 			Platform: m.Platform,
 			Pricing:  toUserPricing(m.Pricing),
+		})
+	}
+	return out
+}
+
+// buildSupportedModelsByGroupID aggregates user-visible supported models for each
+// visible group from the available channel view.
+func buildSupportedModelsByGroupID(
+	channels []service.AvailableChannel,
+	allowedGroupIDs map[int64]struct{},
+) map[int64][]dto.UserSupportedModel {
+	out := make(map[int64][]dto.UserSupportedModel)
+	seen := make(map[int64]map[string]struct{})
+
+	for _, ch := range channels {
+		if ch.Status != service.StatusActive {
+			continue
+		}
+		for _, g := range ch.Groups {
+			if _, ok := allowedGroupIDs[g.ID]; !ok {
+				continue
+			}
+			if g.Platform == "" {
+				continue
+			}
+			platformSet := map[string]struct{}{g.Platform: {}}
+			models := toUserSupportedModels(ch.SupportedModels, platformSet)
+			if len(models) == 0 {
+				if _, ok := out[g.ID]; !ok {
+					out[g.ID] = []dto.UserSupportedModel{}
+				}
+				continue
+			}
+			if seen[g.ID] == nil {
+				seen[g.ID] = make(map[string]struct{})
+			}
+			for _, m := range models {
+				key := m.Platform + "\x00" + m.Name
+				if _, ok := seen[g.ID][key]; ok {
+					continue
+				}
+				seen[g.ID][key] = struct{}{}
+				out[g.ID] = append(out[g.ID], m)
+			}
+		}
+	}
+
+	for groupID := range out {
+		sort.SliceStable(out[groupID], func(i, j int) bool {
+			if out[groupID][i].Platform == out[groupID][j].Platform {
+				return out[groupID][i].Name < out[groupID][j].Name
+			}
+			return out[groupID][i].Platform < out[groupID][j].Platform
 		})
 	}
 	return out

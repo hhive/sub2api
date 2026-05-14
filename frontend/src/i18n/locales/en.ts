@@ -681,6 +681,7 @@ export default {
     noGroup: 'No group',
     searchGroup: 'Search groups...',
     noGroupFound: 'No groups found',
+    noAvailableModels: 'No available models',
     created: 'Created',
     copyToClipboard: 'Copy to clipboard',
     copied: 'Copied!',

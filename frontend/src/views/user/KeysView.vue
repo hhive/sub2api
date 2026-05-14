@@ -97,34 +97,61 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
+                class="-mx-2 -my-1 flex cursor-pointer flex-col items-start gap-1 rounded-lg px-2 py-1 text-left transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
                 :title="t('keys.clickToChangeGroup')"
               >
-                <GroupBadge
-                  v-if="row.group"
-                  :name="row.group.name"
-                  :platform="row.group.platform"
-                  :subscription-type="row.group.subscription_type"
-                  :rate-multiplier="row.group.rate_multiplier"
-                  :user-rate-multiplier="userGroupRates[row.group.id]"
-                />
-                <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
-                  t('keys.noGroup')
-                }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('keys.selectGroup') }}</span>
-                <svg
-                  class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                <span class="flex items-center gap-2">
+                  <GroupBadge
+                    v-if="row.group"
+                    :name="row.group.name"
+                    :platform="row.group.platform"
+                    :subscription-type="row.group.subscription_type"
+                    :rate-multiplier="row.group.rate_multiplier"
+                    :user-rate-multiplier="userGroupRates[row.group.id]"
                   />
-                </svg>
+                  <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
+                    t('keys.noGroup')
+                  }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('keys.selectGroup') }}</span>
+                  <svg
+                    class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                    />
+                  </svg>
+                </span>
+                <span
+                  v-if="row.group"
+                  class="flex max-w-[320px] flex-wrap gap-1"
+                  :title="keyModelTitle(row)"
+                >
+                  <span
+                    v-for="model in keyVisibleModels(row)"
+                    :key="`${model.platform}:${model.name}`"
+                    class="max-w-[150px] truncate rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-600 dark:bg-dark-600 dark:text-dark-300"
+                  >
+                    {{ model.name }}
+                  </span>
+                  <span
+                    v-if="keyHiddenModelCount(row) > 0"
+                    class="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-500 dark:bg-dark-600 dark:text-dark-400"
+                  >
+                    +{{ keyHiddenModelCount(row) }}
+                  </span>
+                  <span
+                    v-if="keySupportedModels(row).length === 0"
+                    class="text-[11px] text-gray-400 dark:text-dark-500"
+                  >
+                    {{ t('keys.noAvailableModels') }}
+                  </span>
+                </span>
               </button>
             </div>
           </template>
@@ -428,6 +455,8 @@
                 :rate-multiplier="(option as unknown as GroupOption).rate"
                 :user-rate-multiplier="(option as unknown as GroupOption).userRate"
                 :description="(option as unknown as GroupOption).description"
+                :supported-models="(option as unknown as GroupOption).supportedModels"
+                :no-models-label="t('keys.noAvailableModels')"
                 :selected="selected"
               />
             </template>
@@ -1023,6 +1052,8 @@
               :rate-multiplier="option.rate"
               :user-rate-multiplier="option.userRate"
               :description="option.description"
+              :supported-models="option.supportedModels"
+              :no-models-label="t('keys.noAvailableModels')"
               :selected="
                 selectedKeyForGroup?.group_id === option.value ||
                 (!selectedKeyForGroup?.group_id && option.value === null)
@@ -1062,7 +1093,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
-	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform } from '@/types'
+	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UserSupportedModel } from '@/types'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
@@ -1083,6 +1114,7 @@ interface GroupOption {
   userRate: number | null
   subscriptionType: SubscriptionType
   platform: GroupPlatform
+  supportedModels: UserSupportedModel[]
 }
 
 const appStore = useAppStore()
@@ -1240,7 +1272,8 @@ const groupOptions = computed(() =>
     rate: group.rate_multiplier,
     userRate: userGroupRates.value[group.id] ?? null,
     subscriptionType: group.subscription_type,
-    platform: group.platform
+    platform: group.platform,
+    supportedModels: group.supported_models ?? []
   }))
 )
 
@@ -1254,6 +1287,16 @@ const filteredGroupOptions = computed(() => {
       (opt.description && opt.description.toLowerCase().includes(query))
   })
 })
+
+const groupSupportedModels = (group?: Group | null): UserSupportedModel[] => group?.supported_models ?? []
+const keySupportedModels = (key: ApiKey): UserSupportedModel[] => {
+  const group = groups.value.find((g) => g.id === key.group_id) || key.group
+  return groupSupportedModels(group)
+}
+const keyVisibleModels = (key: ApiKey): UserSupportedModel[] => keySupportedModels(key).slice(0, 3)
+const keyHiddenModelCount = (key: ApiKey): number =>
+  Math.max(keySupportedModels(key).length - keyVisibleModels(key).length, 0)
+const keyModelTitle = (key: ApiKey): string => keySupportedModels(key).map((model) => model.name).join(', ')
 
 const copyToClipboard = async (text: string, keyId: number) => {
   const success = await clipboardCopy(text, t('keys.copied'))

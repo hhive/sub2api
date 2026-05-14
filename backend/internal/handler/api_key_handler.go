@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -16,15 +18,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type groupModelsProvider interface {
+	GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string
+}
+
 // APIKeyHandler handles API key-related requests
 type APIKeyHandler struct {
-	apiKeyService *service.APIKeyService
+	apiKeyService  *service.APIKeyService
+	modelsProvider groupModelsProvider
 }
 
 // NewAPIKeyHandler creates a new APIKeyHandler
-func NewAPIKeyHandler(apiKeyService *service.APIKeyService) *APIKeyHandler {
+func NewAPIKeyHandler(apiKeyService *service.APIKeyService, deps ...any) *APIKeyHandler {
+	var modelsProvider groupModelsProvider
+	for _, dep := range deps {
+		if v, ok := dep.(groupModelsProvider); ok {
+			modelsProvider = v
+		}
+	}
 	return &APIKeyHandler{
-		apiKeyService: apiKeyService,
+		apiKeyService:  apiKeyService,
+		modelsProvider: modelsProvider,
 	}
 }
 
@@ -287,9 +301,52 @@ func (h *APIKeyHandler) GetAvailableGroups(c *gin.Context) {
 
 	out := make([]dto.Group, 0, len(groups))
 	for i := range groups {
-		out = append(out, *dto.GroupFromService(&groups[i]))
+		groupDTO := dto.GroupFromService(&groups[i])
+		groupDTO.SupportedModels = buildGroupSupportedModelsFromV1Models(c.Request.Context(), h.modelsProvider, groups[i])
+		out = append(out, *groupDTO)
 	}
 	response.Success(c, out)
+}
+
+func buildGroupSupportedModelsFromV1Models(
+	ctx context.Context,
+	provider groupModelsProvider,
+	group service.Group,
+) []dto.UserSupportedModel {
+	modelIDs := []string(nil)
+	if provider != nil {
+		groupID := group.ID
+		modelIDs = provider.GetAvailableModels(ctx, &groupID, "")
+	}
+	if len(modelIDs) == 0 {
+		modelIDs = defaultV1ModelsForPlatform(group.Platform)
+	}
+	out := make([]dto.UserSupportedModel, 0, len(modelIDs))
+	for _, modelID := range modelIDs {
+		modelID = strings.TrimSpace(modelID)
+		if modelID == "" {
+			continue
+		}
+		if shouldHideModelForGroupDisplay(group, modelID) {
+			continue
+		}
+		out = append(out, dto.UserSupportedModel{Name: modelID, Platform: group.Platform})
+	}
+	return out
+}
+
+func shouldHideModelForGroupDisplay(group service.Group, modelID string) bool {
+	if group.Platform == service.PlatformOpenAI && !group.AllowImageGeneration {
+		return strings.HasPrefix(strings.ToLower(strings.TrimSpace(modelID)), "gpt-image-")
+	}
+	return false
+}
+
+func defaultV1ModelsForPlatform(platform string) []string {
+	if platform == service.PlatformOpenAI {
+		return openai.DefaultModelIDs()
+	}
+	return claude.DefaultModelIDs()
 }
 
 // GetUserGroupRates 获取当前用户的专属分组倍率配置

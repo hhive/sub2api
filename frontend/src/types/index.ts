@@ -515,12 +515,37 @@ export interface Group {
   fallback_group_id_on_invalid_request: number | null
   // OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
   allow_messages_dispatch?: boolean
+  supported_models?: UserSupportedModel[]
   default_mapped_model?: string
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   require_oauth_only: boolean
   require_privacy_set: boolean
   created_at: string
   updated_at: string
+}
+
+export interface UserSupportedModel {
+  name: string
+  platform: GroupPlatform
+  pricing?: {
+    billing_mode: string
+    input_price: number | null
+    output_price: number | null
+    cache_write_price: number | null
+    cache_read_price: number | null
+    image_output_price: number | null
+    per_request_price: number | null
+    intervals: Array<{
+      min_tokens: number
+      max_tokens: number | null
+      tier_label?: string
+      input_price: number | null
+      output_price: number | null
+      cache_write_price: number | null
+      cache_read_price: number | null
+      per_request_price: number | null
+    }>
+  } | null
 }
 
 export interface AdminGroup extends Group {

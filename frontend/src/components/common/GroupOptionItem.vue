@@ -20,6 +20,28 @@
       >
         {{ description }}
       </span>
+      <div
+        v-if="supportedModels.length > 0"
+        class="mt-2 flex max-w-[260px] flex-wrap gap-1"
+        :title="modelTitle"
+      >
+        <span
+          v-for="model in visibleModels"
+          :key="`${model.platform}:${model.name}`"
+          class="max-w-[150px] truncate rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-600 dark:bg-dark-600 dark:text-dark-300"
+        >
+          {{ model.name }}
+        </span>
+        <span
+          v-if="hiddenModelCount > 0"
+          class="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-500 dark:bg-dark-600 dark:text-dark-400"
+        >
+          +{{ hiddenModelCount }}
+        </span>
+      </div>
+      <span v-else-if="noModelsLabel" class="mt-2 text-left text-[11px] text-gray-400 dark:text-dark-500">
+        {{ noModelsLabel }}
+      </span>
     </div>
 
     <!-- Right: rate pill + checkmark (vertically centered to first row) -->
@@ -52,7 +74,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import GroupBadge from './GroupBadge.vue'
-import type { SubscriptionType, GroupPlatform } from '@/types'
+import type { SubscriptionType, GroupPlatform, UserSupportedModel } from '@/types'
 
 interface Props {
   name: string
@@ -61,6 +83,8 @@ interface Props {
   rateMultiplier?: number
   userRateMultiplier?: number | null
   description?: string | null
+  supportedModels?: UserSupportedModel[]
+  noModelsLabel?: string
   selected?: boolean
   showCheckmark?: boolean
 }
@@ -69,7 +93,9 @@ const props = withDefaults(defineProps<Props>(), {
   subscriptionType: 'standard',
   selected: false,
   showCheckmark: true,
-  userRateMultiplier: null
+  userRateMultiplier: null,
+  supportedModels: () => [],
+  noModelsLabel: ''
 })
 
 // Whether user has a custom rate different from default
@@ -81,6 +107,10 @@ const hasCustomRate = computed(() => {
     props.userRateMultiplier !== props.rateMultiplier
   )
 })
+
+const visibleModels = computed(() => props.supportedModels.slice(0, 3))
+const hiddenModelCount = computed(() => Math.max(props.supportedModels.length - visibleModels.value.length, 0))
+const modelTitle = computed(() => props.supportedModels.map((m) => m.name).join(', '))
 
 // Rate pill color matches platform badge color
 const ratePillClass = computed(() => {

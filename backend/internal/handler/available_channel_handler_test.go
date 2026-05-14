@@ -3,11 +3,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -154,4 +157,98 @@ func TestBuildPlatformSections_GroupsByPlatform(t *testing.T) {
 	require.Equal(t, int64(2), sections[0].Groups[0].ID)
 	require.Len(t, sections[0].SupportedModels, 1)
 	require.Equal(t, "claude-sonnet-4-6", sections[0].SupportedModels[0].Name)
+}
+
+func TestBuildSupportedModelsByGroupID_UserVisibleGroupsOnly(t *testing.T) {
+	channels := []service.AvailableChannel{
+		{
+			Status: service.StatusActive,
+			Groups: []service.AvailableGroupRef{
+				{ID: 1, Name: "g-ant", Platform: "anthropic"},
+				{ID: 2, Name: "g-openai", Platform: "openai"},
+				{ID: 3, Name: "g-hidden", Platform: "anthropic"},
+			},
+			SupportedModels: []service.SupportedModel{
+				{Name: "claude-sonnet-4-6", Platform: "anthropic"},
+				{Name: "gpt-4o", Platform: "openai"},
+			},
+		},
+		{
+			Status: service.StatusDisabled,
+			Groups: []service.AvailableGroupRef{
+				{ID: 1, Name: "g-ant", Platform: "anthropic"},
+			},
+			SupportedModels: []service.SupportedModel{
+				{Name: "disabled-model", Platform: "anthropic"},
+			},
+		},
+	}
+
+	out := buildSupportedModelsByGroupID(channels, map[int64]struct{}{1: {}, 2: {}})
+
+	require.Len(t, out[1], 1)
+	require.Equal(t, "claude-sonnet-4-6", out[1][0].Name)
+	require.Len(t, out[2], 1)
+	require.Equal(t, "gpt-4o", out[2][0].Name)
+	_, hiddenExists := out[3]
+	require.False(t, hiddenExists)
+}
+
+type modelsProviderStub struct {
+	models   []string
+	groupID  *int64
+	platform string
+}
+
+func (s *modelsProviderStub) GetAvailableModels(_ context.Context, groupID *int64, platform string) []string {
+	if groupID != nil {
+		id := *groupID
+		s.groupID = &id
+	}
+	s.platform = platform
+	return s.models
+}
+
+func TestBuildGroupSupportedModelsFromV1Models_HidesOpenAIImageModelsWhenGroupDisallowsImages(t *testing.T) {
+	provider := &modelsProviderStub{models: []string{"gpt-5.5", "gpt-image-2"}}
+	group := service.Group{ID: 42, Platform: service.PlatformOpenAI, AllowImageGeneration: false}
+
+	out := buildGroupSupportedModelsFromV1Models(context.Background(), provider, group)
+
+	require.Equal(t, int64(42), *provider.groupID)
+	require.Empty(t, provider.platform, "must match /v1/models, which asks GetAvailableModels with no platform filter")
+	require.Len(t, out, 1)
+	require.Equal(t, "gpt-5.5", out[0].Name)
+	require.Equal(t, service.PlatformOpenAI, out[0].Platform)
+}
+
+func TestBuildGroupSupportedModelsFromV1Models_KeepsOpenAIImageModelsWhenGroupAllowsImages(t *testing.T) {
+	provider := &modelsProviderStub{models: []string{"gpt-5.5", "gpt-image-2"}}
+	group := service.Group{ID: 42, Platform: service.PlatformOpenAI, AllowImageGeneration: true}
+
+	out := buildGroupSupportedModelsFromV1Models(context.Background(), provider, group)
+
+	require.Len(t, out, 2)
+	require.Equal(t, "gpt-5.5", out[0].Name)
+	require.Equal(t, "gpt-image-2", out[1].Name)
+}
+
+func TestBuildGroupSupportedModelsFromV1Models_OpenAIDefaultMatchesV1Models(t *testing.T) {
+	group := service.Group{ID: 42, Platform: service.PlatformOpenAI, AllowImageGeneration: true}
+
+	out := buildGroupSupportedModelsFromV1Models(context.Background(), &modelsProviderStub{}, group)
+
+	require.Len(t, out, len(openai.DefaultModels))
+	require.Equal(t, openai.DefaultModels[0].ID, out[0].Name)
+	require.Equal(t, service.PlatformOpenAI, out[0].Platform)
+}
+
+func TestBuildGroupSupportedModelsFromV1Models_NonOpenAIDefaultMatchesV1Models(t *testing.T) {
+	group := service.Group{ID: 42, Platform: service.PlatformGemini}
+
+	out := buildGroupSupportedModelsFromV1Models(context.Background(), &modelsProviderStub{}, group)
+
+	require.Len(t, out, len(claude.DefaultModels))
+	require.Equal(t, claude.DefaultModels[0].ID, out[0].Name)
+	require.Equal(t, service.PlatformGemini, out[0].Platform)
 }

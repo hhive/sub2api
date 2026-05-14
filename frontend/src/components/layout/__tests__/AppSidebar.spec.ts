@@ -51,3 +51,16 @@ describe('AppSidebar image playground menu wiring', () => {
     expect(componentSource).toContain("handleMenuItemClick('__image_playground__')")
   })
 })
+
+describe('AppSidebar purchase menu wiring', () => {
+  it('opens the recharge subscription shop in a new tab above redeem', () => {
+    expect(componentSource).toContain('externalUrl?: string')
+    expect(componentSource).toContain('target="_blank"')
+    expect(componentSource).toContain("path: '__purchase_external__'")
+    expect(componentSource).toContain("label: t('nav.buySubscription')")
+    expect(componentSource).toContain("externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai'")
+    expect(componentSource.indexOf("path: '__purchase_external__'")).toBeLessThan(
+      componentSource.indexOf("path: '/redeem'")
+    )
+  })
+})

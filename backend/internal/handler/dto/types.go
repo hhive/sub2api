@@ -110,6 +110,9 @@ type Group struct {
 	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
 
+	// SupportedModels lists user-visible models available through this group.
+	SupportedModels []UserSupportedModel `json:"supported_models"`
+
 	// 账号过滤控制（仅 OpenAI/Antigravity 平台有效）
 	RequireOAuthOnly  bool `json:"require_oauth_only"`
 	RequirePrivacySet bool `json:"require_privacy_set"`
@@ -119,6 +122,37 @@ type Group struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// UserPricingIntervalDTO is the user-facing pricing interval shape.
+type UserPricingIntervalDTO struct {
+	MinTokens       int      `json:"min_tokens"`
+	MaxTokens       *int     `json:"max_tokens"`
+	TierLabel       string   `json:"tier_label,omitempty"`
+	InputPrice      *float64 `json:"input_price"`
+	OutputPrice     *float64 `json:"output_price"`
+	CacheWritePrice *float64 `json:"cache_write_price"`
+	CacheReadPrice  *float64 `json:"cache_read_price"`
+	PerRequestPrice *float64 `json:"per_request_price"`
+}
+
+// UserSupportedModelPricing is the user-facing model pricing field whitelist.
+type UserSupportedModelPricing struct {
+	BillingMode      string                   `json:"billing_mode"`
+	InputPrice       *float64                 `json:"input_price"`
+	OutputPrice      *float64                 `json:"output_price"`
+	CacheWritePrice  *float64                 `json:"cache_write_price"`
+	CacheReadPrice   *float64                 `json:"cache_read_price"`
+	ImageOutputPrice *float64                 `json:"image_output_price"`
+	PerRequestPrice  *float64                 `json:"per_request_price"`
+	Intervals        []UserPricingIntervalDTO `json:"intervals"`
+}
+
+// UserSupportedModel is a user-facing supported model entry.
+type UserSupportedModel struct {
+	Name     string                     `json:"name"`
+	Platform string                     `json:"platform"`
+	Pricing  *UserSupportedModelPricing `json:"pricing"`
 }
 
 // AdminGroup 是管理员接口使用的 group DTO（包含敏感/内部字段）。
