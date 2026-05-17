@@ -131,19 +131,19 @@ describe('auth contact footer', () => {
     getPublicSettingsMock.mockResolvedValue({ ...defaultPublicSettings })
   })
 
-  it('shows configured customer QQ on the login footer', async () => {
+  it('shows configured service QQ on the login footer', async () => {
     const wrapper = mountAuthView(LoginView)
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('客户QQ：2910703711')
+    expect(wrapper.text()).toContain('客服QQ：2910703711')
   })
 
-  it('shows configured customer QQ on the register footer', async () => {
+  it('shows configured service QQ on the register footer', async () => {
     const wrapper = mountAuthView(RegisterView)
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('客户QQ：2910703711')
+    expect(wrapper.text()).toContain('客服QQ：2910703711')
   })
 })

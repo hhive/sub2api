@@ -166,7 +166,7 @@
         </router-link>
       </p>
       <p v-if="customerQq" class="mt-2 text-gray-500 dark:text-dark-400">
-        客户QQ：{{ customerQq }}
+        客服QQ：{{ customerQq }}
       </p>
     </template>
   </AuthLayout>
