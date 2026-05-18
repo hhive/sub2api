@@ -4,7 +4,12 @@
  */
 
 import { apiClient } from "../client";
-import type { CustomMenuItem, CustomEndpoint, NotifyEmailEntry } from "@/types";
+import type {
+  CustomEndpoint,
+  CustomMenuItem,
+  LoginAgreementDocument,
+  NotifyEmailEntry,
+} from "@/types";
 
 export interface DefaultSubscriptionSetting {
   group_id: number;
@@ -314,6 +319,10 @@ export interface SystemSettings {
   invitation_code_enabled: boolean;
   totp_enabled: boolean; // TOTP 双因素认证
   totp_encryption_key_configured: boolean; // TOTP 加密密钥是否已配置
+  login_agreement_enabled: boolean;
+  login_agreement_mode: "modal" | "checkbox" | string;
+  login_agreement_updated_at: string;
+  login_agreement_documents: LoginAgreementDocument[];
   // Default settings
   default_balance: number;
   balance_credit_validity_days: number;
@@ -471,6 +480,8 @@ export interface SystemSettings {
   enable_metadata_passthrough: boolean;
   enable_cch_signing: boolean;
   enable_anthropic_cache_ttl_1h_injection: boolean;
+  rewrite_message_cache_control: boolean;
+  antigravity_user_agent_version: string;
   web_search_emulation_enabled?: boolean;
 
   // Payment configuration
@@ -531,6 +542,10 @@ export interface UpdateSettingsRequest {
   frontend_url?: string;
   invitation_code_enabled?: boolean;
   totp_enabled?: boolean; // TOTP 双因素认证
+  login_agreement_enabled?: boolean;
+  login_agreement_mode?: "modal" | "checkbox" | string;
+  login_agreement_updated_at?: string;
+  login_agreement_documents?: LoginAgreementDocument[];
   default_balance?: number;
   balance_credit_validity_days?: number;
   balance_credit_daily_settlement_hour?: number;
@@ -666,6 +681,8 @@ export interface UpdateSettingsRequest {
   enable_metadata_passthrough?: boolean;
   enable_cch_signing?: boolean;
   enable_anthropic_cache_ttl_1h_injection?: boolean;
+  rewrite_message_cache_control?: boolean;
+  antigravity_user_agent_version?: string;
   // Payment configuration
   payment_enabled?: boolean;
   risk_control_enabled?: boolean;
