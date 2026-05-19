@@ -129,7 +129,7 @@ func TestBalanceCreditRepositoryListCreditsFiltersAndReturnsEmail(t *testing.T) 
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
 	mock.ExpectQuery("SELECT COALESCE").
 		WithArgs(int64(7), service.BalanceCreditSourceRedeem, service.BalanceCreditStatusActive, "%alice%").
-		WillReturnRows(sqlmock.NewRows([]string{"total_amount", "total_remaining"}).AddRow(20.0, 15.0))
+		WillReturnRows(sqlmock.NewRows([]string{"total_amount", "today_amount", "total_remaining"}).AddRow(20.0, 8.0, 15.0))
 	mock.ExpectQuery("SELECT id,").
 		WithArgs(int64(7), service.BalanceCreditSourceRedeem, service.BalanceCreditStatusActive, "%alice%", 0, 20).
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -151,7 +151,7 @@ func TestBalanceCreditRepositoryListCreditsFiltersAndReturnsEmail(t *testing.T) 
 	})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), total)
-	require.Equal(t, service.BalanceCreditListSummary{TotalAmount: 20.0, TotalRemaining: 15.0}, summary)
+	require.Equal(t, service.BalanceCreditListSummary{TotalAmount: 20.0, TodayAmount: 8.0, TotalRemaining: 15.0}, summary)
 	require.Len(t, credits, 1)
 	require.Equal(t, "alice@example.com", credits[0].Email)
 	require.Equal(t, 15.0, credits[0].RemainingAmount)

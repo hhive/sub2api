@@ -39,13 +39,21 @@
         </div>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-2">
+      <div class="grid gap-3 md:grid-cols-3">
         <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800">
           <div class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-400">
             {{ t('admin.balanceCredits.totalAmount') }}
           </div>
           <div class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">
             {{ formatCurrency(summary.total_amount) }}
+          </div>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800">
+          <div class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-400">
+            {{ t('admin.balanceCredits.todayAmount') }}
+          </div>
+          <div class="mt-1 text-2xl font-semibold text-blue-600 dark:text-blue-400">
+            {{ formatCurrency(summary.today_amount) }}
           </div>
         </div>
         <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800">
@@ -165,6 +173,7 @@ const pagination = reactive({
 })
 const summary = reactive({
   total_amount: 0,
+  today_amount: 0,
   total_remaining: 0
 })
 const BALANCE_CREDITS_SORT_STORAGE_KEY = 'balance-credits-sort'
@@ -254,6 +263,7 @@ async function loadCredits(): Promise<void> {
     pagination.page = res.page
     pagination.page_size = res.page_size
     summary.total_amount = res.total_amount
+    summary.today_amount = res.today_amount
     summary.total_remaining = res.total_remaining
   } catch (error: any) {
     appStore.showError(error?.response?.data?.message || t('admin.balanceCredits.loadFailed'))

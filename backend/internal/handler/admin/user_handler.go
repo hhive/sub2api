@@ -500,6 +500,7 @@ func (h *UserHandler) ListBalanceCredits(c *gin.Context) {
 		"page_size":       pageSize,
 		"pages":           pages,
 		"total_amount":    summary.TotalAmount,
+		"today_amount":    summary.TodayAmount,
 		"total_remaining": summary.TotalRemaining,
 	})
 }

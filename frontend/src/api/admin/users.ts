@@ -263,6 +263,7 @@ export interface UserBalanceCredit {
 
 export interface BalanceCreditsResponse extends PaginatedResponse<UserBalanceCredit> {
   total_amount: number
+  today_amount: number
   total_remaining: number
 }
 

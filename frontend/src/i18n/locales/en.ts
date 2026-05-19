@@ -1741,6 +1741,7 @@ export default {
       user: 'User',
       createdAt: 'Created',
       totalAmount: 'Total Credited',
+      todayAmount: 'Today Credited',
       totalRemaining: 'Total Remaining',
       settleNow: 'Settle',
       settleSuccess: 'Balance settlement triggered for {date}',

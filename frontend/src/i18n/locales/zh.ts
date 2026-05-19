@@ -1762,6 +1762,7 @@ export default {
       user: '用户',
       createdAt: '创建时间',
       totalAmount: '总入账金额',
+      todayAmount: '今日入账金额',
       totalRemaining: '总剩余金额',
       settleNow: '结算',
       settleSuccess: '已触发 {date} 的余额结算',

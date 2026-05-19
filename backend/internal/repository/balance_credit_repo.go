@@ -184,6 +184,7 @@ FROM user_balance_credits
 	var summary service.BalanceCreditListSummary
 	summaryRows, err := db.QueryContext(ctx, `
 SELECT COALESCE(SUM(amount), 0)::double precision,
+       COALESCE(SUM(amount) FILTER (WHERE created_at >= date_trunc('day', NOW())), 0)::double precision,
        COALESCE(SUM(remaining_amount), 0)::double precision
 FROM user_balance_credits
 `+where, args...)
@@ -191,7 +192,7 @@ FROM user_balance_credits
 		return nil, 0, service.BalanceCreditListSummary{}, err
 	}
 	if summaryRows.Next() {
-		if err := summaryRows.Scan(&summary.TotalAmount, &summary.TotalRemaining); err != nil {
+		if err := summaryRows.Scan(&summary.TotalAmount, &summary.TodayAmount, &summary.TotalRemaining); err != nil {
 			_ = summaryRows.Close()
 			return nil, 0, service.BalanceCreditListSummary{}, err
 		}

@@ -59,6 +59,7 @@ type BalanceCredit struct {
 
 type BalanceCreditListSummary struct {
 	TotalAmount    float64
+	TodayAmount    float64
 	TotalRemaining float64
 }
 
