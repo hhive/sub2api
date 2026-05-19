@@ -382,21 +382,37 @@ FOR UPDATE
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
 
+	type settleCandidate struct {
+		id        int64
+		available float64
+	}
+	candidates := make([]settleCandidate, 0)
 	remaining := amount
 	eligibleIDs := make([]int64, 0)
 	for rows.Next() {
 		var id int64
 		var available float64
 		if err := rows.Scan(&id, &available); err != nil {
+			_ = rows.Close()
 			return err
 		}
-		eligibleIDs = append(eligibleIDs, id)
+		candidates = append(candidates, settleCandidate{id: id, available: available})
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+
+	for _, candidate := range candidates {
+		eligibleIDs = append(eligibleIDs, candidate.id)
 		if remaining <= 0 {
 			continue
 		}
-		delta := math.Min(available, remaining)
+		delta := math.Min(candidate.available, remaining)
 		if delta <= 0 {
 			continue
 		}
@@ -407,13 +423,10 @@ SET remaining_amount = remaining_amount - $1,
     settled_until_date = $3::date,
     updated_at = NOW()
 WHERE id = $2
-`, delta, id, settlementDate); err != nil {
+`, delta, candidate.id, settlementDate); err != nil {
 			return err
 		}
 		remaining -= delta
-	}
-	if err := rows.Err(); err != nil {
-		return err
 	}
 
 	if len(eligibleIDs) == 0 {
