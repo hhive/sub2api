@@ -43,6 +43,20 @@ func (_u *UserBalanceCreditUpdate) SetNillableUserID(v *int64) *UserBalanceCredi
 	return _u
 }
 
+// SetEmail sets the "email" field.
+func (_u *UserBalanceCreditUpdate) SetEmail(v string) *UserBalanceCreditUpdate {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserBalanceCreditUpdate) SetNillableEmail(v *string) *UserBalanceCreditUpdate {
+	if v != nil {
+		_u.SetEmail(*v)
+	}
+	return _u
+}
+
 // SetSourceType sets the "source_type" field.
 func (_u *UserBalanceCreditUpdate) SetSourceType(v string) *UserBalanceCreditUpdate {
 	_u.mutation.SetSourceType(v)
@@ -261,6 +275,11 @@ func (_u *UserBalanceCreditUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserBalanceCreditUpdate) check() error {
+	if v, ok := _u.mutation.Email(); ok {
+		if err := userbalancecredit.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "UserBalanceCredit.email": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.SourceType(); ok {
 		if err := userbalancecredit.SourceTypeValidator(v); err != nil {
 			return &ValidationError{Name: "source_type", err: fmt.Errorf(`ent: validator failed for field "UserBalanceCredit.source_type": %w`, err)}
@@ -298,6 +317,9 @@ func (_u *UserBalanceCreditUpdate) sqlSave(ctx context.Context) (_node int, err 
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(userbalancecredit.FieldEmail, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SourceType(); ok {
 		_spec.SetField(userbalancecredit.FieldSourceType, field.TypeString, value)
@@ -403,6 +425,20 @@ func (_u *UserBalanceCreditUpdateOne) SetUserID(v int64) *UserBalanceCreditUpdat
 func (_u *UserBalanceCreditUpdateOne) SetNillableUserID(v *int64) *UserBalanceCreditUpdateOne {
 	if v != nil {
 		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetEmail sets the "email" field.
+func (_u *UserBalanceCreditUpdateOne) SetEmail(v string) *UserBalanceCreditUpdateOne {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserBalanceCreditUpdateOne) SetNillableEmail(v *string) *UserBalanceCreditUpdateOne {
+	if v != nil {
+		_u.SetEmail(*v)
 	}
 	return _u
 }
@@ -638,6 +674,11 @@ func (_u *UserBalanceCreditUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserBalanceCreditUpdateOne) check() error {
+	if v, ok := _u.mutation.Email(); ok {
+		if err := userbalancecredit.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "UserBalanceCredit.email": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.SourceType(); ok {
 		if err := userbalancecredit.SourceTypeValidator(v); err != nil {
 			return &ValidationError{Name: "source_type", err: fmt.Errorf(`ent: validator failed for field "UserBalanceCredit.source_type": %w`, err)}
@@ -692,6 +733,9 @@ func (_u *UserBalanceCreditUpdateOne) sqlSave(ctx context.Context) (_node *UserB
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(userbalancecredit.FieldEmail, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SourceType(); ok {
 		_spec.SetField(userbalancecredit.FieldSourceType, field.TypeString, value)

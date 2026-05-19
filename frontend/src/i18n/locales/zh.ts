@@ -371,6 +371,7 @@ export default {
     affiliateTransferRecords: '提取记录',
     profile: '个人资料',
     users: '用户管理',
+    balanceCredits: '余额流水',
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
@@ -1751,6 +1752,24 @@ export default {
     },
 
     // Users Management
+    balanceCredits: {
+      title: '余额流水',
+      description: '查询所有用户的余额批次流水',
+      searchPlaceholder: '输入用户邮箱搜索',
+      userIdPlaceholder: '用户 ID',
+      allSources: '全部来源',
+      allStatuses: '全部状态',
+      user: '用户',
+      createdAt: '创建时间',
+      totalAmount: '总入账金额',
+      totalRemaining: '总剩余金额',
+      settleNow: '结算',
+      settleSuccess: '已触发 {date} 的余额结算',
+      settleFailed: '余额结算失败',
+      empty: '暂无余额流水',
+      loadFailed: '加载余额流水失败'
+    },
+
     users: {
       title: '用户管理',
       description: '管理用户账户和权限',

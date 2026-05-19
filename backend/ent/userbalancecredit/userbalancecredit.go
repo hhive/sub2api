@@ -16,6 +16,8 @@ const (
 	FieldID = "id"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
+	// FieldEmail holds the string denoting the email field in the database.
+	FieldEmail = "email"
 	// FieldSourceType holds the string denoting the source_type field in the database.
 	FieldSourceType = "source_type"
 	// FieldSourceID holds the string denoting the source_id field in the database.
@@ -55,6 +57,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldUserID,
+	FieldEmail,
 	FieldSourceType,
 	FieldSourceID,
 	FieldSourceCode,
@@ -79,6 +82,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultEmail holds the default value on creation for the "email" field.
+	DefaultEmail string
+	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	EmailValidator func(string) error
 	// SourceTypeValidator is a validator for the "source_type" field. It is called by the builders before save.
 	SourceTypeValidator func(string) error
 	// DefaultSourceID holds the default value on creation for the "source_id" field.
@@ -112,6 +119,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByUserID orders the results by the user_id field.
 func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUserID, opts...).ToFunc()
+}
+
+// ByEmail orders the results by the email field.
+func ByEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmail, opts...).ToFunc()
 }
 
 // BySourceType orders the results by the source_type field.

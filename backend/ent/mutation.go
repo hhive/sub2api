@@ -42729,6 +42729,7 @@ type UserBalanceCreditMutation struct {
 	op                  Op
 	typ                 string
 	id                  *int64
+	email               *string
 	source_type         *string
 	source_id           *string
 	source_code         *string
@@ -42882,6 +42883,42 @@ func (m *UserBalanceCreditMutation) OldUserID(ctx context.Context) (v int64, err
 // ResetUserID resets all changes to the "user_id" field.
 func (m *UserBalanceCreditMutation) ResetUserID() {
 	m.user = nil
+}
+
+// SetEmail sets the "email" field.
+func (m *UserBalanceCreditMutation) SetEmail(s string) {
+	m.email = &s
+}
+
+// Email returns the value of the "email" field in the mutation.
+func (m *UserBalanceCreditMutation) Email() (r string, exists bool) {
+	v := m.email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmail returns the old "email" field's value of the UserBalanceCredit entity.
+// If the UserBalanceCredit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserBalanceCreditMutation) OldEmail(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmail: %w", err)
+	}
+	return oldValue.Email, nil
+}
+
+// ResetEmail resets all changes to the "email" field.
+func (m *UserBalanceCreditMutation) ResetEmail() {
+	m.email = nil
 }
 
 // SetSourceType sets the "source_type" field.
@@ -43420,9 +43457,12 @@ func (m *UserBalanceCreditMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserBalanceCreditMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.user != nil {
 		fields = append(fields, userbalancecredit.FieldUserID)
+	}
+	if m.email != nil {
+		fields = append(fields, userbalancecredit.FieldEmail)
 	}
 	if m.source_type != nil {
 		fields = append(fields, userbalancecredit.FieldSourceType)
@@ -43467,6 +43507,8 @@ func (m *UserBalanceCreditMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case userbalancecredit.FieldUserID:
 		return m.UserID()
+	case userbalancecredit.FieldEmail:
+		return m.Email()
 	case userbalancecredit.FieldSourceType:
 		return m.SourceType()
 	case userbalancecredit.FieldSourceID:
@@ -43500,6 +43542,8 @@ func (m *UserBalanceCreditMutation) OldField(ctx context.Context, name string) (
 	switch name {
 	case userbalancecredit.FieldUserID:
 		return m.OldUserID(ctx)
+	case userbalancecredit.FieldEmail:
+		return m.OldEmail(ctx)
 	case userbalancecredit.FieldSourceType:
 		return m.OldSourceType(ctx)
 	case userbalancecredit.FieldSourceID:
@@ -43537,6 +43581,13 @@ func (m *UserBalanceCreditMutation) SetField(name string, value ent.Value) error
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
+		return nil
+	case userbalancecredit.FieldEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmail(v)
 		return nil
 	case userbalancecredit.FieldSourceType:
 		v, ok := value.(string)
@@ -43714,6 +43765,9 @@ func (m *UserBalanceCreditMutation) ResetField(name string) error {
 	switch name {
 	case userbalancecredit.FieldUserID:
 		m.ResetUserID()
+		return nil
+	case userbalancecredit.FieldEmail:
+		m.ResetEmail()
 		return nil
 	case userbalancecredit.FieldSourceType:
 		m.ResetSourceType()

@@ -392,6 +392,7 @@ type AdminRedeemCode struct {
 type UserBalanceCredit struct {
 	ID               int64      `json:"id"`
 	UserID           int64      `json:"user_id"`
+	Email            string     `json:"email"`
 	SourceType       string     `json:"source_type"`
 	SourceID         string     `json:"source_id"`
 	SourceCode       string     `json:"source_code"`

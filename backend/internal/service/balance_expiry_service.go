@@ -27,6 +27,13 @@ type BalanceExpiryService struct {
 	wg                   sync.WaitGroup
 }
 
+type ManualBalanceSettlementResult struct {
+	SettlementDate string    `json:"settlement_date"`
+	WindowStart    time.Time `json:"window_start"`
+	WindowEnd      time.Time `json:"window_end"`
+	TouchedUsers   int       `json:"touched_users"`
+}
+
 func NewBalanceExpiryService(
 	creditRepo BalanceCreditRepository,
 	redeemRepo RedeemCodeRepository,
@@ -184,6 +191,27 @@ func (s *BalanceExpiryService) runOnce() {
 	for _, userID := range expiredUsers {
 		s.invalidateCaches(ctx, userID)
 	}
+}
+
+func (s *BalanceExpiryService) RunManualSettlement(ctx context.Context) (*ManualBalanceSettlementResult, error) {
+	if s == nil || s.creditRepo == nil || s.redeemRepo == nil || s.entClient == nil {
+		return nil, fmt.Errorf("balance expiry service is not available")
+	}
+	now := time.Now()
+	dayStart, dayEnd := previousSettlementWindow(now)
+	expiredUsers, err := s.settleAndExpireDay(ctx, dayStart, dayEnd, 500)
+	if err != nil {
+		return nil, err
+	}
+	for _, userID := range expiredUsers {
+		s.invalidateCaches(ctx, userID)
+	}
+	return &ManualBalanceSettlementResult{
+		SettlementDate: dayStart.Format("2006-01-02"),
+		WindowStart:    dayStart,
+		WindowEnd:      dayEnd,
+		TouchedUsers:   len(expiredUsers),
+	}, nil
 }
 
 func previousSettlementWindow(now time.Time) (time.Time, time.Time) {

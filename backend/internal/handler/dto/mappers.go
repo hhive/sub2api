@@ -528,6 +528,7 @@ func UserBalanceCreditFromService(credit *service.BalanceCredit) *UserBalanceCre
 	return &UserBalanceCredit{
 		ID:               credit.ID,
 		UserID:           credit.UserID,
+		Email:            credit.Email,
 		SourceType:       credit.SourceType,
 		SourceID:         credit.SourceID,
 		SourceCode:       credit.SourceCode,

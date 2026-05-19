@@ -371,6 +371,7 @@ export default {
     affiliateTransferRecords: 'Transfer Records',
     profile: 'Profile',
     users: 'Users',
+    balanceCredits: 'Balance Ledger',
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
@@ -1730,6 +1731,24 @@ export default {
     },
 
     // Users
+    balanceCredits: {
+      title: 'Balance Ledger',
+      description: 'Query balance credit ledger records for all users',
+      searchPlaceholder: 'Search by user email',
+      userIdPlaceholder: 'User ID',
+      allSources: 'All Sources',
+      allStatuses: 'All Statuses',
+      user: 'User',
+      createdAt: 'Created',
+      totalAmount: 'Total Credited',
+      totalRemaining: 'Total Remaining',
+      settleNow: 'Settle',
+      settleSuccess: 'Balance settlement triggered for {date}',
+      settleFailed: 'Failed to settle balance credits',
+      empty: 'No balance ledger records found',
+      loadFailed: 'Failed to load balance ledger'
+    },
+
     users: {
       title: 'User Management',
       description: 'Manage users and their permissions',

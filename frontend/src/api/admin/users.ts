@@ -247,6 +247,7 @@ export interface BalanceHistoryResponse extends PaginatedResponse<BalanceHistory
 export interface UserBalanceCredit {
   id: number
   user_id: number
+  email: string
   source_type: string
   source_id: string
   source_code: string
@@ -258,6 +259,18 @@ export interface UserBalanceCredit {
   status: string
   created_at: string
   updated_at: string
+}
+
+export interface BalanceCreditsResponse extends PaginatedResponse<UserBalanceCredit> {
+  total_amount: number
+  total_remaining: number
+}
+
+export interface ManualBalanceSettlementResult {
+  settlement_date: string
+  window_start: string
+  window_end: string
+  touched_users: number
 }
 
 /**
@@ -292,6 +305,40 @@ export async function getUserBalanceCredits(
     `/admin/users/${id}/balance-credits`,
     { params: { page, page_size: pageSize } }
   )
+  return data
+}
+
+export async function listBalanceCredits(
+  page: number = 1,
+  pageSize: number = 20,
+  filters?: {
+    user_id?: number
+    search?: string
+    source_type?: string
+    status?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
+  }
+): Promise<BalanceCreditsResponse> {
+  const params: Record<string, any> = {
+    page,
+    page_size: pageSize,
+    user_id: filters?.user_id || undefined,
+    search: filters?.search || undefined,
+    source_type: filters?.source_type || undefined,
+    status: filters?.status || undefined,
+    sort_by: filters?.sort_by || undefined,
+    sort_order: filters?.sort_order || undefined
+  }
+  const { data } = await apiClient.get<BalanceCreditsResponse>(
+    '/admin/balance-credits',
+    { params }
+  )
+  return data
+}
+
+export async function settleBalanceCredits(): Promise<ManualBalanceSettlementResult> {
+  const { data } = await apiClient.post<ManualBalanceSettlementResult>('/admin/balance-credits/settle')
   return data
 }
 
@@ -338,6 +385,8 @@ export const usersAPI = {
   getUserUsageStats,
   getUserBalanceHistory,
   getUserBalanceCredits,
+  listBalanceCredits,
+  settleBalanceCredits,
   replaceGroup,
   bindUserAuthIdentity
 }

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
@@ -74,6 +76,23 @@ func NewSettingHandler(settingService *service.SettingService, emailService *ser
 		paymentService:       paymentService,
 		balanceExpiryService: balanceExpiryService,
 	}
+}
+
+// SettleBalanceCredits triggers one manual balance credit settlement run.
+// POST /api/v1/admin/balance-credits/settle
+func (h *SettingHandler) SettleBalanceCredits(c *gin.Context) {
+	if h.balanceExpiryService == nil {
+		response.BadRequest(c, "Balance settlement service is not available")
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	result, err := h.balanceExpiryService.RunManualSettlement(ctx)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
 }
 
 // GetSettings 获取所有系统设置

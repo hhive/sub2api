@@ -1593,6 +1593,7 @@ var (
 	// UserBalanceCreditsColumns holds the columns for the "user_balance_credits" table.
 	UserBalanceCreditsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "email", Type: field.TypeString, Size: 255, Default: ""},
 		{Name: "source_type", Type: field.TypeString, Size: 32},
 		{Name: "source_id", Type: field.TypeString, Size: 128, Default: ""},
 		{Name: "source_code", Type: field.TypeString, Size: 128, Default: ""},
@@ -1614,31 +1615,36 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "user_balance_credits_users_balance_credits",
-				Columns:    []*schema.Column{UserBalanceCreditsColumns[12]},
+				Columns:    []*schema.Column{UserBalanceCreditsColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
+				Name:    "userbalancecredit_email",
+				Unique:  false,
+				Columns: []*schema.Column{UserBalanceCreditsColumns[1]},
+			},
+			{
 				Name:    "userbalancecredit_user_id_status_settled_until_date_expires_at",
 				Unique:  false,
-				Columns: []*schema.Column{UserBalanceCreditsColumns[12], UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[6], UserBalanceCreditsColumns[7]},
+				Columns: []*schema.Column{UserBalanceCreditsColumns[13], UserBalanceCreditsColumns[10], UserBalanceCreditsColumns[7], UserBalanceCreditsColumns[8]},
 			},
 			{
 				Name:    "userbalancecredit_user_id_status_expires_at",
 				Unique:  false,
-				Columns: []*schema.Column{UserBalanceCreditsColumns[12], UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[7]},
+				Columns: []*schema.Column{UserBalanceCreditsColumns[13], UserBalanceCreditsColumns[10], UserBalanceCreditsColumns[8]},
 			},
 			{
 				Name:    "userbalancecredit_status_expires_at",
 				Unique:  false,
-				Columns: []*schema.Column{UserBalanceCreditsColumns[9], UserBalanceCreditsColumns[7]},
+				Columns: []*schema.Column{UserBalanceCreditsColumns[10], UserBalanceCreditsColumns[8]},
 			},
 			{
 				Name:    "userbalancecredit_source_type_source_id",
 				Unique:  false,
-				Columns: []*schema.Column{UserBalanceCreditsColumns[1], UserBalanceCreditsColumns[2]},
+				Columns: []*schema.Column{UserBalanceCreditsColumns[2], UserBalanceCreditsColumns[3]},
 			},
 		},
 	}

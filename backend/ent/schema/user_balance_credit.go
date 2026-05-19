@@ -26,6 +26,9 @@ func (UserBalanceCredit) Annotations() []schema.Annotation {
 func (UserBalanceCredit) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("user_id"),
+		field.String("email").
+			MaxLen(255).
+			Default(""),
 		field.String("source_type").
 			MaxLen(32).
 			NotEmpty(),
@@ -77,6 +80,7 @@ func (UserBalanceCredit) Edges() []ent.Edge {
 
 func (UserBalanceCredit) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("email"),
 		index.Fields("user_id", "status", "settled_until_date", "expires_at"),
 		index.Fields("user_id", "status", "expires_at"),
 		index.Fields("status", "expires_at"),

@@ -1976,8 +1976,14 @@ func init() {
 	userattributevalue.DefaultValue = userattributevalueDescValue.Default.(string)
 	userbalancecreditFields := schema.UserBalanceCredit{}.Fields()
 	_ = userbalancecreditFields
+	// userbalancecreditDescEmail is the schema descriptor for email field.
+	userbalancecreditDescEmail := userbalancecreditFields[1].Descriptor()
+	// userbalancecredit.DefaultEmail holds the default value on creation for the email field.
+	userbalancecredit.DefaultEmail = userbalancecreditDescEmail.Default.(string)
+	// userbalancecredit.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	userbalancecredit.EmailValidator = userbalancecreditDescEmail.Validators[0].(func(string) error)
 	// userbalancecreditDescSourceType is the schema descriptor for source_type field.
-	userbalancecreditDescSourceType := userbalancecreditFields[1].Descriptor()
+	userbalancecreditDescSourceType := userbalancecreditFields[2].Descriptor()
 	// userbalancecredit.SourceTypeValidator is a validator for the "source_type" field. It is called by the builders before save.
 	userbalancecredit.SourceTypeValidator = func() func(string) error {
 		validators := userbalancecreditDescSourceType.Validators
@@ -1995,29 +2001,29 @@ func init() {
 		}
 	}()
 	// userbalancecreditDescSourceID is the schema descriptor for source_id field.
-	userbalancecreditDescSourceID := userbalancecreditFields[2].Descriptor()
+	userbalancecreditDescSourceID := userbalancecreditFields[3].Descriptor()
 	// userbalancecredit.DefaultSourceID holds the default value on creation for the source_id field.
 	userbalancecredit.DefaultSourceID = userbalancecreditDescSourceID.Default.(string)
 	// userbalancecredit.SourceIDValidator is a validator for the "source_id" field. It is called by the builders before save.
 	userbalancecredit.SourceIDValidator = userbalancecreditDescSourceID.Validators[0].(func(string) error)
 	// userbalancecreditDescSourceCode is the schema descriptor for source_code field.
-	userbalancecreditDescSourceCode := userbalancecreditFields[3].Descriptor()
+	userbalancecreditDescSourceCode := userbalancecreditFields[4].Descriptor()
 	// userbalancecredit.DefaultSourceCode holds the default value on creation for the source_code field.
 	userbalancecredit.DefaultSourceCode = userbalancecreditDescSourceCode.Default.(string)
 	// userbalancecredit.SourceCodeValidator is a validator for the "source_code" field. It is called by the builders before save.
 	userbalancecredit.SourceCodeValidator = userbalancecreditDescSourceCode.Validators[0].(func(string) error)
 	// userbalancecreditDescStatus is the schema descriptor for status field.
-	userbalancecreditDescStatus := userbalancecreditFields[9].Descriptor()
+	userbalancecreditDescStatus := userbalancecreditFields[10].Descriptor()
 	// userbalancecredit.DefaultStatus holds the default value on creation for the status field.
 	userbalancecredit.DefaultStatus = userbalancecreditDescStatus.Default.(string)
 	// userbalancecredit.StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	userbalancecredit.StatusValidator = userbalancecreditDescStatus.Validators[0].(func(string) error)
 	// userbalancecreditDescCreatedAt is the schema descriptor for created_at field.
-	userbalancecreditDescCreatedAt := userbalancecreditFields[10].Descriptor()
+	userbalancecreditDescCreatedAt := userbalancecreditFields[11].Descriptor()
 	// userbalancecredit.DefaultCreatedAt holds the default value on creation for the created_at field.
 	userbalancecredit.DefaultCreatedAt = userbalancecreditDescCreatedAt.Default.(func() time.Time)
 	// userbalancecreditDescUpdatedAt is the schema descriptor for updated_at field.
-	userbalancecreditDescUpdatedAt := userbalancecreditFields[11].Descriptor()
+	userbalancecreditDescUpdatedAt := userbalancecreditFields[12].Descriptor()
 	// userbalancecredit.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	userbalancecredit.DefaultUpdatedAt = userbalancecreditDescUpdatedAt.Default.(func() time.Time)
 	// userbalancecredit.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

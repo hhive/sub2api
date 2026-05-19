@@ -42,6 +42,7 @@ type AdminService interface {
 	// Also returns totalRecharged (sum of all positive balance top-ups).
 	GetUserBalanceHistory(ctx context.Context, userID int64, page, pageSize int, codeType string) ([]RedeemCode, int64, float64, error)
 	GetUserBalanceCredits(ctx context.Context, userID int64, page, pageSize int) ([]BalanceCredit, int64, error)
+	ListBalanceCredits(ctx context.Context, page, pageSize int, filters BalanceCreditListFilters) ([]BalanceCredit, int64, BalanceCreditListSummary, error)
 	BindUserAuthIdentity(ctx context.Context, userID int64, input AdminBindAuthIdentityInput) (*AdminBoundAuthIdentity, error)
 
 	// Group management
@@ -1096,6 +1097,14 @@ func (s *adminServiceImpl) GetUserBalanceCredits(ctx context.Context, userID int
 	}
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
 	return s.balanceCreditRepo.ListUserCredits(ctx, userID, params)
+}
+
+func (s *adminServiceImpl) ListBalanceCredits(ctx context.Context, page, pageSize int, filters BalanceCreditListFilters) ([]BalanceCredit, int64, BalanceCreditListSummary, error) {
+	if s == nil || s.balanceCreditRepo == nil {
+		return []BalanceCredit{}, 0, BalanceCreditListSummary{}, nil
+	}
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+	return s.balanceCreditRepo.ListCredits(ctx, params, filters)
 }
 
 func (s *adminServiceImpl) getAllUserBalanceHistory(ctx context.Context, userID int64, params pagination.PaginationParams) ([]RedeemCode, int64, float64, error) {

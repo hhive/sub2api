@@ -29,6 +29,20 @@ func (_c *UserBalanceCreditCreate) SetUserID(v int64) *UserBalanceCreditCreate {
 	return _c
 }
 
+// SetEmail sets the "email" field.
+func (_c *UserBalanceCreditCreate) SetEmail(v string) *UserBalanceCreditCreate {
+	_c.mutation.SetEmail(v)
+	return _c
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_c *UserBalanceCreditCreate) SetNillableEmail(v *string) *UserBalanceCreditCreate {
+	if v != nil {
+		_c.SetEmail(*v)
+	}
+	return _c
+}
+
 // SetSourceType sets the "source_type" field.
 func (_c *UserBalanceCreditCreate) SetSourceType(v string) *UserBalanceCreditCreate {
 	_c.mutation.SetSourceType(v)
@@ -199,6 +213,10 @@ func (_c *UserBalanceCreditCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *UserBalanceCreditCreate) defaults() {
+	if _, ok := _c.mutation.Email(); !ok {
+		v := userbalancecredit.DefaultEmail
+		_c.mutation.SetEmail(v)
+	}
 	if _, ok := _c.mutation.SourceID(); !ok {
 		v := userbalancecredit.DefaultSourceID
 		_c.mutation.SetSourceID(v)
@@ -225,6 +243,14 @@ func (_c *UserBalanceCreditCreate) defaults() {
 func (_c *UserBalanceCreditCreate) check() error {
 	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UserBalanceCredit.user_id"`)}
+	}
+	if _, ok := _c.mutation.Email(); !ok {
+		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "UserBalanceCredit.email"`)}
+	}
+	if v, ok := _c.mutation.Email(); ok {
+		if err := userbalancecredit.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "UserBalanceCredit.email": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.SourceType(); !ok {
 		return &ValidationError{Name: "source_type", err: errors.New(`ent: missing required field "UserBalanceCredit.source_type"`)}
@@ -300,6 +326,10 @@ func (_c *UserBalanceCreditCreate) createSpec() (*UserBalanceCredit, *sqlgraph.C
 		_spec = sqlgraph.NewCreateSpec(userbalancecredit.Table, sqlgraph.NewFieldSpec(userbalancecredit.FieldID, field.TypeInt64))
 	)
 	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.Email(); ok {
+		_spec.SetField(userbalancecredit.FieldEmail, field.TypeString, value)
+		_node.Email = value
+	}
 	if value, ok := _c.mutation.SourceType(); ok {
 		_spec.SetField(userbalancecredit.FieldSourceType, field.TypeString, value)
 		_node.SourceType = value
@@ -422,6 +452,18 @@ func (u *UserBalanceCreditUpsert) SetUserID(v int64) *UserBalanceCreditUpsert {
 // UpdateUserID sets the "user_id" field to the value that was provided on create.
 func (u *UserBalanceCreditUpsert) UpdateUserID() *UserBalanceCreditUpsert {
 	u.SetExcluded(userbalancecredit.FieldUserID)
+	return u
+}
+
+// SetEmail sets the "email" field.
+func (u *UserBalanceCreditUpsert) SetEmail(v string) *UserBalanceCreditUpsert {
+	u.Set(userbalancecredit.FieldEmail, v)
+	return u
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserBalanceCreditUpsert) UpdateEmail() *UserBalanceCreditUpsert {
+	u.SetExcluded(userbalancecredit.FieldEmail)
 	return u
 }
 
@@ -631,6 +673,20 @@ func (u *UserBalanceCreditUpsertOne) SetUserID(v int64) *UserBalanceCreditUpsert
 func (u *UserBalanceCreditUpsertOne) UpdateUserID() *UserBalanceCreditUpsertOne {
 	return u.Update(func(s *UserBalanceCreditUpsert) {
 		s.UpdateUserID()
+	})
+}
+
+// SetEmail sets the "email" field.
+func (u *UserBalanceCreditUpsertOne) SetEmail(v string) *UserBalanceCreditUpsertOne {
+	return u.Update(func(s *UserBalanceCreditUpsert) {
+		s.SetEmail(v)
+	})
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserBalanceCreditUpsertOne) UpdateEmail() *UserBalanceCreditUpsertOne {
+	return u.Update(func(s *UserBalanceCreditUpsert) {
+		s.UpdateEmail()
 	})
 }
 
@@ -1031,6 +1087,20 @@ func (u *UserBalanceCreditUpsertBulk) SetUserID(v int64) *UserBalanceCreditUpser
 func (u *UserBalanceCreditUpsertBulk) UpdateUserID() *UserBalanceCreditUpsertBulk {
 	return u.Update(func(s *UserBalanceCreditUpsert) {
 		s.UpdateUserID()
+	})
+}
+
+// SetEmail sets the "email" field.
+func (u *UserBalanceCreditUpsertBulk) SetEmail(v string) *UserBalanceCreditUpsertBulk {
+	return u.Update(func(s *UserBalanceCreditUpsert) {
+		s.SetEmail(v)
+	})
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserBalanceCreditUpsertBulk) UpdateEmail() *UserBalanceCreditUpsertBulk {
+	return u.Update(func(s *UserBalanceCreditUpsert) {
+		s.UpdateEmail()
 	})
 }
 

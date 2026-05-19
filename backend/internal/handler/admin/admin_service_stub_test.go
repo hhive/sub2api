@@ -551,6 +551,10 @@ func (s *stubAdminService) GetUserBalanceCredits(ctx context.Context, userID int
 	return nil, 0, nil
 }
 
+func (s *stubAdminService) ListBalanceCredits(ctx context.Context, page, pageSize int, filters service.BalanceCreditListFilters) ([]service.BalanceCredit, int64, service.BalanceCreditListSummary, error) {
+	return nil, 0, service.BalanceCreditListSummary{}, nil
+}
+
 func (s *stubAdminService) UpdateGroupSortOrders(ctx context.Context, updates []service.GroupSortOrderUpdate) error {
 	return nil
 }

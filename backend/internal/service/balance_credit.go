@@ -20,6 +20,7 @@ const (
 
 type BalanceCreditCreate struct {
 	UserID     int64
+	Email      string
 	SourceType string
 	SourceID   string
 	SourceCode string
@@ -42,6 +43,7 @@ type DailyBalanceUsage struct {
 type BalanceCredit struct {
 	ID               int64
 	UserID           int64
+	Email            string
 	SourceType       string
 	SourceID         string
 	SourceCode       string
@@ -55,12 +57,27 @@ type BalanceCredit struct {
 	UpdatedAt        time.Time
 }
 
+type BalanceCreditListSummary struct {
+	TotalAmount    float64
+	TotalRemaining float64
+}
+
 type BalanceCreditRepository interface {
 	CreateCredit(ctx context.Context, credit BalanceCreditCreate) error
 	ListUserCredits(ctx context.Context, userID int64, params pagination.PaginationParams) ([]BalanceCredit, int64, error)
+	ListCredits(ctx context.Context, params pagination.PaginationParams, filters BalanceCreditListFilters) ([]BalanceCredit, int64, BalanceCreditListSummary, error)
 	ListDailyBalanceUsage(ctx context.Context, start, end time.Time) ([]DailyBalanceUsage, error)
 	SettleDailyUsage(ctx context.Context, userID int64, amount float64, settlementDate time.Time, dayEnd time.Time) error
 	ExpireDueCredits(ctx context.Context, now time.Time, settlementDate time.Time, limit int) ([]ExpiredBalanceCredit, error)
+}
+
+type BalanceCreditListFilters struct {
+	UserID     int64
+	Search     string
+	SourceType string
+	Status     string
+	SortBy     string
+	SortOrder  string
 }
 
 func balanceCreditExpiresAt(validityDays int, now time.Time) *time.Time {

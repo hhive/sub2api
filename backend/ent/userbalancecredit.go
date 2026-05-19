@@ -20,6 +20,8 @@ type UserBalanceCredit struct {
 	ID int64 `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int64 `json:"user_id,omitempty"`
+	// Email holds the value of the "email" field.
+	Email string `json:"email,omitempty"`
 	// SourceType holds the value of the "source_type" field.
 	SourceType string `json:"source_type,omitempty"`
 	// SourceID holds the value of the "source_id" field.
@@ -77,7 +79,7 @@ func (*UserBalanceCredit) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case userbalancecredit.FieldID, userbalancecredit.FieldUserID:
 			values[i] = new(sql.NullInt64)
-		case userbalancecredit.FieldSourceType, userbalancecredit.FieldSourceID, userbalancecredit.FieldSourceCode, userbalancecredit.FieldStatus:
+		case userbalancecredit.FieldEmail, userbalancecredit.FieldSourceType, userbalancecredit.FieldSourceID, userbalancecredit.FieldSourceCode, userbalancecredit.FieldStatus:
 			values[i] = new(sql.NullString)
 		case userbalancecredit.FieldSettledUntilDate, userbalancecredit.FieldExpiresAt, userbalancecredit.FieldExpiredAt, userbalancecredit.FieldCreatedAt, userbalancecredit.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -107,6 +109,12 @@ func (_m *UserBalanceCredit) assignValues(columns []string, values []any) error 
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
 				_m.UserID = value.Int64
+			}
+		case userbalancecredit.FieldEmail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field email", values[i])
+			} else if value.Valid {
+				_m.Email = value.String
 			}
 		case userbalancecredit.FieldSourceType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -220,6 +228,9 @@ func (_m *UserBalanceCredit) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString(", ")
+	builder.WriteString("email=")
+	builder.WriteString(_m.Email)
 	builder.WriteString(", ")
 	builder.WriteString("source_type=")
 	builder.WriteString(_m.SourceType)

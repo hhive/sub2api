@@ -231,6 +231,9 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 }
 
 func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	admin.GET("/balance-credits", h.Admin.User.ListBalanceCredits)
+	admin.POST("/balance-credits/settle", h.Admin.Setting.SettleBalanceCredits)
+
 	users := admin.Group("/users")
 	{
 		users.GET("", h.Admin.User.List)

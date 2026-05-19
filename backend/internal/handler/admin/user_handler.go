@@ -451,6 +451,59 @@ func (h *UserHandler) GetBalanceCredits(c *gin.Context) {
 	response.Paginated(c, out, total, page, pageSize)
 }
 
+// ListBalanceCredits handles getting all users' balance credit ledger.
+// GET /api/v1/admin/balance-credits
+func (h *UserHandler) ListBalanceCredits(c *gin.Context) {
+	page, pageSize := response.ParsePagination(c)
+
+	var userID int64
+	if raw := strings.TrimSpace(c.Query("user_id")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed < 0 {
+			response.BadRequest(c, "Invalid user ID")
+			return
+		}
+		userID = parsed
+	}
+
+	search := strings.TrimSpace(c.Query("search"))
+	if runes := []rune(search); len(runes) > 100 {
+		search = string(runes[:100])
+	}
+	filters := service.BalanceCreditListFilters{
+		UserID:     userID,
+		Search:     search,
+		SourceType: strings.TrimSpace(c.Query("source_type")),
+		Status:     strings.TrimSpace(c.Query("status")),
+		SortBy:     strings.TrimSpace(c.DefaultQuery("sort_by", "created_at")),
+		SortOrder:  strings.TrimSpace(c.DefaultQuery("sort_order", "desc")),
+	}
+
+	credits, total, summary, err := h.adminService.ListBalanceCredits(c.Request.Context(), page, pageSize, filters)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]dto.UserBalanceCredit, 0, len(credits))
+	for i := range credits {
+		out = append(out, *dto.UserBalanceCreditFromService(&credits[i]))
+	}
+	pages := int64(0)
+	if pageSize > 0 {
+		pages = (total + int64(pageSize) - 1) / int64(pageSize)
+	}
+	response.Success(c, gin.H{
+		"items":           out,
+		"total":           total,
+		"page":            page,
+		"page_size":       pageSize,
+		"pages":           pages,
+		"total_amount":    summary.TotalAmount,
+		"total_remaining": summary.TotalRemaining,
+	})
+}
+
 // ReplaceGroupRequest represents the request to replace a user's exclusive group
 type ReplaceGroupRequest struct {
 	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`

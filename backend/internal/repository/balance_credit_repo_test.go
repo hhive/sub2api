@@ -34,12 +34,13 @@ func TestBalanceCreditRepositoryCreateCreditInsertsPositiveCredit(t *testing.T) 
 
 	expiresAt := time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC)
 	mock.ExpectExec("INSERT INTO user_balance_credits").
-		WithArgs(int64(9), service.BalanceCreditSourceRedeem, "redeem-1", "CODE-1", 12.5, 12.5, expiresAt).
+		WithArgs(int64(9), "user@example.com", service.BalanceCreditSourceRedeem, "redeem-1", "CODE-1", 12.5, 12.5, expiresAt).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	repo := NewBalanceCreditRepository(nil, db)
 	err = repo.CreateCredit(context.Background(), service.BalanceCreditCreate{
 		UserID:     9,
+		Email:      "user@example.com",
 		SourceType: service.BalanceCreditSourceRedeem,
 		SourceID:   "redeem-1",
 		SourceCode: "CODE-1",
@@ -90,11 +91,11 @@ func TestBalanceCreditRepositoryListUserCreditsReturnsPaginatedCredits(t *testin
 	mock.ExpectQuery("SELECT id,").
 		WithArgs(int64(7), 20, 20).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "user_id", "source_type", "source_id", "source_code", "amount",
+			"id", "user_id", "email", "source_type", "source_id", "source_code", "amount",
 			"remaining_amount", "settled_until_date", "expires_at", "expired_at",
 			"status", "created_at", "updated_at",
 		}).AddRow(
-			int64(3), int64(7), service.BalanceCreditSourceRedeem, "redeem-3", "CODE-3",
+			int64(3), int64(7), "user7@example.com", service.BalanceCreditSourceRedeem, "redeem-3", "CODE-3",
 			12.5, 8.25, settledUntil, expiresAt, nil, service.BalanceCreditStatusActive,
 			createdAt, updatedAt,
 		))
@@ -105,11 +106,55 @@ func TestBalanceCreditRepositoryListUserCreditsReturnsPaginatedCredits(t *testin
 	require.Equal(t, int64(1), total)
 	require.Len(t, credits, 1)
 	require.Equal(t, int64(3), credits[0].ID)
+	require.Equal(t, "user7@example.com", credits[0].Email)
 	require.Equal(t, 12.5, credits[0].Amount)
 	require.Equal(t, 8.25, credits[0].RemainingAmount)
 	require.NotNil(t, credits[0].SettledUntilDate)
 	require.NotNil(t, credits[0].ExpiresAt)
 	require.Nil(t, credits[0].ExpiredAt)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBalanceCreditRepositoryListCreditsFiltersAndReturnsEmail(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	createdAt := time.Date(2026, 5, 9, 1, 2, 3, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Hour)
+	expiresAt := createdAt.AddDate(0, 0, 180)
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(int64(7), service.BalanceCreditSourceRedeem, service.BalanceCreditStatusActive, "%alice%").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
+	mock.ExpectQuery("SELECT COALESCE").
+		WithArgs(int64(7), service.BalanceCreditSourceRedeem, service.BalanceCreditStatusActive, "%alice%").
+		WillReturnRows(sqlmock.NewRows([]string{"total_amount", "total_remaining"}).AddRow(20.0, 15.0))
+	mock.ExpectQuery("SELECT id,").
+		WithArgs(int64(7), service.BalanceCreditSourceRedeem, service.BalanceCreditStatusActive, "%alice%", 0, 20).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "email", "source_type", "source_id", "source_code", "amount",
+			"remaining_amount", "settled_until_date", "expires_at", "expired_at",
+			"status", "created_at", "updated_at",
+		}).AddRow(
+			int64(8), int64(7), "alice@example.com", service.BalanceCreditSourceRedeem, "88", "CODE-88",
+			20.0, 15.0, nil, expiresAt, nil, service.BalanceCreditStatusActive,
+			createdAt, updatedAt,
+		))
+
+	repo := NewBalanceCreditRepository(nil, db)
+	credits, total, summary, err := repo.ListCredits(context.Background(), pagination.PaginationParams{Page: 1, PageSize: 20}, service.BalanceCreditListFilters{
+		UserID:     7,
+		Search:     "alice",
+		SourceType: service.BalanceCreditSourceRedeem,
+		Status:     service.BalanceCreditStatusActive,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), total)
+	require.Equal(t, service.BalanceCreditListSummary{TotalAmount: 20.0, TotalRemaining: 15.0}, summary)
+	require.Len(t, credits, 1)
+	require.Equal(t, "alice@example.com", credits[0].Email)
+	require.Equal(t, 15.0, credits[0].RemainingAmount)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

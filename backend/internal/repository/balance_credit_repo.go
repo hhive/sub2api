@@ -53,9 +53,9 @@ func (r *balanceCreditRepository) CreateCredit(ctx context.Context, credit servi
 	}
 	_, err = db.ExecContext(ctx, `
 INSERT INTO user_balance_credits (
-	user_id, source_type, source_id, source_code, amount, remaining_amount, expires_at, status, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW(), NOW())
-`, credit.UserID, sourceType, strings.TrimSpace(credit.SourceID), strings.TrimSpace(credit.SourceCode), credit.Amount, credit.Amount, credit.ExpiresAt)
+	user_id, email, source_type, source_id, source_code, amount, remaining_amount, expires_at, status, created_at, updated_at
+) VALUES ($1, COALESCE(NULLIF($2, ''), (SELECT email FROM users WHERE id = $1), ''), $3, $4, $5, $6, $7, $8, 'active', NOW(), NOW())
+`, credit.UserID, strings.TrimSpace(credit.Email), sourceType, strings.TrimSpace(credit.SourceID), strings.TrimSpace(credit.SourceCode), credit.Amount, credit.Amount, credit.ExpiresAt)
 	return err
 }
 
@@ -92,6 +92,7 @@ WHERE user_id = $1
 	rows, err := db.QueryContext(ctx, `
 SELECT id,
        user_id,
+       email,
        source_type,
        source_id,
        source_code,
@@ -121,6 +122,7 @@ LIMIT $3
 		if err := rows.Scan(
 			&credit.ID,
 			&credit.UserID,
+			&credit.Email,
 			&credit.SourceType,
 			&credit.SourceID,
 			&credit.SourceCode,
@@ -150,6 +152,177 @@ LIMIT $3
 		return nil, 0, err
 	}
 	return credits, total, nil
+}
+
+func (r *balanceCreditRepository) ListCredits(ctx context.Context, params pagination.PaginationParams, filters service.BalanceCreditListFilters) ([]service.BalanceCredit, int64, service.BalanceCreditListSummary, error) {
+	db, err := r.execer(ctx)
+	if err != nil {
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	where, args := buildBalanceCreditListWhere(filters)
+
+	var total int64
+	countRows, err := db.QueryContext(ctx, `
+SELECT COUNT(*)
+FROM user_balance_credits
+`+where, args...)
+	if err != nil {
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	if countRows.Next() {
+		if err := countRows.Scan(&total); err != nil {
+			_ = countRows.Close()
+			return nil, 0, service.BalanceCreditListSummary{}, err
+		}
+	}
+	if err := countRows.Err(); err != nil {
+		_ = countRows.Close()
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	_ = countRows.Close()
+
+	var summary service.BalanceCreditListSummary
+	summaryRows, err := db.QueryContext(ctx, `
+SELECT COALESCE(SUM(amount), 0)::double precision,
+       COALESCE(SUM(remaining_amount), 0)::double precision
+FROM user_balance_credits
+`+where, args...)
+	if err != nil {
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	if summaryRows.Next() {
+		if err := summaryRows.Scan(&summary.TotalAmount, &summary.TotalRemaining); err != nil {
+			_ = summaryRows.Close()
+			return nil, 0, service.BalanceCreditListSummary{}, err
+		}
+	}
+	if err := summaryRows.Err(); err != nil {
+		_ = summaryRows.Close()
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	_ = summaryRows.Close()
+
+	queryArgs := append(append([]any{}, args...), params.Offset(), params.Limit())
+	rows, err := db.QueryContext(ctx, `
+SELECT id,
+       user_id,
+       email,
+       source_type,
+       source_id,
+       source_code,
+       amount::double precision,
+       remaining_amount::double precision,
+       settled_until_date,
+       expires_at,
+       expired_at,
+       status,
+       created_at,
+       updated_at
+FROM user_balance_credits
+`+where+fmt.Sprintf(`
+ORDER BY %s %s, id DESC
+OFFSET $%d
+LIMIT $%d
+`, balanceCreditSortColumn(filters.SortBy), balanceCreditSortOrder(filters.SortOrder), len(args)+1, len(args)+2), queryArgs...)
+	if err != nil {
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	credits := make([]service.BalanceCredit, 0, params.Limit())
+	for rows.Next() {
+		var credit service.BalanceCredit
+		var settledUntilDate, expiresAt, expiredAt sql.NullTime
+		if err := rows.Scan(
+			&credit.ID,
+			&credit.UserID,
+			&credit.Email,
+			&credit.SourceType,
+			&credit.SourceID,
+			&credit.SourceCode,
+			&credit.Amount,
+			&credit.RemainingAmount,
+			&settledUntilDate,
+			&expiresAt,
+			&expiredAt,
+			&credit.Status,
+			&credit.CreatedAt,
+			&credit.UpdatedAt,
+		); err != nil {
+			return nil, 0, service.BalanceCreditListSummary{}, err
+		}
+		if settledUntilDate.Valid {
+			credit.SettledUntilDate = &settledUntilDate.Time
+		}
+		if expiresAt.Valid {
+			credit.ExpiresAt = &expiresAt.Time
+		}
+		if expiredAt.Valid {
+			credit.ExpiredAt = &expiredAt.Time
+		}
+		credits = append(credits, credit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, service.BalanceCreditListSummary{}, err
+	}
+	return credits, total, summary, nil
+}
+
+func buildBalanceCreditListWhere(filters service.BalanceCreditListFilters) (string, []any) {
+	clauses := make([]string, 0, 4)
+	args := make([]any, 0, 4)
+	add := func(clause string, value any) {
+		args = append(args, value)
+		clauses = append(clauses, fmt.Sprintf(clause, len(args)))
+	}
+	if filters.UserID > 0 {
+		add("user_id = $%d", filters.UserID)
+	}
+	if sourceType := strings.TrimSpace(filters.SourceType); sourceType != "" {
+		add("source_type = $%d", sourceType)
+	}
+	if status := strings.TrimSpace(filters.Status); status != "" {
+		add("status = $%d", status)
+	}
+	if search := strings.TrimSpace(filters.Search); search != "" {
+		add("email ILIKE $%d", "%"+search+"%")
+	}
+	if len(clauses) == 0 {
+		return "", args
+	}
+	return "WHERE " + strings.Join(clauses, " AND "), args
+}
+
+func balanceCreditSortColumn(sortBy string) string {
+	switch strings.TrimSpace(sortBy) {
+	case "email":
+		return "email"
+	case "user_id":
+		return "user_id"
+	case "source_type":
+		return "source_type"
+	case "amount":
+		return "amount"
+	case "remaining_amount":
+		return "remaining_amount"
+	case "status":
+		return "status"
+	case "expires_at":
+		return "expires_at"
+	case "settled_until_date":
+		return "settled_until_date"
+	case "updated_at":
+		return "updated_at"
+	default:
+		return "created_at"
+	}
+}
+
+func balanceCreditSortOrder(sortOrder string) string {
+	if strings.EqualFold(strings.TrimSpace(sortOrder), "asc") {
+		return "ASC"
+	}
+	return "DESC"
 }
 
 func (r *balanceCreditRepository) ListDailyBalanceUsage(ctx context.Context, start, end time.Time) ([]service.DailyBalanceUsage, error) {
