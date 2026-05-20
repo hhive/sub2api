@@ -56,6 +56,23 @@ type SystemSettings struct {
 	LinuxDoConnectClientSecretConfigured bool   `json:"linuxdo_connect_client_secret_configured"`
 	LinuxDoConnectRedirectURL            string `json:"linuxdo_connect_redirect_url"`
 
+	DingTalkConnectEnabled                 bool   `json:"dingtalk_connect_enabled"`
+	DingTalkConnectClientID                string `json:"dingtalk_connect_client_id"`
+	DingTalkConnectClientSecretConfigured  bool   `json:"dingtalk_connect_client_secret_configured"`
+	DingTalkConnectRedirectURL             string `json:"dingtalk_connect_redirect_url"`
+	DingTalkConnectCorpRestrictionPolicy   string `json:"dingtalk_connect_corp_restriction_policy"`
+	DingTalkConnectInternalCorpID          string `json:"dingtalk_connect_internal_corp_id"`
+	DingTalkConnectBypassRegistration      bool   `json:"dingtalk_connect_bypass_registration"`
+	DingTalkConnectSyncCorpEmail           bool   `json:"dingtalk_connect_sync_corp_email"`
+	DingTalkConnectSyncDisplayName         bool   `json:"dingtalk_connect_sync_display_name"`
+	DingTalkConnectSyncDept                bool   `json:"dingtalk_connect_sync_dept"`
+	DingTalkConnectSyncCorpEmailAttrKey    string `json:"dingtalk_connect_sync_corp_email_attr_key"`
+	DingTalkConnectSyncDisplayNameAttrKey  string `json:"dingtalk_connect_sync_display_name_attr_key"`
+	DingTalkConnectSyncDeptAttrKey         string `json:"dingtalk_connect_sync_dept_attr_key"`
+	DingTalkConnectSyncCorpEmailAttrName   string `json:"dingtalk_connect_sync_corp_email_attr_name"`
+	DingTalkConnectSyncDisplayNameAttrName string `json:"dingtalk_connect_sync_display_name_attr_name"`
+	DingTalkConnectSyncDeptAttrName        string `json:"dingtalk_connect_sync_dept_attr_name"`
+
 	WeChatConnectEnabled                   bool   `json:"wechat_connect_enabled"`
 	WeChatConnectAppID                     string `json:"wechat_connect_app_id"`
 	WeChatConnectAppSecretConfigured       bool   `json:"wechat_connect_app_secret_configured"`
@@ -275,6 +292,7 @@ type PublicSettings struct {
 	OnyxEnabled                      bool                     `json:"onyx_enabled"`
 	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
 	OnyxLaunchPath                   string                   `json:"onyx_launch_path"`
+	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool                     `json:"wechat_oauth_open_enabled"`

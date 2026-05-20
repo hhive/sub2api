@@ -65,6 +65,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		OnyxEnabled:                      settings.OnyxEnabled,
 		OnyxMenuLabel:                    settings.OnyxMenuLabel,
 		OnyxLaunchPath:                   settings.OnyxLaunchPath,
+		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
 		WeChatOAuthOpenEnabled:           settings.WeChatOAuthOpenEnabled,
