@@ -42,6 +42,7 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		SetDescription(groupIn.Description).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
+		SetRateCorrectionMultiplier(groupIn.RateCorrectionMultiplier).
 		SetSortOrder(groupIn.SortOrder).
 		SetIsExclusive(groupIn.IsExclusive).
 		SetStatus(groupIn.Status).
@@ -120,6 +121,7 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetDescription(groupIn.Description).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
+		SetRateCorrectionMultiplier(groupIn.RateCorrectionMultiplier).
 		SetIsExclusive(groupIn.IsExclusive).
 		SetStatus(groupIn.Status).
 		SetSubscriptionType(groupIn.SubscriptionType).
@@ -393,6 +395,9 @@ func groupListOrder(params pagination.PaginationParams) []func(*entsql.Selector)
 		defaultOrder = false
 	case "rate_multiplier":
 		field = group.FieldRateMultiplier
+		defaultOrder = false
+	case "rate_correction_multiplier":
+		field = group.FieldRateCorrectionMultiplier
 		defaultOrder = false
 	case "is_exclusive":
 		field = group.FieldIsExclusive

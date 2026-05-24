@@ -85,6 +85,11 @@ func RateMultiplier(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRateMultiplier, v))
 }
 
+// RateCorrectionMultiplier applies equality check predicate on the "rate_correction_multiplier" field. It's identical to RateCorrectionMultiplierEQ.
+func RateCorrectionMultiplier(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRateCorrectionMultiplier, v))
+}
+
 // IsExclusive applies equality check predicate on the "is_exclusive" field. It's identical to IsExclusiveEQ.
 func IsExclusive(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldIsExclusive, v))
@@ -518,6 +523,46 @@ func RateMultiplierLT(v float64) predicate.Group {
 // RateMultiplierLTE applies the LTE predicate on the "rate_multiplier" field.
 func RateMultiplierLTE(v float64) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldRateMultiplier, v))
+}
+
+// RateCorrectionMultiplierEQ applies the EQ predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRateCorrectionMultiplier, v))
+}
+
+// RateCorrectionMultiplierNEQ applies the NEQ predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldRateCorrectionMultiplier, v))
+}
+
+// RateCorrectionMultiplierIn applies the In predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldRateCorrectionMultiplier, vs...))
+}
+
+// RateCorrectionMultiplierNotIn applies the NotIn predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldRateCorrectionMultiplier, vs...))
+}
+
+// RateCorrectionMultiplierGT applies the GT predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldRateCorrectionMultiplier, v))
+}
+
+// RateCorrectionMultiplierGTE applies the GTE predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldRateCorrectionMultiplier, v))
+}
+
+// RateCorrectionMultiplierLT applies the LT predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldRateCorrectionMultiplier, v))
+}
+
+// RateCorrectionMultiplierLTE applies the LTE predicate on the "rate_correction_multiplier" field.
+func RateCorrectionMultiplierLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldRateCorrectionMultiplier, v))
 }
 
 // IsExclusiveEQ applies the EQ predicate on the "is_exclusive" field.

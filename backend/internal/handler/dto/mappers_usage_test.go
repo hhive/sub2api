@@ -28,6 +28,27 @@ func TestUsageLogFromService_IncludesOpenAIWSMode(t *testing.T) {
 	require.False(t, UsageLogFromServiceAdmin(httpLog).OpenAIWSMode)
 }
 
+func TestGroupFromService_HidesRateCorrectionMultiplierFromUserDTO(t *testing.T) {
+	t.Parallel()
+
+	group := &service.Group{
+		ID:                       7,
+		Name:                     "vip",
+		Platform:                 service.PlatformAnthropic,
+		RateMultiplier:           1.5,
+		RateCorrectionMultiplier: 0.8,
+	}
+
+	userJSON, err := json.Marshal(GroupFromService(group))
+	require.NoError(t, err)
+	require.Contains(t, string(userJSON), `"rate_multiplier":1.5`)
+	require.NotContains(t, string(userJSON), "rate_correction_multiplier")
+
+	adminJSON, err := json.Marshal(GroupFromServiceAdmin(group))
+	require.NoError(t, err)
+	require.Contains(t, string(adminJSON), `"rate_correction_multiplier":0.8`)
+}
+
 func TestUsageLogFromService_PrefersRequestTypeForLegacyFields(t *testing.T) {
 	t.Parallel()
 

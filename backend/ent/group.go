@@ -31,6 +31,8 @@ type Group struct {
 	Description *string `json:"description,omitempty"`
 	// RateMultiplier holds the value of the "rate_multiplier" field.
 	RateMultiplier float64 `json:"rate_multiplier,omitempty"`
+	// 分组隐藏修正倍率，仅管理员可见；实际扣费倍率 = 用户可见费用倍率 * 修正倍率
+	RateCorrectionMultiplier float64 `json:"rate_correction_multiplier,omitempty"`
 	// IsExclusive holds the value of the "is_exclusive" field.
 	IsExclusive bool `json:"is_exclusive,omitempty"`
 	// Status holds the value of the "status" field.
@@ -197,7 +199,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldImageRateIndependent, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet:
 			values[i] = new(sql.NullBool)
-		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k:
+		case group.FieldRateMultiplier, group.FieldRateCorrectionMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImageRateMultiplier, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k:
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder, group.FieldRpmLimit:
 			values[i] = new(sql.NullInt64)
@@ -263,6 +265,12 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field rate_multiplier", values[i])
 			} else if value.Valid {
 				_m.RateMultiplier = value.Float64
+			}
+		case group.FieldRateCorrectionMultiplier:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field rate_correction_multiplier", values[i])
+			} else if value.Valid {
+				_m.RateCorrectionMultiplier = value.Float64
 			}
 		case group.FieldIsExclusive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -543,6 +551,9 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("rate_multiplier=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RateMultiplier))
+	builder.WriteString(", ")
+	builder.WriteString("rate_correction_multiplier=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RateCorrectionMultiplier))
 	builder.WriteString(", ")
 	builder.WriteString("is_exclusive=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsExclusive))

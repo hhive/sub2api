@@ -182,15 +182,16 @@ type AdminBoundAuthIdentityChannel struct {
 }
 
 type CreateGroupInput struct {
-	Name             string
-	Description      string
-	Platform         string
-	RateMultiplier   float64
-	IsExclusive      bool
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name                     string
+	Description              string
+	Platform                 string
+	RateMultiplier           float64
+	RateCorrectionMultiplier *float64
+	IsExclusive              bool
+	SubscriptionType         string   // standard/subscription
+	DailyLimitUSD            *float64 // 日限额 (USD)
+	WeeklyLimitUSD           *float64 // 周限额 (USD)
+	MonthlyLimitUSD          *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	AllowImageGeneration bool
 	ImageRateIndependent bool
@@ -221,16 +222,17 @@ type CreateGroupInput struct {
 }
 
 type UpdateGroupInput struct {
-	Name             string
-	Description      string
-	Platform         string
-	RateMultiplier   *float64 // 使用指针以支持设置为0
-	IsExclusive      *bool
-	Status           string
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name                     string
+	Description              string
+	Platform                 string
+	RateMultiplier           *float64 // 使用指针以支持设置为0
+	RateCorrectionMultiplier *float64
+	IsExclusive              *bool
+	Status                   string
+	SubscriptionType         string   // standard/subscription
+	DailyLimitUSD            *float64 // 日限额 (USD)
+	WeeklyLimitUSD           *float64 // 周限额 (USD)
+	MonthlyLimitUSD          *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	AllowImageGeneration *bool
 	ImageRateIndependent *bool
@@ -1644,6 +1646,13 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if input.RateMultiplier <= 0 {
 		return nil, errors.New("rate_multiplier must be > 0")
 	}
+	rateCorrectionMultiplier := 1.0
+	if input.RateCorrectionMultiplier != nil {
+		if *input.RateCorrectionMultiplier <= 0 {
+			return nil, errors.New("rate_correction_multiplier must be > 0")
+		}
+		rateCorrectionMultiplier = *input.RateCorrectionMultiplier
+	}
 
 	platform := input.Platform
 	if platform == "" {
@@ -1732,6 +1741,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		Description:                     input.Description,
 		Platform:                        platform,
 		RateMultiplier:                  input.RateMultiplier,
+		RateCorrectionMultiplier:        rateCorrectionMultiplier,
 		IsExclusive:                     input.IsExclusive,
 		Status:                          StatusActive,
 		SubscriptionType:                subscriptionType,
@@ -1899,6 +1909,12 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 			return nil, errors.New("rate_multiplier must be > 0")
 		}
 		group.RateMultiplier = *input.RateMultiplier
+	}
+	if input.RateCorrectionMultiplier != nil {
+		if *input.RateCorrectionMultiplier <= 0 {
+			return nil, errors.New("rate_correction_multiplier must be > 0")
+		}
+		group.RateCorrectionMultiplier = *input.RateCorrectionMultiplier
 	}
 	if input.IsExclusive != nil {
 		group.IsExclusive = *input.IsExclusive

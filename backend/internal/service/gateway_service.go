@@ -8448,16 +8448,19 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		cacheTTLOverridden = (result.Usage.CacheCreation5mTokens + result.Usage.CacheCreation1hTokens) > 0
 	}
 
-	// 获取费率倍数（优先级：用户专属 > 分组默认 > 系统默认）
-	multiplier := 1.0
+	// 获取用户可见费率倍数（优先级：用户专属 > 分组默认 > 系统默认）。
+	// 隐藏修正倍率仅参与实际扣费，不写入用户可见 usage log。
+	visibleMultiplier := 1.0
 	if s.cfg != nil {
-		multiplier = s.cfg.Default.RateMultiplier
+		visibleMultiplier = s.cfg.Default.RateMultiplier
 	}
 	if apiKey.GroupID != nil && apiKey.Group != nil {
 		groupDefault := apiKey.Group.RateMultiplier
-		multiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
+		visibleMultiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
 	}
-	imageMultiplier := resolveImageRateMultiplier(apiKey, multiplier)
+	effectiveMultiplier := applyGroupRateCorrectionMultiplier(apiKey.Group, visibleMultiplier)
+	visibleImageMultiplier := resolveImageRateMultiplier(apiKey, visibleMultiplier)
+	effectiveImageMultiplier := resolveImageRateMultiplier(apiKey, effectiveMultiplier)
 
 	// 确定计费模型
 	billingModel := forwardResultBillingModel(result.Model, result.UpstreamModel)
@@ -8475,7 +8478,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	}
 
 	// 计算费用
-	cost := s.calculateRecordUsageCost(ctx, result, apiKey, billingModel, multiplier, imageMultiplier, opts)
+	cost := s.calculateRecordUsageCost(ctx, result, apiKey, billingModel, effectiveMultiplier, effectiveImageMultiplier, opts)
 
 	// 判断计费方式：订阅模式 vs 余额模式
 	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
@@ -8487,7 +8490,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	// 创建使用日志
 	accountRateMultiplier := account.BillingRateMultiplier()
 	usageLog := s.buildRecordUsageLog(ctx, input, result, apiKey, user, account, subscription,
-		requestedModel, multiplier, imageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
+		requestedModel, visibleMultiplier, visibleImageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
 
 	// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
 	if apiKey.GroupID != nil {

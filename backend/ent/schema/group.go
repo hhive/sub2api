@@ -45,6 +45,10 @@ func (Group) Fields() []ent.Field {
 		field.Float("rate_multiplier").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),
+		field.Float("rate_correction_multiplier").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Default(1.0).
+			Comment("分组隐藏修正倍率，仅管理员可见；实际扣费倍率 = 用户可见费用倍率 * 修正倍率"),
 		field.Bool("is_exclusive").
 			Default(false),
 		field.String("status").
