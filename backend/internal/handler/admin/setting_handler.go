@@ -162,6 +162,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TurnstileEnabled:                       settings.TurnstileEnabled,
 		TurnstileSiteKey:                       settings.TurnstileSiteKey,
 		TurnstileSecretKeyConfigured:           settings.TurnstileSecretKeyConfigured,
+		APIKeyACLTrustForwardedIP:              settings.APIKeyACLTrustForwardedIP,
 		LinuxDoConnectEnabled:                  settings.LinuxDoConnectEnabled,
 		LinuxDoConnectClientID:                 settings.LinuxDoConnectClientID,
 		LinuxDoConnectClientSecretConfigured:   settings.LinuxDoConnectClientSecretConfigured,
@@ -295,6 +296,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		BalanceLowNotifyEnabled:                settings.BalanceLowNotifyEnabled,
 		BalanceLowNotifyThreshold:              settings.BalanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:            settings.BalanceLowNotifyRechargeURL,
+		SubscriptionExpiryNotifyEnabled:        settings.SubscriptionExpiryNotifyEnabled,
 		AccountQuotaNotifyEnabled:              settings.AccountQuotaNotifyEnabled,
 		AccountQuotaNotifyEmails:               dto.NotifyEmailEntriesFromService(settings.AccountQuotaNotifyEmails),
 		PaymentEnabled:                         paymentCfg.Enabled,
@@ -429,6 +431,9 @@ type UpdateSettingsRequest struct {
 	TurnstileEnabled   bool   `json:"turnstile_enabled"`
 	TurnstileSiteKey   string `json:"turnstile_site_key"`
 	TurnstileSecretKey string `json:"turnstile_secret_key"`
+
+	// API Key IP 访问控制设置
+	APIKeyACLTrustForwardedIP *bool `json:"api_key_acl_trust_forwarded_ip"`
 
 	// LinuxDo Connect OAuth 登录
 	LinuxDoConnectEnabled      bool   `json:"linuxdo_connect_enabled"`
@@ -624,12 +629,13 @@ type UpdateSettingsRequest struct {
 	// OpenAI account scheduling
 	OpenAIAdvancedSchedulerEnabled *bool `json:"openai_advanced_scheduler_enabled"`
 
-	// Balance low notification
-	BalanceLowNotifyEnabled     *bool                   `json:"balance_low_notify_enabled"`
-	BalanceLowNotifyThreshold   *float64                `json:"balance_low_notify_threshold"`
-	BalanceLowNotifyRechargeURL *string                 `json:"balance_low_notify_recharge_url"`
-	AccountQuotaNotifyEnabled   *bool                   `json:"account_quota_notify_enabled"`
-	AccountQuotaNotifyEmails    *[]dto.NotifyEmailEntry `json:"account_quota_notify_emails"`
+	// 余额不足提醒
+	BalanceLowNotifyEnabled         *bool                   `json:"balance_low_notify_enabled"`
+	BalanceLowNotifyThreshold       *float64                `json:"balance_low_notify_threshold"`
+	BalanceLowNotifyRechargeURL     *string                 `json:"balance_low_notify_recharge_url"`
+	SubscriptionExpiryNotifyEnabled *bool                   `json:"subscription_expiry_notify_enabled"`
+	AccountQuotaNotifyEnabled       *bool                   `json:"account_quota_notify_enabled"`
+	AccountQuotaNotifyEmails        *[]dto.NotifyEmailEntry `json:"account_quota_notify_emails"`
 
 	// Payment configuration (integrated into settings, full replace)
 	PaymentEnabled                   *bool    `json:"payment_enabled"`
@@ -1553,28 +1559,34 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 
 	settings := &service.SystemSettings{
-		RegistrationEnabled:                    req.RegistrationEnabled,
-		EmailVerifyEnabled:                     req.EmailVerifyEnabled,
-		RegistrationEmailSuffixWhitelist:       req.RegistrationEmailSuffixWhitelist,
-		PromoCodeEnabled:                       req.PromoCodeEnabled,
-		PasswordResetEnabled:                   req.PasswordResetEnabled,
-		FrontendURL:                            req.FrontendURL,
-		InvitationCodeEnabled:                  req.InvitationCodeEnabled,
-		TotpEnabled:                            req.TotpEnabled,
-		LoginAgreementEnabled:                  req.LoginAgreementEnabled,
-		LoginAgreementMode:                     loginAgreementMode,
-		LoginAgreementUpdatedAt:                loginAgreementUpdatedAt,
-		LoginAgreementDocuments:                loginAgreementDocuments,
-		SMTPHost:                               req.SMTPHost,
-		SMTPPort:                               req.SMTPPort,
-		SMTPUsername:                           req.SMTPUsername,
-		SMTPPassword:                           req.SMTPPassword,
-		SMTPFrom:                               req.SMTPFrom,
-		SMTPFromName:                           req.SMTPFromName,
-		SMTPUseTLS:                             req.SMTPUseTLS,
-		TurnstileEnabled:                       req.TurnstileEnabled,
-		TurnstileSiteKey:                       req.TurnstileSiteKey,
-		TurnstileSecretKey:                     req.TurnstileSecretKey,
+		RegistrationEnabled:              req.RegistrationEnabled,
+		EmailVerifyEnabled:               req.EmailVerifyEnabled,
+		RegistrationEmailSuffixWhitelist: req.RegistrationEmailSuffixWhitelist,
+		PromoCodeEnabled:                 req.PromoCodeEnabled,
+		PasswordResetEnabled:             req.PasswordResetEnabled,
+		FrontendURL:                      req.FrontendURL,
+		InvitationCodeEnabled:            req.InvitationCodeEnabled,
+		TotpEnabled:                      req.TotpEnabled,
+		LoginAgreementEnabled:            req.LoginAgreementEnabled,
+		LoginAgreementMode:               loginAgreementMode,
+		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
+		LoginAgreementDocuments:          loginAgreementDocuments,
+		SMTPHost:                         req.SMTPHost,
+		SMTPPort:                         req.SMTPPort,
+		SMTPUsername:                     req.SMTPUsername,
+		SMTPPassword:                     req.SMTPPassword,
+		SMTPFrom:                         req.SMTPFrom,
+		SMTPFromName:                     req.SMTPFromName,
+		SMTPUseTLS:                       req.SMTPUseTLS,
+		TurnstileEnabled:                 req.TurnstileEnabled,
+		TurnstileSiteKey:                 req.TurnstileSiteKey,
+		TurnstileSecretKey:               req.TurnstileSecretKey,
+		APIKeyACLTrustForwardedIP: func() bool {
+			if req.APIKeyACLTrustForwardedIP != nil {
+				return *req.APIKeyACLTrustForwardedIP
+			}
+			return previousSettings.APIKeyACLTrustForwardedIP
+		}(),
 		LinuxDoConnectEnabled:                  req.LinuxDoConnectEnabled,
 		LinuxDoConnectClientID:                 req.LinuxDoConnectClientID,
 		LinuxDoConnectClientSecret:             req.LinuxDoConnectClientSecret,
@@ -1801,6 +1813,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.BalanceLowNotifyRechargeURL
 		}(),
+		SubscriptionExpiryNotifyEnabled: func() bool {
+			if req.SubscriptionExpiryNotifyEnabled != nil {
+				return *req.SubscriptionExpiryNotifyEnabled
+			}
+			return previousSettings.SubscriptionExpiryNotifyEnabled
+		}(),
 		AccountQuotaNotifyEnabled: func() bool {
 			if req.AccountQuotaNotifyEnabled != nil {
 				return *req.AccountQuotaNotifyEnabled
@@ -2007,6 +2025,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TurnstileEnabled:                       updatedSettings.TurnstileEnabled,
 		TurnstileSiteKey:                       updatedSettings.TurnstileSiteKey,
 		TurnstileSecretKeyConfigured:           updatedSettings.TurnstileSecretKeyConfigured,
+		APIKeyACLTrustForwardedIP:              updatedSettings.APIKeyACLTrustForwardedIP,
 		LinuxDoConnectEnabled:                  updatedSettings.LinuxDoConnectEnabled,
 		LinuxDoConnectClientID:                 updatedSettings.LinuxDoConnectClientID,
 		LinuxDoConnectClientSecretConfigured:   updatedSettings.LinuxDoConnectClientSecretConfigured,
@@ -2130,6 +2149,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		BalanceLowNotifyEnabled:                updatedSettings.BalanceLowNotifyEnabled,
 		BalanceLowNotifyThreshold:              updatedSettings.BalanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:            updatedSettings.BalanceLowNotifyRechargeURL,
+		SubscriptionExpiryNotifyEnabled:        updatedSettings.SubscriptionExpiryNotifyEnabled,
 		AccountQuotaNotifyEnabled:              updatedSettings.AccountQuotaNotifyEnabled,
 		AccountQuotaNotifyEmails:               dto.NotifyEmailEntriesFromService(updatedSettings.AccountQuotaNotifyEmails),
 		PaymentEnabled:                         updatedPaymentCfg.Enabled,
@@ -2285,6 +2305,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if req.TurnstileSecretKey != "" {
 		changed = append(changed, "turnstile_secret_key")
+	}
+	if before.APIKeyACLTrustForwardedIP != after.APIKeyACLTrustForwardedIP {
+		changed = append(changed, "api_key_acl_trust_forwarded_ip")
 	}
 	if before.LinuxDoConnectEnabled != after.LinuxDoConnectEnabled {
 		changed = append(changed, "linuxdo_connect_enabled")
@@ -2598,7 +2621,7 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.OpenAIAdvancedSchedulerEnabled != after.OpenAIAdvancedSchedulerEnabled {
 		changed = append(changed, "openai_advanced_scheduler_enabled")
 	}
-	// Balance & quota notification
+	// 余额、订阅到期与账号限额通知
 	if before.BalanceLowNotifyEnabled != after.BalanceLowNotifyEnabled {
 		changed = append(changed, "balance_low_notify_enabled")
 	}
@@ -2607,6 +2630,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.BalanceLowNotifyRechargeURL != after.BalanceLowNotifyRechargeURL {
 		changed = append(changed, "balance_low_notify_recharge_url")
+	}
+	if before.SubscriptionExpiryNotifyEnabled != after.SubscriptionExpiryNotifyEnabled {
+		changed = append(changed, "subscription_expiry_notify_enabled")
 	}
 	if before.AccountQuotaNotifyEnabled != after.AccountQuotaNotifyEnabled {
 		changed = append(changed, "account_quota_notify_enabled")
@@ -3616,6 +3642,8 @@ func emailTemplateEventOptionsToDTO(events []service.NotificationEmailEventInfo)
 			Value:       event.Event,
 			Label:       event.Label,
 			Description: event.Description,
+			Category:    event.Category,
+			Optional:    event.Optional,
 		})
 	}
 	return items

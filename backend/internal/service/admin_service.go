@@ -536,6 +536,7 @@ type adminServiceImpl struct {
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
 	balanceCreditRepo    BalanceCreditRepository
+	runtimeBlocker       AccountRuntimeBlocker
 }
 
 type userGroupRateBatchReader interface {
@@ -562,6 +563,7 @@ func NewAdminService(
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
 	balanceCreditRepo BalanceCreditRepository,
+	runtimeBlocker AccountRuntimeBlocker,
 ) AdminService {
 	return &adminServiceImpl{
 		userRepo:             userRepo,
@@ -582,6 +584,7 @@ func NewAdminService(
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
 		balanceCreditRepo:    balanceCreditRepo,
+		runtimeBlocker:       runtimeBlocker,
 	}
 }
 
@@ -2870,6 +2873,9 @@ func (s *adminServiceImpl) ClearAccountError(ctx context.Context, id int64) (*Ac
 	}
 	if err := s.accountRepo.ClearTempUnschedulable(ctx, id); err != nil {
 		return nil, err
+	}
+	if s.runtimeBlocker != nil {
+		s.runtimeBlocker.ClearAccountSchedulingBlock(id)
 	}
 	return s.accountRepo.GetByID(ctx, id)
 }
