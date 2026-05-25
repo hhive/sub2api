@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/url"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -31,7 +32,7 @@ type OnyxLaunchResult struct {
 	RedirectURL string `json:"redirect_url"`
 }
 
-const imagePlaygroundBaseURL = "https://xiaoni-ai.top/image_playground/"
+const defaultImagePlaygroundBaseURL = "https://xiaoni-ai.top/image_playground/"
 
 type OnyxLaunchPayload struct {
 	UserID         int64  `json:"user_id"`
@@ -115,7 +116,7 @@ func (s *OnyxLaunchService) CreateImagePlaygroundLaunch(ctx context.Context, use
 	if err != nil {
 		return nil, err
 	}
-	redirectURL, err := buildImagePlaygroundRedirectURL(imagePlaygroundBaseURL, apiBaseURL, selectedKey.Key)
+	redirectURL, err := buildImagePlaygroundRedirectURL(imagePlaygroundLaunchBaseURL(), apiBaseURL, selectedKey.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +250,13 @@ func randomOnyxLaunchToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+func imagePlaygroundLaunchBaseURL() string {
+	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_BASE_URL")); baseURL != "" {
+		return baseURL
+	}
+	return defaultImagePlaygroundBaseURL
 }
 
 func normalizeOnyxOpenAICompatibleAPIBaseURL(rawBaseURL string) string {

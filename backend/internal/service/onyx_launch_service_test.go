@@ -315,6 +315,39 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPI
 	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
 }
 
+func TestOnyxLaunchService_CreateImagePlaygroundLaunch_UsesEnvBaseURLOverride(t *testing.T) {
+	t.Setenv("IMAGE_PLAYGROUND_BASE_URL", "http://127.0.0.1:5173/")
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyAPIBaseURL: "http://127.0.0.1:8080",
+	}}, &config.Config{})
+	now := time.Now()
+	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{{
+		ID:        402,
+		UserID:    42,
+		Key:       "sk-user-local-image-key",
+		Status:    StatusActive,
+		Quota:     10,
+		QuotaUsed: 1,
+		CreatedAt: now.Add(-1 * time.Hour),
+	}}}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
+
+	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	redirectURL, parseErr := url.Parse(result.RedirectURL)
+	require.NoError(t, parseErr)
+	require.Equal(t, "http", redirectURL.Scheme)
+	require.Equal(t, "127.0.0.1:5173", redirectURL.Host)
+	require.Equal(t, "/", redirectURL.Path)
+	require.Equal(t, "http://127.0.0.1:8080/v1", redirectURL.Query().Get("apiUrl"))
+	require.Equal(t, "sk-user-local-image-key", redirectURL.Query().Get("apiKey"))
+	require.Equal(t, "images", redirectURL.Query().Get("apiMode"))
+	require.Equal(t, "true", redirectURL.Query().Get("codexCli"))
+	require.Len(t, redirectURL.Query(), 4)
+}
+
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailableWhenAPIBaseURLMissing(t *testing.T) {
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
 	svc := &OnyxLaunchService{settingService: settings}
