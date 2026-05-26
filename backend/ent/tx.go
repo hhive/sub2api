@@ -82,6 +82,8 @@ type Tx struct {
 	UserAttributeValue *UserAttributeValueClient
 	// UserBalanceCredit is the client for interacting with the UserBalanceCredit builders.
 	UserBalanceCredit *UserBalanceCreditClient
+	// UserPlatformQuota is the client for interacting with the UserPlatformQuota builders.
+	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
 
@@ -249,6 +251,7 @@ func (tx *Tx) init() {
 	tx.UserAttributeDefinition = NewUserAttributeDefinitionClient(tx.config)
 	tx.UserAttributeValue = NewUserAttributeValueClient(tx.config)
 	tx.UserBalanceCredit = NewUserBalanceCreditClient(tx.config)
+	tx.UserPlatformQuota = NewUserPlatformQuotaClient(tx.config)
 	tx.UserSubscription = NewUserSubscriptionClient(tx.config)
 }
 
