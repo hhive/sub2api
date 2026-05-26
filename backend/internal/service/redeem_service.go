@@ -528,9 +528,6 @@ func (s *RedeemService) createBalanceCredit(ctx context.Context, userID int64, r
 		return err
 	}
 	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
-	if expiresAt == nil {
-		return nil
-	}
 	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourceRedeem,

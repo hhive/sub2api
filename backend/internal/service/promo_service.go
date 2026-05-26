@@ -180,9 +180,6 @@ func (s *PromoService) createPromoBalanceCredit(ctx context.Context, userID int6
 		return err
 	}
 	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
-	if expiresAt == nil {
-		return nil
-	}
 	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourcePromo,

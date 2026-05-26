@@ -960,9 +960,6 @@ func (s *adminServiceImpl) createAdminBalanceCredit(ctx context.Context, userID 
 		return err
 	}
 	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
-	if expiresAt == nil {
-		return nil
-	}
 	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourceAdmin,
