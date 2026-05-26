@@ -117,6 +117,13 @@ const (
 	SettingKeyLoginAgreementMode               = "login_agreement_mode"                // 条款确认展示模式：modal / checkbox
 	SettingKeyLoginAgreementUpdatedAt          = "login_agreement_updated_at"          // 条款更新日期（展示用）
 	SettingKeyLoginAgreementDocuments          = "login_agreement_documents"           // 条款文档列表（JSON，Markdown 内容）
+	SettingKeyComplianceNoticeEnabled          = "compliance_notice_enabled"           // 首次访问合规公告开关
+	SettingKeyComplianceNoticeRevision         = "compliance_notice_revision"          // 合规公告版本号
+	SettingKeyComplianceNoticeBadge            = "compliance_notice_badge"             // 合规公告角标
+	SettingKeyComplianceNoticeTitle            = "compliance_notice_title"             // 合规公告标题
+	SettingKeyComplianceNoticeContentMD        = "compliance_notice_content_md"        // 合规公告 Markdown 内容
+	SettingKeyComplianceNoticeAcceptText       = "compliance_notice_accept_text"       // 合规公告同意按钮文案
+	SettingKeyComplianceNoticeDeclineText      = "compliance_notice_decline_text"      // 合规公告拒绝按钮文案
 
 	// 邮件服务设置
 	SettingKeySMTPHost     = "smtp_host"      // SMTP服务器地址

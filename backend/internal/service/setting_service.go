@@ -245,25 +245,40 @@ var (
 )
 
 const (
-	defaultAuthSourceBalance     = 0
-	defaultAuthSourceConcurrency = 5
-	defaultWeChatConnectMode     = "open"
-	defaultWeChatConnectScopes   = "snsapi_login"
-	defaultWeChatConnectFrontend = "/auth/wechat/callback"
-	defaultRedeemPurchaseURL     = "https://pay.ldxp.cn/shop/xiaoni-ai"
-	defaultGitHubOAuthAuthorize  = "https://github.com/login/oauth/authorize"
-	defaultGitHubOAuthToken      = "https://github.com/login/oauth/access_token"
-	defaultGitHubOAuthUserInfo   = "https://api.github.com/user"
-	defaultGitHubOAuthEmails     = "https://api.github.com/user/emails"
-	defaultGitHubOAuthScopes     = "read:user user:email"
-	defaultGitHubOAuthFrontend   = "/auth/oauth/callback"
-	defaultGoogleOAuthAuthorize  = "https://accounts.google.com/o/oauth2/v2/auth"
-	defaultGoogleOAuthToken      = "https://oauth2.googleapis.com/token"
-	defaultGoogleOAuthUserInfo   = "https://openidconnect.googleapis.com/v1/userinfo"
-	defaultGoogleOAuthScopes     = "openid email profile"
-	defaultGoogleOAuthFrontend   = "/auth/oauth/callback"
-	defaultLoginAgreementMode    = "modal"
-	defaultLoginAgreementDate    = "2026-03-31"
+	defaultAuthSourceBalance           = 0
+	defaultAuthSourceConcurrency       = 5
+	defaultWeChatConnectMode           = "open"
+	defaultWeChatConnectScopes         = "snsapi_login"
+	defaultWeChatConnectFrontend       = "/auth/wechat/callback"
+	defaultRedeemPurchaseURL           = "https://pay.ldxp.cn/shop/xiaoni-ai"
+	defaultGitHubOAuthAuthorize        = "https://github.com/login/oauth/authorize"
+	defaultGitHubOAuthToken            = "https://github.com/login/oauth/access_token"
+	defaultGitHubOAuthUserInfo         = "https://api.github.com/user"
+	defaultGitHubOAuthEmails           = "https://api.github.com/user/emails"
+	defaultGitHubOAuthScopes           = "read:user user:email"
+	defaultGitHubOAuthFrontend         = "/auth/oauth/callback"
+	defaultGoogleOAuthAuthorize        = "https://accounts.google.com/o/oauth2/v2/auth"
+	defaultGoogleOAuthToken            = "https://oauth2.googleapis.com/token"
+	defaultGoogleOAuthUserInfo         = "https://openidconnect.googleapis.com/v1/userinfo"
+	defaultGoogleOAuthScopes           = "openid email profile"
+	defaultGoogleOAuthFrontend         = "/auth/oauth/callback"
+	defaultLoginAgreementMode          = "modal"
+	defaultLoginAgreementDate          = "2026-03-31"
+	defaultComplianceNoticeRevision    = "2026-05-26"
+	defaultComplianceNoticeBadge       = "平台公告"
+	defaultComplianceNoticeTitle       = "Codex中转站平台安全与合规管理公告"
+	defaultComplianceNoticeAcceptText  = "以上内容均已看过，本人自愿承担产生后果"
+	defaultComplianceNoticeDeclineText = "本人不愿意承担，已拒绝"
+	defaultComplianceNoticeContentMD   = `♡ Codex中转站平台安全与合规管理公告
+
+为维护健康、积极、有序的绿色互联网环境，我们已全面升级内容合规审查机制。
+
+🚫 内容红线：严禁利用平台（含编程工具）生成低俗、色情或涉嫌违法的违规内容。
+🤖 智能过滤：系统已启用关键词拦截与语义识别，自动识别并过滤不当内容。
+🔨 违规处置：视违规程度，将采取警告、临时封禁直至永久封号等措施。
+⚖ 法律底线：针对恶意违法行为，平台将保留证据并配合有关部门依法处理。
+
+✅ 感谢理解与配合，让我们共同维护开放、健康且有序的创作环境。`
 )
 
 func normalizeLoginAgreementMode(raw string) string {
@@ -649,6 +664,13 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyLoginAgreementMode,
 		SettingKeyLoginAgreementUpdatedAt,
 		SettingKeyLoginAgreementDocuments,
+		SettingKeyComplianceNoticeEnabled,
+		SettingKeyComplianceNoticeRevision,
+		SettingKeyComplianceNoticeBadge,
+		SettingKeyComplianceNoticeTitle,
+		SettingKeyComplianceNoticeContentMD,
+		SettingKeyComplianceNoticeAcceptText,
+		SettingKeyComplianceNoticeDeclineText,
 		SettingKeyTurnstileEnabled,
 		SettingKeyTurnstileSiteKey,
 		SettingKeyAPIKeyACLTrustForwardedIP,
@@ -777,6 +799,13 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
 		LoginAgreementRevision:           buildLoginAgreementRevision(loginAgreementUpdatedAt, loginAgreementDocuments),
 		LoginAgreementDocuments:          loginAgreementDocuments,
+		ComplianceNoticeEnabled:          settings[SettingKeyComplianceNoticeEnabled] == "true",
+		ComplianceNoticeRevision:         s.getStringOrDefault(settings, SettingKeyComplianceNoticeRevision, defaultComplianceNoticeRevision),
+		ComplianceNoticeBadge:            s.getStringOrDefault(settings, SettingKeyComplianceNoticeBadge, defaultComplianceNoticeBadge),
+		ComplianceNoticeTitle:            s.getStringOrDefault(settings, SettingKeyComplianceNoticeTitle, defaultComplianceNoticeTitle),
+		ComplianceNoticeContentMD:        s.getStringOrDefault(settings, SettingKeyComplianceNoticeContentMD, defaultComplianceNoticeContentMD),
+		ComplianceNoticeAcceptText:       s.getStringOrDefault(settings, SettingKeyComplianceNoticeAcceptText, defaultComplianceNoticeAcceptText),
+		ComplianceNoticeDeclineText:      s.getStringOrDefault(settings, SettingKeyComplianceNoticeDeclineText, defaultComplianceNoticeDeclineText),
 		TurnstileEnabled:                 settings[SettingKeyTurnstileEnabled] == "true",
 		TurnstileSiteKey:                 settings[SettingKeyTurnstileSiteKey],
 		SiteName:                         s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
@@ -1035,6 +1064,13 @@ type PublicSettingsInjectionPayload struct {
 	LoginAgreementUpdatedAt          string                   `json:"login_agreement_updated_at"`
 	LoginAgreementRevision           string                   `json:"login_agreement_revision"`
 	LoginAgreementDocuments          []LoginAgreementDocument `json:"login_agreement_documents"`
+	ComplianceNoticeEnabled          bool                     `json:"compliance_notice_enabled"`
+	ComplianceNoticeRevision         string                   `json:"compliance_notice_revision"`
+	ComplianceNoticeBadge            string                   `json:"compliance_notice_badge"`
+	ComplianceNoticeTitle            string                   `json:"compliance_notice_title"`
+	ComplianceNoticeContentMD        string                   `json:"compliance_notice_content_md"`
+	ComplianceNoticeAcceptText       string                   `json:"compliance_notice_accept_text"`
+	ComplianceNoticeDeclineText      string                   `json:"compliance_notice_decline_text"`
 	TurnstileEnabled                 bool                     `json:"turnstile_enabled"`
 	TurnstileSiteKey                 string                   `json:"turnstile_site_key"`
 	SiteName                         string                   `json:"site_name"`
@@ -1105,6 +1141,13 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LoginAgreementUpdatedAt:          settings.LoginAgreementUpdatedAt,
 		LoginAgreementRevision:           settings.LoginAgreementRevision,
 		LoginAgreementDocuments:          settings.LoginAgreementDocuments,
+		ComplianceNoticeEnabled:          settings.ComplianceNoticeEnabled,
+		ComplianceNoticeRevision:         settings.ComplianceNoticeRevision,
+		ComplianceNoticeBadge:            settings.ComplianceNoticeBadge,
+		ComplianceNoticeTitle:            settings.ComplianceNoticeTitle,
+		ComplianceNoticeContentMD:        settings.ComplianceNoticeContentMD,
+		ComplianceNoticeAcceptText:       settings.ComplianceNoticeAcceptText,
+		ComplianceNoticeDeclineText:      settings.ComplianceNoticeDeclineText,
 		TurnstileEnabled:                 settings.TurnstileEnabled,
 		TurnstileSiteKey:                 settings.TurnstileSiteKey,
 		SiteName:                         settings.SiteName,
@@ -1586,6 +1629,13 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyLoginAgreementMode] = settings.LoginAgreementMode
 	updates[SettingKeyLoginAgreementUpdatedAt] = settings.LoginAgreementUpdatedAt
 	updates[SettingKeyLoginAgreementDocuments] = loginAgreementDocumentsJSON
+	updates[SettingKeyComplianceNoticeEnabled] = strconv.FormatBool(settings.ComplianceNoticeEnabled)
+	updates[SettingKeyComplianceNoticeRevision] = strings.TrimSpace(settings.ComplianceNoticeRevision)
+	updates[SettingKeyComplianceNoticeBadge] = strings.TrimSpace(settings.ComplianceNoticeBadge)
+	updates[SettingKeyComplianceNoticeTitle] = strings.TrimSpace(settings.ComplianceNoticeTitle)
+	updates[SettingKeyComplianceNoticeContentMD] = strings.TrimSpace(settings.ComplianceNoticeContentMD)
+	updates[SettingKeyComplianceNoticeAcceptText] = strings.TrimSpace(settings.ComplianceNoticeAcceptText)
+	updates[SettingKeyComplianceNoticeDeclineText] = strings.TrimSpace(settings.ComplianceNoticeDeclineText)
 
 	// 邮件服务设置（只有非空才更新密码）
 	updates[SettingKeySMTPHost] = settings.SMTPHost
@@ -2527,6 +2577,13 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyLoginAgreementMode:                        defaultLoginAgreementMode,
 		SettingKeyLoginAgreementUpdatedAt:                   defaultLoginAgreementDate,
 		SettingKeyLoginAgreementDocuments:                   loginAgreementDocumentsJSON,
+		SettingKeyComplianceNoticeEnabled:                   "false",
+		SettingKeyComplianceNoticeRevision:                  defaultComplianceNoticeRevision,
+		SettingKeyComplianceNoticeBadge:                     defaultComplianceNoticeBadge,
+		SettingKeyComplianceNoticeTitle:                     defaultComplianceNoticeTitle,
+		SettingKeyComplianceNoticeContentMD:                 defaultComplianceNoticeContentMD,
+		SettingKeyComplianceNoticeAcceptText:                defaultComplianceNoticeAcceptText,
+		SettingKeyComplianceNoticeDeclineText:               defaultComplianceNoticeDeclineText,
 		SettingKeyAPIKeyACLTrustForwardedIP:                 "false",
 		SettingKeySiteName:                                  "Sub2API",
 		SettingKeySiteLogo:                                  "",
@@ -2717,6 +2774,13 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		LoginAgreementMode:               normalizeLoginAgreementMode(settings[SettingKeyLoginAgreementMode]),
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
 		LoginAgreementDocuments:          loginAgreementDocuments,
+		ComplianceNoticeEnabled:          settings[SettingKeyComplianceNoticeEnabled] == "true",
+		ComplianceNoticeRevision:         s.getStringOrDefault(settings, SettingKeyComplianceNoticeRevision, defaultComplianceNoticeRevision),
+		ComplianceNoticeBadge:            s.getStringOrDefault(settings, SettingKeyComplianceNoticeBadge, defaultComplianceNoticeBadge),
+		ComplianceNoticeTitle:            s.getStringOrDefault(settings, SettingKeyComplianceNoticeTitle, defaultComplianceNoticeTitle),
+		ComplianceNoticeContentMD:        s.getStringOrDefault(settings, SettingKeyComplianceNoticeContentMD, defaultComplianceNoticeContentMD),
+		ComplianceNoticeAcceptText:       s.getStringOrDefault(settings, SettingKeyComplianceNoticeAcceptText, defaultComplianceNoticeAcceptText),
+		ComplianceNoticeDeclineText:      s.getStringOrDefault(settings, SettingKeyComplianceNoticeDeclineText, defaultComplianceNoticeDeclineText),
 		SMTPHost:                         settings[SettingKeySMTPHost],
 		SMTPUsername:                     settings[SettingKeySMTPUsername],
 		SMTPFrom:                         settings[SettingKeySMTPFrom],

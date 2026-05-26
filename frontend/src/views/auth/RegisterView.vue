@@ -44,7 +44,7 @@
               required
               autofocus
               autocomplete="email"
-              :disabled="registrationActionDisabled"
+              :disabled="formInputDisabled"
               class="input pl-11"
               :class="{ 'input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
@@ -67,14 +67,14 @@
               :type="showPassword ? 'text' : 'password'"
               required
               autocomplete="new-password"
-              :disabled="registrationActionDisabled"
+              :disabled="formInputDisabled"
               class="input pl-11 pr-11"
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.createPasswordPlaceholder')"
             />
             <button
               type="button"
-              :disabled="registrationActionDisabled"
+              :disabled="formInputDisabled"
               @click="showPassword = !showPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
@@ -100,7 +100,7 @@
               id="invitation_code"
               v-model="formData.invitation_code"
               type="text"
-              :disabled="registrationActionDisabled"
+              :disabled="formInputDisabled"
               class="input pl-11 pr-10"
               :class="{
                 'border-green-500 focus:border-green-500 focus:ring-green-500': invitationValidation.valid,
@@ -331,6 +331,12 @@ import {
   resolveAffiliateReferralCode
 } from '@/utils/oauthAffiliate'
 import type { LoginAgreementDocument } from '@/types'
+import {
+  COMPLIANCE_NOTICE_EVENT,
+  hasAcceptedComplianceNotice,
+  hasDeclinedComplianceNotice,
+  isComplianceNoticeEnabled
+} from '@/utils/complianceNotice'
 
 const { t, locale } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -372,6 +378,9 @@ const loginAgreementRevision = ref<string>('')
 const loginAgreementDocuments = ref<LoginAgreementDocument[]>([])
 const agreementAccepted = ref<boolean>(false)
 const showAgreementModal = ref<boolean>(false)
+const complianceNoticeRequired = ref<boolean>(false)
+const complianceNoticeAccepted = ref<boolean>(true)
+const complianceNoticeDeclined = ref<boolean>(false)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -435,9 +444,13 @@ const customerQq = computed(() => contactInfo.value.trim())
 const agreementGateActive = computed(
   () => loginAgreementEnabled.value && !agreementAccepted.value
 )
+const complianceGateActive = computed(
+  () => complianceNoticeRequired.value && !complianceNoticeAccepted.value
+)
+const formInputDisabled = computed(() => isLoading.value || !settingsLoaded.value)
 
 const registrationActionDisabled = computed(
-  () => isLoading.value || !settingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || !settingsLoaded.value || agreementGateActive.value || complianceGateActive.value
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -479,6 +492,7 @@ onMounted(async () => {
       settings.registration_email_suffix_whitelist || []
     )
     applyLoginAgreementSettings(settings)
+    applyComplianceNoticeSettings(settings)
 
     // Read promo code from URL parameter only if promo code is enabled
     if (promoCodeEnabled.value) {
@@ -494,10 +508,27 @@ onMounted(async () => {
     console.error('Failed to load public settings:', error)
     loginAgreementEnabled.value = false
     agreementAccepted.value = true
+    complianceNoticeRequired.value = false
+    complianceNoticeAccepted.value = true
+    complianceNoticeDeclined.value = false
   } finally {
     settingsLoaded.value = true
   }
+  window.addEventListener(COMPLIANCE_NOTICE_EVENT, refreshComplianceNoticeState)
 })
+
+function applyComplianceNoticeSettings(settings: Awaited<ReturnType<typeof getPublicSettings>>): void {
+  complianceNoticeRequired.value = isComplianceNoticeEnabled(settings)
+  complianceNoticeAccepted.value = hasAcceptedComplianceNotice(settings)
+  complianceNoticeDeclined.value = hasDeclinedComplianceNotice(settings)
+}
+
+function refreshComplianceNoticeState(): void {
+  const settings = appStore.cachedPublicSettings
+  if (settings) {
+    applyComplianceNoticeSettings(settings)
+  }
+}
 
 watch(
   () => [route.query.aff, route.query.aff_code],
@@ -513,6 +544,7 @@ onUnmounted(() => {
   if (invitationValidateTimeout) {
     clearTimeout(invitationValidateTimeout)
   }
+  window.removeEventListener(COMPLIANCE_NOTICE_EVENT, refreshComplianceNoticeState)
 })
 
 // ==================== Login Agreement ====================
@@ -768,6 +800,14 @@ function validateForm(): boolean {
     if (loginAgreementMode.value !== 'checkbox') {
       showAgreementModal.value = true
     }
+    return false
+  }
+  if (complianceGateActive.value) {
+    appStore.showWarning(
+      complianceNoticeDeclined.value
+        ? '您已拒绝平台公告内容，无法注册。请重新进入并同意公告后再继续。'
+        : '请先阅读并同意平台公告后再注册。'
+    )
     return false
   }
 

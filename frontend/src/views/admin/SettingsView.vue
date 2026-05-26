@@ -5064,6 +5064,110 @@
               </div>
             </div>
           </div>
+
+          <div class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ localText("首次访问合规公告", "First-visit compliance notice") }}
+                  </h2>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{
+                      localText(
+                        "启用后，访客首次进入网站会看到公告；拒绝后仍可浏览公开页面，但登录和注册会被拦截。",
+                        "When enabled, visitors see this notice on first visit. Declining still allows public browsing but blocks login and registration.",
+                      )
+                    }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-sm text-gray-600 dark:text-gray-300">
+                    {{ form.compliance_notice_enabled ? localText("已启用", "Enabled") : localText("未启用", "Disabled") }}
+                  </span>
+                  <Toggle v-model="form.compliance_notice_enabled" />
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-5 p-6">
+              <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ localText("版本号", "Revision") }}
+                  </label>
+                  <input
+                    v-model="form.compliance_notice_revision"
+                    type="text"
+                    class="input"
+                    placeholder="2026-05-26"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ localText("修改版本号后，已同意或已拒绝的用户会重新看到公告。", "Changing the revision asks users to review the notice again.") }}
+                  </p>
+                </div>
+
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ localText("角标", "Badge") }}
+                  </label>
+                  <input
+                    v-model="form.compliance_notice_badge"
+                    type="text"
+                    class="input"
+                    :placeholder="localText('平台公告', 'Platform notice')"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ localText("标题", "Title") }}
+                </label>
+                <input
+                  v-model="form.compliance_notice_title"
+                  type="text"
+                  class="input"
+                  :placeholder="localText('Codex中转站平台安全与合规管理公告', 'Platform safety and compliance notice')"
+                />
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ localText("Markdown 内容", "Markdown content") }}
+                </label>
+                <textarea
+                  v-model="form.compliance_notice_content_md"
+                  rows="9"
+                  class="input font-mono text-sm"
+                  :placeholder="localText('填写首次访问弹窗正文。', 'Write the first-visit notice body.')"
+                ></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ localText("拒绝按钮文案", "Decline button") }}
+                  </label>
+                  <input
+                    v-model="form.compliance_notice_decline_text"
+                    type="text"
+                    class="input"
+                  />
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ localText("同意按钮文案", "Accept button") }}
+                  </label>
+                  <input
+                    v-model="form.compliance_notice_accept_text"
+                    type="text"
+                    class="input"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <!-- /Tab: Login Agreement -->
 
@@ -6905,6 +7009,14 @@ const form = reactive<SettingsForm>({
   login_agreement_mode: "modal",
   login_agreement_updated_at: "2026-03-31",
   login_agreement_documents: defaultLoginAgreementDocuments(),
+  compliance_notice_enabled: false,
+  compliance_notice_revision: "2026-05-26",
+  compliance_notice_badge: "平台公告",
+  compliance_notice_title: "Codex中转站平台安全与合规管理公告",
+  compliance_notice_content_md:
+    "♡ Codex中转站平台安全与合规管理公告\n\n为维护健康、积极、有序的绿色互联网环境，我们已全面升级内容合规审查机制。\n\n🚫 内容红线：严禁利用平台（含编程工具）生成低俗、色情或涉嫌违法的违规内容。\n🤖 智能过滤：系统已启用关键词拦截与语义识别，自动识别并过滤不当内容。\n🔨 违规处置：视违规程度，将采取警告、临时封禁直至永久封号等措施。\n⚖ 法律底线：针对恶意违法行为，平台将保留证据并配合有关部门依法处理。\n\n✅ 感谢理解与配合，让我们共同维护开放、健康且有序的创作环境。",
+  compliance_notice_accept_text: "以上内容均已看过，本人自愿承担产生后果",
+  compliance_notice_decline_text: "本人不愿意承担，已拒绝",
   default_balance: 0,
   affiliate_rebate_rate: 20,
   affiliate_rebate_freeze_hours: 0,
@@ -8050,6 +8162,13 @@ async function saveSettings() {
       login_agreement_mode: form.login_agreement_mode,
       login_agreement_updated_at: form.login_agreement_updated_at,
       login_agreement_documents: form.login_agreement_documents,
+      compliance_notice_enabled: form.compliance_notice_enabled,
+      compliance_notice_revision: form.compliance_notice_revision,
+      compliance_notice_badge: form.compliance_notice_badge,
+      compliance_notice_title: form.compliance_notice_title,
+      compliance_notice_content_md: form.compliance_notice_content_md,
+      compliance_notice_accept_text: form.compliance_notice_accept_text,
+      compliance_notice_decline_text: form.compliance_notice_decline_text,
       default_balance: form.default_balance,
       balance_credit_validity_days: Math.max(0, Math.floor(Number(form.balance_credit_validity_days) || 0)),
       affiliate_rebate_rate: Math.min(

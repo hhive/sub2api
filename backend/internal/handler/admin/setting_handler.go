@@ -152,6 +152,13 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		LoginAgreementMode:                     settings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                settings.LoginAgreementUpdatedAt,
 		LoginAgreementDocuments:                loginAgreementDocumentsToDTO(settings.LoginAgreementDocuments),
+		ComplianceNoticeEnabled:                settings.ComplianceNoticeEnabled,
+		ComplianceNoticeRevision:               settings.ComplianceNoticeRevision,
+		ComplianceNoticeBadge:                  settings.ComplianceNoticeBadge,
+		ComplianceNoticeTitle:                  settings.ComplianceNoticeTitle,
+		ComplianceNoticeContentMD:              settings.ComplianceNoticeContentMD,
+		ComplianceNoticeAcceptText:             settings.ComplianceNoticeAcceptText,
+		ComplianceNoticeDeclineText:            settings.ComplianceNoticeDeclineText,
 		SMTPHost:                               settings.SMTPHost,
 		SMTPPort:                               settings.SMTPPort,
 		SMTPUsername:                           settings.SMTPUsername,
@@ -417,6 +424,13 @@ type UpdateSettingsRequest struct {
 	LoginAgreementMode               string                       `json:"login_agreement_mode"`
 	LoginAgreementUpdatedAt          string                       `json:"login_agreement_updated_at"`
 	LoginAgreementDocuments          []dto.LoginAgreementDocument `json:"login_agreement_documents"`
+	ComplianceNoticeEnabled          bool                         `json:"compliance_notice_enabled"`
+	ComplianceNoticeRevision         string                       `json:"compliance_notice_revision"`
+	ComplianceNoticeBadge            string                       `json:"compliance_notice_badge"`
+	ComplianceNoticeTitle            string                       `json:"compliance_notice_title"`
+	ComplianceNoticeContentMD        string                       `json:"compliance_notice_content_md"`
+	ComplianceNoticeAcceptText       string                       `json:"compliance_notice_accept_text"`
+	ComplianceNoticeDeclineText      string                       `json:"compliance_notice_decline_text"`
 
 	// 邮件服务设置
 	SMTPHost     string `json:"smtp_host"`
@@ -1571,6 +1585,13 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
 		LoginAgreementDocuments:          loginAgreementDocuments,
+		ComplianceNoticeEnabled:          req.ComplianceNoticeEnabled,
+		ComplianceNoticeRevision:         req.ComplianceNoticeRevision,
+		ComplianceNoticeBadge:            req.ComplianceNoticeBadge,
+		ComplianceNoticeTitle:            req.ComplianceNoticeTitle,
+		ComplianceNoticeContentMD:        req.ComplianceNoticeContentMD,
+		ComplianceNoticeAcceptText:       req.ComplianceNoticeAcceptText,
+		ComplianceNoticeDeclineText:      req.ComplianceNoticeDeclineText,
 		SMTPHost:                         req.SMTPHost,
 		SMTPPort:                         req.SMTPPort,
 		SMTPUsername:                     req.SMTPUsername,

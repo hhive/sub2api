@@ -200,6 +200,13 @@ export interface PublicSettings {
   login_agreement_updated_at?: string
   login_agreement_revision?: string
   login_agreement_documents?: LoginAgreementDocument[]
+  compliance_notice_enabled?: boolean
+  compliance_notice_revision?: string
+  compliance_notice_badge?: string
+  compliance_notice_title?: string
+  compliance_notice_content_md?: string
+  compliance_notice_accept_text?: string
+  compliance_notice_decline_text?: string
   turnstile_enabled: boolean
   turnstile_site_key: string
   site_name: string

@@ -38,6 +38,13 @@ type SystemSettings struct {
 	LoginAgreementMode               string                   `json:"login_agreement_mode"`
 	LoginAgreementUpdatedAt          string                   `json:"login_agreement_updated_at"`
 	LoginAgreementDocuments          []LoginAgreementDocument `json:"login_agreement_documents"`
+	ComplianceNoticeEnabled          bool                     `json:"compliance_notice_enabled"`
+	ComplianceNoticeRevision         string                   `json:"compliance_notice_revision"`
+	ComplianceNoticeBadge            string                   `json:"compliance_notice_badge"`
+	ComplianceNoticeTitle            string                   `json:"compliance_notice_title"`
+	ComplianceNoticeContentMD        string                   `json:"compliance_notice_content_md"`
+	ComplianceNoticeAcceptText       string                   `json:"compliance_notice_accept_text"`
+	ComplianceNoticeDeclineText      string                   `json:"compliance_notice_decline_text"`
 
 	SMTPHost               string `json:"smtp_host"`
 	SMTPPort               int    `json:"smtp_port"`
@@ -278,6 +285,13 @@ type PublicSettings struct {
 	LoginAgreementUpdatedAt          string                   `json:"login_agreement_updated_at"`
 	LoginAgreementRevision           string                   `json:"login_agreement_revision"`
 	LoginAgreementDocuments          []LoginAgreementDocument `json:"login_agreement_documents"`
+	ComplianceNoticeEnabled          bool                     `json:"compliance_notice_enabled"`
+	ComplianceNoticeRevision         string                   `json:"compliance_notice_revision"`
+	ComplianceNoticeBadge            string                   `json:"compliance_notice_badge"`
+	ComplianceNoticeTitle            string                   `json:"compliance_notice_title"`
+	ComplianceNoticeContentMD        string                   `json:"compliance_notice_content_md"`
+	ComplianceNoticeAcceptText       string                   `json:"compliance_notice_accept_text"`
+	ComplianceNoticeDeclineText      string                   `json:"compliance_notice_decline_text"`
 	TurnstileEnabled                 bool                     `json:"turnstile_enabled"`
 	TurnstileSiteKey                 string                   `json:"turnstile_site_key"`
 	SiteName                         string                   `json:"site_name"`

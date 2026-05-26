@@ -325,6 +325,13 @@ export interface SystemSettings {
   login_agreement_mode: "modal" | "checkbox" | string;
   login_agreement_updated_at: string;
   login_agreement_documents: LoginAgreementDocument[];
+  compliance_notice_enabled: boolean;
+  compliance_notice_revision: string;
+  compliance_notice_badge: string;
+  compliance_notice_title: string;
+  compliance_notice_content_md: string;
+  compliance_notice_accept_text: string;
+  compliance_notice_decline_text: string;
   // Default settings
   default_balance: number;
   balance_credit_validity_days: number;
@@ -575,6 +582,13 @@ export interface UpdateSettingsRequest {
   login_agreement_mode?: "modal" | "checkbox" | string;
   login_agreement_updated_at?: string;
   login_agreement_documents?: LoginAgreementDocument[];
+  compliance_notice_enabled?: boolean;
+  compliance_notice_revision?: string;
+  compliance_notice_badge?: string;
+  compliance_notice_title?: string;
+  compliance_notice_content_md?: string;
+  compliance_notice_accept_text?: string;
+  compliance_notice_decline_text?: string;
   default_balance?: number;
   balance_credit_validity_days?: number;
   balance_credit_daily_settlement_hour?: number;

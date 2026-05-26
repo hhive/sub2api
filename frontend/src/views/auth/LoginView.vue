@@ -28,7 +28,7 @@
               required
               autofocus
               autocomplete="email"
-              :disabled="authActionDisabled"
+              :disabled="formInputDisabled"
               class="input pl-11"
               :class="{ 'input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
@@ -51,7 +51,7 @@
               :type="showPassword ? 'text' : 'password'"
               required
               autocomplete="current-password"
-              :disabled="authActionDisabled"
+              :disabled="formInputDisabled"
               class="input pl-11 pr-11"
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
@@ -59,7 +59,7 @@
             <button
               type="button"
               @click="showPassword = !showPassword"
-              :disabled="authActionDisabled"
+              :disabled="formInputDisabled"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
@@ -219,6 +219,12 @@ import { getPublicSettings, isTotp2FARequired, isWeChatWebOAuthEnabled } from '@
 import type { LoginAgreementDocument, TotpLoginResponse } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
+import {
+  COMPLIANCE_NOTICE_EVENT,
+  hasAcceptedComplianceNotice,
+  hasDeclinedComplianceNotice,
+  isComplianceNoticeEnabled
+} from '@/utils/complianceNotice'
 
 const { t } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -256,6 +262,9 @@ const loginAgreementRevision = ref<string>('')
 const loginAgreementDocuments = ref<LoginAgreementDocument[]>([])
 const agreementAccepted = ref<boolean>(false)
 const showAgreementModal = ref<boolean>(false)
+const complianceNoticeRequired = ref<boolean>(false)
+const complianceNoticeAccepted = ref<boolean>(true)
+const complianceNoticeDeclined = ref<boolean>(false)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -285,9 +294,13 @@ const validationToastMessage = computed(
 const agreementGateActive = computed(
   () => loginAgreementEnabled.value && !agreementAccepted.value
 )
+const complianceGateActive = computed(
+  () => complianceNoticeRequired.value && !complianceNoticeAccepted.value
+)
+const formInputDisabled = computed(() => isLoading.value || !publicSettingsLoaded.value)
 
 const authActionDisabled = computed(
-  () => isLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || !publicSettingsLoaded.value || agreementGateActive.value || complianceGateActive.value
 )
 
 const showOAuthLogin = computed(
@@ -336,13 +349,35 @@ onMounted(async () => {
     passwordResetEnabled.value = settings.password_reset_enabled
     contactInfo.value = settings.contact_info || ''
     applyLoginAgreementSettings(settings)
+    applyComplianceNoticeSettings(settings)
   } catch (error) {
     console.error('Failed to load public settings:', error)
     loginAgreementEnabled.value = false
     agreementAccepted.value = true
+    complianceNoticeRequired.value = false
+    complianceNoticeAccepted.value = true
+    complianceNoticeDeclined.value = false
   } finally {
     publicSettingsLoaded.value = true
   }
+  window.addEventListener(COMPLIANCE_NOTICE_EVENT, refreshComplianceNoticeState)
+})
+
+function applyComplianceNoticeSettings(settings: Awaited<ReturnType<typeof getPublicSettings>>): void {
+  complianceNoticeRequired.value = isComplianceNoticeEnabled(settings)
+  complianceNoticeAccepted.value = hasAcceptedComplianceNotice(settings)
+  complianceNoticeDeclined.value = hasDeclinedComplianceNotice(settings)
+}
+
+function refreshComplianceNoticeState(): void {
+  const settings = appStore.cachedPublicSettings
+  if (settings) {
+    applyComplianceNoticeSettings(settings)
+  }
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener(COMPLIANCE_NOTICE_EVENT, refreshComplianceNoticeState)
 })
 
 // ==================== Login Agreement ====================
@@ -439,6 +474,14 @@ function validateForm(): boolean {
     if (loginAgreementMode.value !== 'checkbox') {
       showAgreementModal.value = true
     }
+    return false
+  }
+  if (complianceGateActive.value) {
+    appStore.showWarning(
+      complianceNoticeDeclined.value
+        ? '您已拒绝平台公告内容，无法登录。请重新进入并同意公告后再继续。'
+        : '请先阅读并同意平台公告后再登录。'
+    )
     return false
   }
 

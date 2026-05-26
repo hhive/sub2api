@@ -86,6 +86,31 @@ func TestSettingService_GetPublicSettings_DefaultsRedeemPurchaseURL(t *testing.T
 	require.Equal(t, "https://pay.ldxp.cn/shop/xiaoni-ai", settings.RedeemPurchaseURL)
 }
 
+func TestSettingService_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyComplianceNoticeEnabled:     "true",
+			SettingKeyComplianceNoticeRevision:    "2026-05-26",
+			SettingKeyComplianceNoticeBadge:       "平台公告",
+			SettingKeyComplianceNoticeTitle:       "Codex中转站平台安全与合规管理公告",
+			SettingKeyComplianceNoticeContentMD:   "为维护健康、积极、有序的绿色互联网环境。",
+			SettingKeyComplianceNoticeAcceptText:  "以上内容均已看过，本人自愿承担产生后果",
+			SettingKeyComplianceNoticeDeclineText: "本人不愿意承担，已拒绝",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.ComplianceNoticeEnabled)
+	require.Equal(t, "2026-05-26", settings.ComplianceNoticeRevision)
+	require.Equal(t, "平台公告", settings.ComplianceNoticeBadge)
+	require.Equal(t, "Codex中转站平台安全与合规管理公告", settings.ComplianceNoticeTitle)
+	require.Equal(t, "为维护健康、积极、有序的绿色互联网环境。", settings.ComplianceNoticeContentMD)
+	require.Equal(t, "以上内容均已看过，本人自愿承担产生后果", settings.ComplianceNoticeAcceptText)
+	require.Equal(t, "本人不愿意承担，已拒绝", settings.ComplianceNoticeDeclineText)
+}
+
 func TestSettingService_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

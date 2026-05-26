@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { RouterView, useRouter, useRoute } from 'vue-router'
-import { onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
 import { resolveDocumentTitle } from '@/router/title'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
+import ComplianceNoticeDialog from '@/components/common/ComplianceNoticeDialog.vue'
 import { useAppStore, useAuthStore, useSubscriptionStore, useAnnouncementStore } from '@/stores'
 import { getSetupStatus } from '@/api/setup'
+import {
+  getComplianceNoticeRevision,
+  hasAcceptedComplianceNotice,
+  saveComplianceNoticeDecision
+} from '@/utils/complianceNotice'
 
 const router = useRouter()
 const route = useRoute()
@@ -14,6 +20,32 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const subscriptionStore = useSubscriptionStore()
 const announcementStore = useAnnouncementStore()
+const complianceNoticeDismissed = ref(false)
+
+const complianceSettings = computed(() => appStore.cachedPublicSettings)
+const showComplianceNotice = computed(() => {
+  const settings = complianceSettings.value
+  return (
+    !complianceNoticeDismissed.value &&
+    settings?.compliance_notice_enabled === true &&
+    !hasAcceptedComplianceNotice(settings)
+  )
+})
+const complianceNoticeBadge = computed(
+  () => complianceSettings.value?.compliance_notice_badge || '平台公告'
+)
+const complianceNoticeTitle = computed(
+  () => complianceSettings.value?.compliance_notice_title || 'Codex中转站平台安全与合规管理公告'
+)
+const complianceNoticeContent = computed(
+  () => complianceSettings.value?.compliance_notice_content_md || ''
+)
+const complianceNoticeAcceptText = computed(
+  () => complianceSettings.value?.compliance_notice_accept_text || '以上内容均已看过，本人自愿承担产生后果'
+)
+const complianceNoticeDeclineText = computed(
+  () => complianceSettings.value?.compliance_notice_decline_text || '本人不愿意承担，已拒绝'
+)
 
 /**
  * Update favicon dynamically
@@ -91,6 +123,23 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
+function handleComplianceAccept() {
+  const revision = getComplianceNoticeRevision(complianceSettings.value)
+  if (revision) {
+    saveComplianceNoticeDecision(revision, 'accepted')
+  }
+  complianceNoticeDismissed.value = true
+}
+
+function handleComplianceDecline() {
+  const revision = getComplianceNoticeRevision(complianceSettings.value)
+  if (revision) {
+    saveComplianceNoticeDecision(revision, 'declined')
+  }
+  complianceNoticeDismissed.value = true
+  appStore.showWarning('已拒绝平台公告内容，登录和注册操作将被拦截。')
+}
+
 onMounted(async () => {
   // Check if setup is needed
   try {
@@ -116,4 +165,14 @@ onMounted(async () => {
   <RouterView />
   <Toast />
   <AnnouncementPopup />
+  <ComplianceNoticeDialog
+    :visible="showComplianceNotice"
+    :badge="complianceNoticeBadge"
+    :title="complianceNoticeTitle"
+    :content="complianceNoticeContent"
+    :accept-text="complianceNoticeAcceptText"
+    :decline-text="complianceNoticeDeclineText"
+    @accept="handleComplianceAccept"
+    @decline="handleComplianceDecline"
+  />
 </template>

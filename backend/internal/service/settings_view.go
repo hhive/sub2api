@@ -24,6 +24,13 @@ type SystemSettings struct {
 	LoginAgreementMode               string
 	LoginAgreementUpdatedAt          string
 	LoginAgreementDocuments          []LoginAgreementDocument
+	ComplianceNoticeEnabled          bool
+	ComplianceNoticeRevision         string
+	ComplianceNoticeBadge            string
+	ComplianceNoticeTitle            string
+	ComplianceNoticeContentMD        string
+	ComplianceNoticeAcceptText       string
+	ComplianceNoticeDeclineText      string
 
 	SMTPHost               string
 	SMTPPort               int
@@ -251,6 +258,13 @@ type PublicSettings struct {
 	LoginAgreementUpdatedAt          string
 	LoginAgreementRevision           string
 	LoginAgreementDocuments          []LoginAgreementDocument
+	ComplianceNoticeEnabled          bool
+	ComplianceNoticeRevision         string
+	ComplianceNoticeBadge            string
+	ComplianceNoticeTitle            string
+	ComplianceNoticeContentMD        string
+	ComplianceNoticeAcceptText       string
+	ComplianceNoticeDeclineText      string
 	TurnstileEnabled                 bool
 	TurnstileSiteKey                 string
 	SiteName                         string

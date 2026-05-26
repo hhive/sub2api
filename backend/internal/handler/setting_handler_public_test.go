@@ -116,6 +116,53 @@ func TestSettingHandler_GetPublicSettings_ExposesOnyxMenuConfig(t *testing.T) {
 	require.Equal(t, "/api/v1/onyx/launch", resp.Data.OnyxLaunchPath)
 }
 
+func TestSettingHandler_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &settingHandlerPublicRepoStub{
+		values: map[string]string{
+			service.SettingKeyComplianceNoticeEnabled:     "true",
+			service.SettingKeyComplianceNoticeRevision:    "2026-05-26",
+			service.SettingKeyComplianceNoticeBadge:       "平台公告",
+			service.SettingKeyComplianceNoticeTitle:       "Codex中转站平台安全与合规管理公告",
+			service.SettingKeyComplianceNoticeContentMD:   "公告正文",
+			service.SettingKeyComplianceNoticeAcceptText:  "同意",
+			service.SettingKeyComplianceNoticeDeclineText: "拒绝",
+		},
+	}
+	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+
+	h.GetPublicSettings(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			ComplianceNoticeEnabled     bool   `json:"compliance_notice_enabled"`
+			ComplianceNoticeRevision    string `json:"compliance_notice_revision"`
+			ComplianceNoticeBadge       string `json:"compliance_notice_badge"`
+			ComplianceNoticeTitle       string `json:"compliance_notice_title"`
+			ComplianceNoticeContentMD   string `json:"compliance_notice_content_md"`
+			ComplianceNoticeAcceptText  string `json:"compliance_notice_accept_text"`
+			ComplianceNoticeDeclineText string `json:"compliance_notice_decline_text"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.True(t, resp.Data.ComplianceNoticeEnabled)
+	require.Equal(t, "2026-05-26", resp.Data.ComplianceNoticeRevision)
+	require.Equal(t, "平台公告", resp.Data.ComplianceNoticeBadge)
+	require.Equal(t, "Codex中转站平台安全与合规管理公告", resp.Data.ComplianceNoticeTitle)
+	require.Equal(t, "公告正文", resp.Data.ComplianceNoticeContentMD)
+	require.Equal(t, "同意", resp.Data.ComplianceNoticeAcceptText)
+	require.Equal(t, "拒绝", resp.Data.ComplianceNoticeDeclineText)
+}
+
 func TestSettingHandler_GetPublicSettings_ExposesWeChatOAuthModeCapabilities(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h := NewSettingHandler(service.NewSettingService(&settingHandlerPublicRepoStub{
