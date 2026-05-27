@@ -920,11 +920,20 @@ function handleMenuItemClick(itemPath: string) {
 async function handleOnyxLaunch() {
   if (onyxLaunching.value) return
   handleMenuItemClick('__onyx__')
+  const launchWindow = window.open('', '_blank')
+  if (launchWindow) {
+    launchWindow.opener = null
+  }
   onyxLaunching.value = true
   try {
     const result = await launchOnyx()
-    window.open(result.redirect_url, '_blank', 'noopener')
+    if (launchWindow) {
+      launchWindow.location.href = result.redirect_url
+    } else {
+      window.location.href = result.redirect_url
+    }
   } catch (error) {
+    launchWindow?.close()
     appStore.showError(resolveOnyxLaunchError(error))
   } finally {
     onyxLaunching.value = false

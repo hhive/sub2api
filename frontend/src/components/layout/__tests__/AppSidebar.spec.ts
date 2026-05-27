@@ -32,11 +32,13 @@ describe('AppSidebar header styles', () => {
 })
 
 describe('AppSidebar Onyx menu wiring', () => {
-  it('uses the backend launch endpoint instead of routing to a local page', () => {
+  it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
     expect(componentSource).toContain("import { launchImagePlayground, launchOnyx } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
-    expect(componentSource).toContain("window.open(result.redirect_url, '_blank', 'noopener')")
+    expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
+    expect(componentSource).toContain('launchWindow.opener = null')
+    expect(componentSource).toContain('launchWindow.location.href = result.redirect_url')
     expect(componentSource).not.toContain("{ path: '/chat', label: t('nav.chat')")
   })
 })
