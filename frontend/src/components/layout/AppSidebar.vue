@@ -69,7 +69,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -117,7 +117,7 @@
 
           <template v-for="item in personalNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
+              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -166,7 +166,7 @@
         <div class="sidebar-section">
           <template v-for="item in userNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
+              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -274,7 +274,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'onyx' | 'imagePlayground' | 'lobehub'
+  action?: 'lobehub' | 'onyx' | 'imagePlayground'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -312,9 +312,9 @@ const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const lobeHubLaunching = ref(false)
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
-const lobeHubLaunching = ref(false)
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -757,8 +757,8 @@ const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
-const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
+const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled
@@ -776,6 +776,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   items.push(
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
+    { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
     { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'imagePlayground' },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
@@ -828,7 +829,6 @@ const customMenuItemsForAdmin = computed(() => {
 const adminNavItems = computed((): NavItem[] => {
   const baseItems: NavItem[] = [
     { path: '/admin/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
-    { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '/admin/ops', label: t('nav.ops'), icon: ChartIcon, featureFlag: flagOpsMonitoring },
     { path: '/admin/users', label: t('nav.users'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/balance-credits', label: t('nav.balanceCredits'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -957,20 +957,6 @@ async function handleOnyxLaunch() {
   }
 }
 
-async function handleImagePlaygroundLaunch() {
-  if (imagePlaygroundLaunching.value) return
-  handleMenuItemClick('__image_playground__')
-  imagePlaygroundLaunching.value = true
-  try {
-    const result = await launchImagePlayground()
-    window.open(result.redirect_url, '_blank', 'noopener')
-  } catch (error) {
-    appStore.showError(resolveImagePlaygroundLaunchError(error))
-  } finally {
-    imagePlaygroundLaunching.value = false
-  }
-}
-
 async function handleLobeHubLaunch() {
   if (lobeHubLaunching.value) return
   handleMenuItemClick('__lobehub__')
@@ -994,29 +980,43 @@ async function handleLobeHubLaunch() {
   }
 }
 
+async function handleImagePlaygroundLaunch() {
+  if (imagePlaygroundLaunching.value) return
+  handleMenuItemClick('__image_playground__')
+  imagePlaygroundLaunching.value = true
+  try {
+    const result = await launchImagePlayground()
+    window.open(result.redirect_url, '_blank', 'noopener')
+  } catch (error) {
+    appStore.showError(resolveImagePlaygroundLaunchError(error))
+  } finally {
+    imagePlaygroundLaunching.value = false
+  }
+}
+
 function handleActionLaunch(action: NavItem['action']) {
+  if (action === 'lobehub') {
+    return handleLobeHubLaunch()
+  }
   if (action === 'onyx') {
     return handleOnyxLaunch()
   }
   if (action === 'imagePlayground') {
     return handleImagePlaygroundLaunch()
   }
-  if (action === 'lobehub') {
-    return handleLobeHubLaunch()
-  }
 }
 
 function isActionLaunching(action: NavItem['action']): boolean {
+  if (action === 'lobehub') return lobeHubLaunching.value
   if (action === 'onyx') return onyxLaunching.value
   if (action === 'imagePlayground') return imagePlaygroundLaunching.value
-  if (action === 'lobehub') return lobeHubLaunching.value
   return false
 }
 
 function actionLabel(item: NavItem): string {
+  if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
   if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
-  if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   return item.label
 }
 
@@ -1031,17 +1031,6 @@ function resolveOnyxLaunchError(error: unknown): string {
   return apiError.message || t('onyx.openFailed')
 }
 
-function resolveImagePlaygroundLaunchError(error: unknown): string {
-  const apiError = error as { status?: number; reason?: string; message?: string }
-  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
-    return t('onyx.noAvailableApiKey')
-  }
-  if (apiError.status === 503) {
-    return t('imagePlayground.notConfigured')
-  }
-  return apiError.message || t('imagePlayground.openFailed')
-}
-
 function resolveLobeHubLaunchError(error: unknown): string {
   const apiError = error as { status?: number; reason?: string; message?: string }
   if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
@@ -1051,6 +1040,17 @@ function resolveLobeHubLaunchError(error: unknown): string {
     return t('lobehub.notConfigured')
   }
   return apiError.message || t('lobehub.openFailed')
+}
+
+function resolveImagePlaygroundLaunchError(error: unknown): string {
+  const apiError = error as { status?: number; reason?: string; message?: string }
+  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
+    return t('onyx.noAvailableApiKey')
+  }
+  if (apiError.status === 503) {
+    return t('imagePlayground.notConfigured')
+  }
+  return apiError.message || t('imagePlayground.openFailed')
 }
 
 function isActive(path: string): boolean {

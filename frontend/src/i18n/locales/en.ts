@@ -366,7 +366,7 @@ export default {
     apiKeys: 'API Keys',
     usage: 'Usage',
     chat: 'Chat',
-    lobehub: 'LobeHub',
+    lobehub: 'New Chat',
     imagePlayground: 'Image Generation',
     onyx: 'Onyx',
     redeem: 'Redeem',
@@ -424,9 +424,9 @@ export default {
   },
 
   lobehub: {
-    opening: 'Opening LobeHub',
-    notConfigured: 'LobeHub is not configured. Contact an administrator.',
-    openFailed: 'Failed to open LobeHub'
+    opening: 'Opening New Chat',
+    notConfigured: 'New Chat is not configured. Contact an administrator.',
+    openFailed: 'Failed to open New Chat'
   },
 
   // Auth
