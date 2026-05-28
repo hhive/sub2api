@@ -28,6 +28,21 @@ func TestSettingService_GetPublicSettings_ExposesOnyxMenuConfig(t *testing.T) {
 	require.Equal(t, "/api/v1/onyx/launch", settings.OnyxLaunchPath)
 }
 
+func TestSettingService_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyLobeHubEnabled:   "true",
+			SettingKeyLobeHubMenuLabel: "Lobe Chat",
+		},
+	}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.LobeHubEnabled)
+	require.Equal(t, "Lobe Chat", settings.LobeHubMenuLabel)
+	require.Equal(t, "/api/v1/lobehub/launch", settings.LobeHubLaunchPath)
+}
+
 func TestPublicSettingsInjectionPayloadKeepsPublicSettingsFields(t *testing.T) {
 	publicSettingsType := reflect.TypeOf(PublicSettings{})
 	injectionPayloadType := reflect.TypeOf(PublicSettingsInjectionPayload{})

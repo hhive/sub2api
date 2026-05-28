@@ -157,6 +157,10 @@ type SystemSettings struct {
 	OnyxDefaultRedirectPath     string
 	OnyxDefaultTextModel        string
 	OnyxDefaultImageModel       string
+	LobeHubEnabled              bool
+	LobeHubBaseURL              string
+	LobeHubMenuLabel            string
+	LobeHubExchangeSecret       string
 
 	DefaultConcurrency               int
 	DefaultBalance                   float64
@@ -289,6 +293,9 @@ type PublicSettings struct {
 	OnyxEnabled                 bool
 	OnyxMenuLabel               string
 	OnyxLaunchPath              string
+	LobeHubEnabled              bool
+	LobeHubMenuLabel            string
+	LobeHubLaunchPath           string
 
 	LinuxDoOAuthEnabled      bool
 	DingTalkOAuthEnabled     bool

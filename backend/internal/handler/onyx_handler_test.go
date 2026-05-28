@@ -24,6 +24,9 @@ type onyxLaunchServiceStub struct {
 	createImagePlaygroundUserID int64
 	createImagePlaygroundResult *service.OnyxLaunchResult
 	createImagePlaygroundErr    error
+	createLobeHubUserID         int64
+	createLobeHubResult         *service.OnyxLaunchResult
+	createLobeHubErr            error
 	consumeToken                string
 	consumeResult               *service.OnyxLaunchPayload
 	consumeErr                  error
@@ -43,6 +46,14 @@ func (s *onyxLaunchServiceStub) CreateImagePlaygroundLaunch(ctx context.Context,
 		return nil, s.createImagePlaygroundErr
 	}
 	return s.createImagePlaygroundResult, nil
+}
+
+func (s *onyxLaunchServiceStub) CreateLobeHubLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
+	s.createLobeHubUserID = userID
+	if s.createLobeHubErr != nil {
+		return nil, s.createLobeHubErr
+	}
+	return s.createLobeHubResult, nil
 }
 
 func (s *onyxLaunchServiceStub) ConsumeLaunch(ctx context.Context, token string) (*service.OnyxLaunchPayload, error) {

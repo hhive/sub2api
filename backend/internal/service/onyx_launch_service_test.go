@@ -282,6 +282,59 @@ func TestOnyxLaunchService_CreateLaunch_StoresLaunchTokenWithTTLAndBinding(t *te
 	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
 }
 
+func TestOnyxLaunchService_CreateLobeHubLaunch_ReturnsRedirectURLWithLaunchTokenOnly(t *testing.T) {
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyLobeHubEnabled:        "true",
+		SettingKeyLobeHubBaseURL:        "https://lobe.example.com",
+		SettingKeyLobeHubExchangeSecret: "exchange-secret",
+	}}, &config.Config{})
+	now := time.Now()
+	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{{
+		ID:        401,
+		UserID:    42,
+		Key:       "sk-secret-user-key",
+		Status:    StatusActive,
+		Quota:     10,
+		QuotaUsed: 1,
+		CreatedAt: now.Add(-1 * time.Hour),
+	}}}
+	store := &onyxLaunchTokenStoreStub{}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings, tokenStore: store}
+
+	result, err := svc.CreateLobeHubLaunch(context.Background(), 42)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotEmpty(t, result.RedirectURL)
+	require.NotContains(t, result.RedirectURL, "sk-secret-user-key")
+
+	redirectURL, parseErr := url.Parse(result.RedirectURL)
+	require.NoError(t, parseErr)
+	require.Equal(t, "https", redirectURL.Scheme)
+	require.Equal(t, "lobe.example.com", redirectURL.Host)
+	require.Equal(t, "/api/sub2api/launch", redirectURL.Path)
+	require.NotEmpty(t, redirectURL.Query().Get("token"))
+	require.Len(t, redirectURL.Query(), 1)
+	require.Len(t, store.storeCalls, 1)
+	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
+	require.Equal(t, int64(42), store.storeCalls[0].data.UserID)
+	require.Equal(t, int64(401), store.storeCalls[0].data.APIKeyID)
+}
+
+func TestOnyxLaunchService_CreateLobeHubLaunch_ReturnsServiceUnavailableWhenDisabled(t *testing.T) {
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyLobeHubEnabled: "false",
+	}}, &config.Config{})
+	svc := &OnyxLaunchService{settingService: settings}
+
+	result, err := svc.CreateLobeHubLaunch(context.Background(), 42)
+	require.Error(t, err)
+	require.Nil(t, result)
+
+	var appErr *infraerrors.ApplicationError
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, "LOBEHUB_DISABLED", appErr.Reason)
+}
+
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPISettings(t *testing.T) {
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{
 		SettingKeyAPIBaseURL: "https://xiaoni-ai.zle.ee/v1",
@@ -447,6 +500,7 @@ func TestOnyxLaunchService_ConsumeLaunch_ReturnsExchangePayloadForEligibleBoundA
 			ID:       42,
 			Email:    "user@example.com",
 			Username: "onyx-user",
+			Role:     RoleAdmin,
 		},
 	}}
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{
@@ -462,6 +516,7 @@ func TestOnyxLaunchService_ConsumeLaunch_ReturnsExchangePayloadForEligibleBoundA
 	require.Equal(t, int64(42), result.UserID)
 	require.Equal(t, "user@example.com", result.Email)
 	require.Equal(t, "onyx-user", result.Username)
+	require.Equal(t, RoleAdmin, result.Role)
 	require.Equal(t, int64(1001), result.APIKeyID)
 	require.Equal(t, "sk-user-key", result.APIKey)
 	require.Equal(t, "https://sub2api.example.com/v1", result.APIBaseURL)

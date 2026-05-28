@@ -68,6 +68,20 @@
                 </router-link>
               </div>
             </template>
+            <button
+              v-else-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
+              type="button"
+              class="sidebar-link mb-1 w-full"
+              :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
+              :title="sidebarCollapsed ? item.label : undefined"
+              :disabled="isActionLaunching(item.action)"
+              @click="handleActionLaunch(item.action)"
+            >
+              <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+                {{ actionLabel(item) }}
+              </span>
+            </button>
             <!-- Normal item (no children) -->
             <router-link
               v-else
@@ -103,7 +117,7 @@
 
           <template v-for="item in personalNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -152,7 +166,7 @@
         <div class="sidebar-section">
           <template v-for="item in userNavItems" :key="item.path">
             <button
-              v-if="item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-if="item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'lobehub'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -245,7 +259,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchImagePlayground, launchOnyx } from '@/api/onyx'
+import { launchImagePlayground, launchLobeHub, launchOnyx } from '@/api/onyx'
 
 interface NavItem {
   path: string
@@ -260,7 +274,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'onyx' | 'imagePlayground'
+  action?: 'onyx' | 'imagePlayground' | 'lobehub'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -300,6 +314,7 @@ const isAdmin = computed(() => authStore.isAdmin)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
+const lobeHubLaunching = ref(false)
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -743,6 +758,7 @@ const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
+const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled
@@ -812,6 +828,7 @@ const customMenuItemsForAdmin = computed(() => {
 const adminNavItems = computed((): NavItem[] => {
   const baseItems: NavItem[] = [
     { path: '/admin/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
+    { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '/admin/ops', label: t('nav.ops'), icon: ChartIcon, featureFlag: flagOpsMonitoring },
     { path: '/admin/users', label: t('nav.users'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/balance-credits', label: t('nav.balanceCredits'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -954,6 +971,29 @@ async function handleImagePlaygroundLaunch() {
   }
 }
 
+async function handleLobeHubLaunch() {
+  if (lobeHubLaunching.value) return
+  handleMenuItemClick('__lobehub__')
+  const launchWindow = window.open('', '_blank')
+  if (launchWindow) {
+    launchWindow.opener = null
+  }
+  lobeHubLaunching.value = true
+  try {
+    const result = await launchLobeHub()
+    if (launchWindow) {
+      launchWindow.location.href = result.redirect_url
+    } else {
+      window.location.href = result.redirect_url
+    }
+  } catch (error) {
+    launchWindow?.close()
+    appStore.showError(resolveLobeHubLaunchError(error))
+  } finally {
+    lobeHubLaunching.value = false
+  }
+}
+
 function handleActionLaunch(action: NavItem['action']) {
   if (action === 'onyx') {
     return handleOnyxLaunch()
@@ -961,17 +1001,22 @@ function handleActionLaunch(action: NavItem['action']) {
   if (action === 'imagePlayground') {
     return handleImagePlaygroundLaunch()
   }
+  if (action === 'lobehub') {
+    return handleLobeHubLaunch()
+  }
 }
 
 function isActionLaunching(action: NavItem['action']): boolean {
   if (action === 'onyx') return onyxLaunching.value
   if (action === 'imagePlayground') return imagePlaygroundLaunching.value
+  if (action === 'lobehub') return lobeHubLaunching.value
   return false
 }
 
 function actionLabel(item: NavItem): string {
   if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
   if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
+  if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   return item.label
 }
 
@@ -995,6 +1040,17 @@ function resolveImagePlaygroundLaunchError(error: unknown): string {
     return t('imagePlayground.notConfigured')
   }
   return apiError.message || t('imagePlayground.openFailed')
+}
+
+function resolveLobeHubLaunchError(error: unknown): string {
+  const apiError = error as { status?: number; reason?: string; message?: string }
+  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
+    return t('onyx.noAvailableApiKey')
+  }
+  if (apiError.status === 503) {
+    return t('lobehub.notConfigured')
+  }
+  return apiError.message || t('lobehub.openFailed')
 }
 
 function isActive(path: string): boolean {

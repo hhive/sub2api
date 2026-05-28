@@ -261,6 +261,10 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		OnyxDefaultRedirectPath:                settings.OnyxDefaultRedirectPath,
 		OnyxDefaultTextModel:                   settings.OnyxDefaultTextModel,
 		OnyxDefaultImageModel:                  settings.OnyxDefaultImageModel,
+		LobeHubEnabled:                         settings.LobeHubEnabled,
+		LobeHubBaseURL:                         settings.LobeHubBaseURL,
+		LobeHubMenuLabel:                       settings.LobeHubMenuLabel,
+		LobeHubExchangeSecretConfigured:        settings.LobeHubExchangeSecret != "",
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
 		BalanceCreditValidityDays:              settings.BalanceCreditValidityDays,
@@ -557,6 +561,10 @@ type UpdateSettingsRequest struct {
 	OnyxDefaultRedirectPath     *string               `json:"onyx_default_redirect_path"`
 	OnyxDefaultTextModel        *string               `json:"onyx_default_text_model"`
 	OnyxDefaultImageModel       *string               `json:"onyx_default_image_model"`
+	LobeHubEnabled              *bool                 `json:"lobehub_enabled"`
+	LobeHubBaseURL              *string               `json:"lobehub_base_url"`
+	LobeHubMenuLabel            *string               `json:"lobehub_menu_label"`
+	LobeHubExchangeSecret       *string               `json:"lobehub_exchange_secret"`
 
 	// 默认配置
 	DefaultConcurrency                        int                               `json:"default_concurrency"`
@@ -1358,6 +1366,40 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		}
 	}
 
+	lobeHubEnabled := previousSettings.LobeHubEnabled
+	if req.LobeHubEnabled != nil {
+		lobeHubEnabled = *req.LobeHubEnabled
+	}
+	lobeHubBaseURL := strings.TrimSpace(previousSettings.LobeHubBaseURL)
+	if req.LobeHubBaseURL != nil {
+		lobeHubBaseURL = strings.TrimSpace(*req.LobeHubBaseURL)
+	}
+	lobeHubMenuLabel := strings.TrimSpace(previousSettings.LobeHubMenuLabel)
+	if req.LobeHubMenuLabel != nil {
+		lobeHubMenuLabel = strings.TrimSpace(*req.LobeHubMenuLabel)
+	}
+	if lobeHubMenuLabel == "" {
+		lobeHubMenuLabel = "LobeHub"
+	}
+	lobeHubExchangeSecret := strings.TrimSpace(previousSettings.LobeHubExchangeSecret)
+	if req.LobeHubExchangeSecret != nil {
+		lobeHubExchangeSecret = strings.TrimSpace(*req.LobeHubExchangeSecret)
+	}
+	if lobeHubEnabled {
+		if lobeHubBaseURL == "" {
+			response.BadRequest(c, "LobeHub Base URL is required when enabled")
+			return
+		}
+		if err := config.ValidateAbsoluteHTTPURL(lobeHubBaseURL); err != nil {
+			response.BadRequest(c, "LobeHub Base URL must be an absolute http(s) URL")
+			return
+		}
+		if lobeHubExchangeSecret == "" {
+			response.BadRequest(c, "LobeHub Exchange Secret is required when enabled")
+			return
+		}
+	}
+
 	purchaseEnabled := previousSettings.PurchaseSubscriptionEnabled
 	if req.PurchaseSubscriptionEnabled != nil {
 		purchaseEnabled = *req.PurchaseSubscriptionEnabled
@@ -1721,6 +1763,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		OnyxDefaultRedirectPath:                onyxDefaultRedirectPath,
 		OnyxDefaultTextModel:                   onyxDefaultTextModel,
 		OnyxDefaultImageModel:                  onyxDefaultImageModel,
+		LobeHubEnabled:                         lobeHubEnabled,
+		LobeHubBaseURL:                         lobeHubBaseURL,
+		LobeHubMenuLabel:                       lobeHubMenuLabel,
+		LobeHubExchangeSecret:                  lobeHubExchangeSecret,
 		DefaultConcurrency:                     req.DefaultConcurrency,
 		DefaultBalance:                         req.DefaultBalance,
 		BalanceCreditValidityDays:              balanceCreditValidityDays,

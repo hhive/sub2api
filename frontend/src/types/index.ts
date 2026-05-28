@@ -246,6 +246,9 @@ export interface PublicSettings {
   onyx_enabled: boolean
   onyx_menu_label: string
   onyx_launch_path: string
+  lobehub_enabled: boolean
+  lobehub_menu_label: string
+  lobehub_launch_path: string
 }
 
 export interface AuthResponse {

@@ -33,7 +33,7 @@ describe('AppSidebar header styles', () => {
 
 describe('AppSidebar Onyx menu wiring', () => {
   it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
-    expect(componentSource).toContain("import { launchImagePlayground, launchOnyx } from '@/api/onyx'")
+    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
@@ -45,12 +45,30 @@ describe('AppSidebar Onyx menu wiring', () => {
 
 describe('AppSidebar image playground menu wiring', () => {
   it('adds an authenticated launch action next to the chat menu', () => {
-    expect(componentSource).toContain("action?: 'onyx' | 'imagePlayground'")
+    expect(componentSource).toContain("action?: 'onyx' | 'imagePlayground' | 'lobehub'")
     expect(componentSource).toContain("label: t('nav.imagePlayground')")
     expect(componentSource).toContain("action: 'imagePlayground'")
     expect(componentSource).toContain('handleImagePlaygroundLaunch')
     expect(componentSource).toContain('launchImagePlayground()')
     expect(componentSource).toContain("handleMenuItemClick('__image_playground__')")
+  })
+})
+
+describe('AppSidebar LobeHub menu wiring', () => {
+  it('adds a popup-safe authenticated launch action for admin-only LobeHub access', () => {
+    expect(componentSource).toContain('FeatureFlags.lobehub')
+    expect(componentSource).toContain("label: t('nav.lobehub')")
+    expect(componentSource).toContain("action: 'lobehub'")
+    expect(componentSource).toContain('handleLobeHubLaunch')
+    expect(componentSource).toContain('launchLobeHub()')
+    expect(componentSource).toContain("handleMenuItemClick('__lobehub__')")
+    const selfNavBlock = componentSource.match(/function buildSelfNavItems[\s\S]*?return items\n}/)?.[0] ?? ''
+    const adminNavBlock = componentSource.match(/const adminNavItems = computed[\s\S]*?return visible\n}\)/)?.[0] ?? ''
+    expect(selfNavBlock).not.toContain("path: '__lobehub__'")
+    expect(adminNavBlock).toContain("path: '__lobehub__'")
+    expect(adminNavBlock.indexOf("path: '__lobehub__'")).toBeGreaterThan(
+      adminNavBlock.indexOf("path: '/admin/dashboard'")
+    )
   })
 })
 

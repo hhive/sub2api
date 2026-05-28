@@ -18,6 +18,10 @@ func RegisterOnyxRoutes(
 	{
 		onyxPublic.POST("/exchange", h.Onyx.Exchange)
 	}
+	lobeHubPublic := v1.Group("/lobehub")
+	{
+		lobeHubPublic.POST("/exchange", h.Onyx.LobeHubExchange)
+	}
 
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))
@@ -30,6 +34,10 @@ func RegisterOnyxRoutes(
 		imagePlayground := authenticated.Group("/image-playground")
 		{
 			imagePlayground.POST("/launch", h.Onyx.ImagePlaygroundLaunch)
+		}
+		lobeHub := authenticated.Group("/lobehub")
+		{
+			lobeHub.POST("/launch", h.Onyx.LobeHubLaunch)
 		}
 	}
 

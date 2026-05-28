@@ -370,6 +370,9 @@ export const useAppStore = defineStore('app', () => {
         onyx_enabled: false,
         onyx_menu_label: 'Onyx',
         onyx_launch_path: '/api/v1/onyx/launch',
+        lobehub_enabled: false,
+        lobehub_menu_label: 'LobeHub',
+        lobehub_launch_path: '/api/v1/lobehub/launch',
       }
     }
 

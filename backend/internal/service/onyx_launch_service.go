@@ -38,6 +38,7 @@ type OnyxLaunchPayload struct {
 	UserID         int64  `json:"user_id"`
 	Email          string `json:"email"`
 	Username       string `json:"username"`
+	Role           string `json:"role"`
 	APIKeyID       int64  `json:"api_key_id"`
 	APIKey         string `json:"api_key"`
 	APIBaseURL     string `json:"api_base_url"`
@@ -124,6 +125,45 @@ func (s *OnyxLaunchService) CreateImagePlaygroundLaunch(ctx context.Context, use
 	return &OnyxLaunchResult{RedirectURL: redirectURL}, nil
 }
 
+func (s *OnyxLaunchService) CreateLobeHubLaunch(ctx context.Context, userID int64) (*OnyxLaunchResult, error) {
+	if s.settingService == nil {
+		return nil, infraerrors.ServiceUnavailable("LOBEHUB_SETTINGS_UNAVAILABLE", "lobehub settings unavailable")
+	}
+
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !settings.LobeHubEnabled {
+		return nil, infraerrors.ServiceUnavailable("LOBEHUB_DISABLED", "lobehub integration disabled")
+	}
+	if settings.LobeHubBaseURL == "" {
+		return nil, infraerrors.ServiceUnavailable("LOBEHUB_BASE_URL_MISSING", "lobehub base url not configured")
+	}
+	if settings.LobeHubExchangeSecret == "" {
+		return nil, infraerrors.ServiceUnavailable("LOBEHUB_EXCHANGE_SECRET_MISSING", "lobehub exchange secret not configured")
+	}
+
+	selectedKey, err := s.selectFirstEligibleAPIKey(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	launchToken, err := randomOnyxLaunchToken()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.storeLaunchToken(ctx, launchToken, userID, selectedKey.ID, settings.OnyxLaunchTokenTTLSeconds); err != nil {
+		return nil, err
+	}
+	redirectURL, err := buildLobeHubLaunchRedirectURL(settings.LobeHubBaseURL, launchToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &OnyxLaunchResult{RedirectURL: redirectURL}, nil
+}
+
 func (s *OnyxLaunchService) ConsumeLaunch(ctx context.Context, token string) (*OnyxLaunchPayload, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
@@ -157,6 +197,7 @@ func (s *OnyxLaunchService) ConsumeLaunch(ctx context.Context, token string) (*O
 	if apiKey.User != nil {
 		payload.Email = apiKey.User.Email
 		payload.Username = apiKey.User.Username
+		payload.Role = apiKey.User.Role
 	}
 	if s.settingService != nil {
 		settings, err := s.settingService.GetAllSettings(ctx)
@@ -283,6 +324,16 @@ func buildOnyxExchangeRedirectURL(baseURL, token string) (string, error) {
 		return "", err
 	}
 	parsed.Path = path.Join(parsed.Path, "/api/sub2api/exchange")
+	parsed.RawQuery = url.Values{"token": []string{token}}.Encode()
+	return parsed.String(), nil
+}
+
+func buildLobeHubLaunchRedirectURL(baseURL, token string) (string, error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	parsed.Path = path.Join(parsed.Path, "/api/sub2api/launch")
 	parsed.RawQuery = url.Values{"token": []string{token}}.Encode()
 	return parsed.String(), nil
 }

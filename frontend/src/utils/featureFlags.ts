@@ -124,6 +124,11 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'Onyx',
   }),
+  lobehub: defineFlag({
+    key: 'lobehub_enabled',
+    mode: 'opt-in',
+    label: 'LobeHub',
+  }),
 } as const
 
 export type RegisteredFeatureFlag = keyof typeof FeatureFlags

@@ -366,6 +366,7 @@ export default {
     apiKeys: 'API 密钥',
     usage: '使用记录',
     chat: '聊天台',
+    lobehub: 'LobeHub',
     imagePlayground: '图片生成',
     onyx: 'Onyx',
     redeem: '兑换',
@@ -420,6 +421,12 @@ export default {
     opening: '正在打开图片生成',
     notConfigured: '图片生成尚未配置，请联系管理员',
     openFailed: '打开图片生成失败'
+  },
+
+  lobehub: {
+    opening: '正在打开 LobeHub',
+    notConfigured: 'LobeHub 尚未配置，请联系管理员',
+    openFailed: '打开 LobeHub 失败'
   },
 
   // Auth

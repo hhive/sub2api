@@ -52,6 +52,9 @@ function settings(overrides: Partial<PublicSettings> = {}): PublicSettings {
     onyx_enabled: false,
     onyx_menu_label: '聊天台',
     onyx_launch_path: '/api/v1/onyx/launch',
+    lobehub_enabled: false,
+    lobehub_menu_label: 'LobeHub',
+    lobehub_launch_path: '/api/v1/lobehub/launch',
     compliance_notice_enabled: true,
     compliance_notice_revision: '2026-05-26',
     ...overrides

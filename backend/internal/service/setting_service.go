@@ -717,6 +717,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyCustomEndpoints,
 		SettingKeyOnyxEnabled,
 		SettingKeyOnyxMenuLabel,
+		SettingKeyLobeHubEnabled,
+		SettingKeyLobeHubMenuLabel,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
@@ -852,6 +854,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
 		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "聊天台"),
 		OnyxLaunchPath:                   "/api/v1/onyx/launch",
+		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
+		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
+		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		DingTalkOAuthEnabled:             dingTalkEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
@@ -1117,6 +1122,9 @@ type PublicSettingsInjectionPayload struct {
 	OnyxEnabled                      bool                     `json:"onyx_enabled"`
 	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
 	OnyxLaunchPath                   string                   `json:"onyx_launch_path"`
+	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
+	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
+	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
@@ -1194,6 +1202,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		OnyxEnabled:                      settings.OnyxEnabled,
 		OnyxMenuLabel:                    settings.OnyxMenuLabel,
 		OnyxLaunchPath:                   settings.OnyxLaunchPath,
+		LobeHubEnabled:                   settings.LobeHubEnabled,
+		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
+		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
@@ -1815,6 +1826,12 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyOnyxDefaultRedirectPath] = strings.TrimSpace(settings.OnyxDefaultRedirectPath)
 	updates[SettingKeyOnyxDefaultTextModel] = strings.TrimSpace(settings.OnyxDefaultTextModel)
 	updates[SettingKeyOnyxDefaultImageModel] = strings.TrimSpace(settings.OnyxDefaultImageModel)
+	updates[SettingKeyLobeHubEnabled] = strconv.FormatBool(settings.LobeHubEnabled)
+	updates[SettingKeyLobeHubBaseURL] = strings.TrimSpace(settings.LobeHubBaseURL)
+	updates[SettingKeyLobeHubMenuLabel] = strings.TrimSpace(settings.LobeHubMenuLabel)
+	if settings.LobeHubExchangeSecret != "" {
+		updates[SettingKeyLobeHubExchangeSecret] = strings.TrimSpace(settings.LobeHubExchangeSecret)
+	}
 
 	// 默认配置
 	updates[SettingKeyDefaultConcurrency] = strconv.Itoa(settings.DefaultConcurrency)
@@ -2688,6 +2705,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyOnyxDefaultRedirectPath:                   "/chat",
 		SettingKeyOnyxDefaultTextModel:                      "gpt-5.5",
 		SettingKeyOnyxDefaultImageModel:                     "gpt-image-2",
+		SettingKeyLobeHubEnabled:                            "false",
+		SettingKeyLobeHubBaseURL:                            "",
+		SettingKeyLobeHubMenuLabel:                          "LobeHub",
+		SettingKeyLobeHubExchangeSecret:                     "",
 		SettingKeyWeChatConnectEnabled:                      "false",
 		SettingKeyWeChatConnectAppID:                        "",
 		SettingKeyWeChatConnectAppSecret:                    "",
@@ -2894,6 +2915,10 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		OnyxDefaultRedirectPath:          strings.TrimSpace(settings[SettingKeyOnyxDefaultRedirectPath]),
 		OnyxDefaultTextModel:             strings.TrimSpace(settings[SettingKeyOnyxDefaultTextModel]),
 		OnyxDefaultImageModel:            strings.TrimSpace(settings[SettingKeyOnyxDefaultImageModel]),
+		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
+		LobeHubBaseURL:                   strings.TrimSpace(settings[SettingKeyLobeHubBaseURL]),
+		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
+		LobeHubExchangeSecret:            strings.TrimSpace(settings[SettingKeyLobeHubExchangeSecret]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",

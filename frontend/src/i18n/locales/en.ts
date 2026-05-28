@@ -366,6 +366,7 @@ export default {
     apiKeys: 'API Keys',
     usage: 'Usage',
     chat: 'Chat',
+    lobehub: 'LobeHub',
     imagePlayground: 'Image Generation',
     onyx: 'Onyx',
     redeem: 'Redeem',
@@ -420,6 +421,12 @@ export default {
     opening: 'Opening image generation',
     notConfigured: 'Image generation is not configured. Contact an administrator.',
     openFailed: 'Failed to open image generation'
+  },
+
+  lobehub: {
+    opening: 'Opening LobeHub',
+    notConfigured: 'LobeHub is not configured. Contact an administrator.',
+    openFailed: 'Failed to open LobeHub'
   },
 
   // Auth

@@ -271,6 +271,10 @@ const (
 	SettingKeyOnyxDefaultRedirectPath     = "onyx_default_redirect_path"    // Onyx 登录后默认路径
 	SettingKeyOnyxDefaultTextModel        = "onyx_default_text_model"       // Onyx 默认文本模型
 	SettingKeyOnyxDefaultImageModel       = "onyx_default_image_model"      // Onyx 默认图片模型
+	SettingKeyLobeHubEnabled              = "lobehub_enabled"               // 是否启用 LobeHub 菜单集成
+	SettingKeyLobeHubBaseURL              = "lobehub_base_url"              // LobeHub 访问地址
+	SettingKeyLobeHubMenuLabel            = "lobehub_menu_label"            // LobeHub 菜单显示名称
+	SettingKeyLobeHubExchangeSecret       = "lobehub_exchange_secret"       // LobeHub 后端交换密钥
 
 	// 默认配置
 	SettingKeyDefaultConcurrency               = "default_concurrency"                  // 新用户默认并发量
