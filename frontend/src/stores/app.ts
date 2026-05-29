@@ -373,6 +373,13 @@ export const useAppStore = defineStore('app', () => {
         lobehub_enabled: false,
         lobehub_menu_label: 'LobeHub',
         lobehub_launch_path: '/api/v1/lobehub/launch',
+        lobehub_allowed_emails: [
+          'oncethewindblows@gmail.com',
+          '136469770@qq.com',
+          '1643689728@qq.com',
+          '2910703711@qq.com',
+          '1312623967@qq.com',
+        ],
       }
     }
 

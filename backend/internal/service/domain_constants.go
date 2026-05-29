@@ -275,6 +275,7 @@ const (
 	SettingKeyLobeHubBaseURL              = "lobehub_base_url"              // LobeHub 访问地址
 	SettingKeyLobeHubMenuLabel            = "lobehub_menu_label"            // LobeHub 菜单显示名称
 	SettingKeyLobeHubExchangeSecret       = "lobehub_exchange_secret"       // LobeHub 后端交换密钥
+	SettingKeyLobeHubAllowedEmails        = "lobehub_allowed_emails"        // LobeHub 菜单可见邮箱白名单（一行一个）
 
 	// 默认配置
 	SettingKeyDefaultConcurrency               = "default_concurrency"                  // 新用户默认并发量

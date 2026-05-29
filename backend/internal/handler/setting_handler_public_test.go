@@ -121,8 +121,9 @@ func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 
 	repo := &settingHandlerPublicRepoStub{
 		values: map[string]string{
-			service.SettingKeyLobeHubEnabled:   "true",
-			service.SettingKeyLobeHubMenuLabel: "Lobe Chat",
+			service.SettingKeyLobeHubEnabled:       "true",
+			service.SettingKeyLobeHubMenuLabel:     "Lobe Chat",
+			service.SettingKeyLobeHubAllowedEmails: "Allowed@Example.com\nother@qq.com",
 		},
 	}
 	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
@@ -138,9 +139,10 @@ func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 	var resp struct {
 		Code int `json:"code"`
 		Data struct {
-			LobeHubEnabled    bool   `json:"lobehub_enabled"`
-			LobeHubMenuLabel  string `json:"lobehub_menu_label"`
-			LobeHubLaunchPath string `json:"lobehub_launch_path"`
+			LobeHubEnabled       bool     `json:"lobehub_enabled"`
+			LobeHubMenuLabel     string   `json:"lobehub_menu_label"`
+			LobeHubLaunchPath    string   `json:"lobehub_launch_path"`
+			LobeHubAllowedEmails []string `json:"lobehub_allowed_emails"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
@@ -148,6 +150,7 @@ func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 	require.True(t, resp.Data.LobeHubEnabled)
 	require.Equal(t, "Lobe Chat", resp.Data.LobeHubMenuLabel)
 	require.Equal(t, "/api/v1/lobehub/launch", resp.Data.LobeHubLaunchPath)
+	require.Equal(t, []string{"allowed@example.com", "other@qq.com"}, resp.Data.LobeHubAllowedEmails)
 }
 
 func TestSettingHandler_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {

@@ -719,6 +719,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyOnyxMenuLabel,
 		SettingKeyLobeHubEnabled,
 		SettingKeyLobeHubMenuLabel,
+		SettingKeyLobeHubAllowedEmails,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
@@ -802,6 +803,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		settings[SettingKeyTableDefaultPageSize],
 		settings[SettingKeyTablePageSizeOptions],
 	)
+	lobeHubAllowedEmailsRaw, ok := settings[SettingKeyLobeHubAllowedEmails]
+	if !ok {
+		lobeHubAllowedEmailsRaw = defaultLobeHubAllowedEmailsValue
+	}
 	loginAgreementDocuments := parseLoginAgreementDocuments(settings[SettingKeyLoginAgreementDocuments])
 	loginAgreementUpdatedAt := strings.TrimSpace(settings[SettingKeyLoginAgreementUpdatedAt])
 	if loginAgreementUpdatedAt == "" {
@@ -857,6 +862,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
+		LobeHubAllowedEmails:             ParseLobeHubAllowedEmails(lobeHubAllowedEmailsRaw),
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		DingTalkOAuthEnabled:             dingTalkEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
@@ -1125,6 +1131,7 @@ type PublicSettingsInjectionPayload struct {
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
+	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
@@ -1205,6 +1212,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LobeHubEnabled:                   settings.LobeHubEnabled,
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
+		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
@@ -1829,6 +1837,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyLobeHubEnabled] = strconv.FormatBool(settings.LobeHubEnabled)
 	updates[SettingKeyLobeHubBaseURL] = strings.TrimSpace(settings.LobeHubBaseURL)
 	updates[SettingKeyLobeHubMenuLabel] = strings.TrimSpace(settings.LobeHubMenuLabel)
+	updates[SettingKeyLobeHubAllowedEmails] = NormalizeLobeHubAllowedEmailsValue(settings.LobeHubAllowedEmails)
 	if settings.LobeHubExchangeSecret != "" {
 		updates[SettingKeyLobeHubExchangeSecret] = strings.TrimSpace(settings.LobeHubExchangeSecret)
 	}
@@ -2709,6 +2718,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyLobeHubBaseURL:                            "",
 		SettingKeyLobeHubMenuLabel:                          "LobeHub",
 		SettingKeyLobeHubExchangeSecret:                     "",
+		SettingKeyLobeHubAllowedEmails:                      defaultLobeHubAllowedEmailsValue,
 		SettingKeyWeChatConnectEnabled:                      "false",
 		SettingKeyWeChatConnectAppID:                        "",
 		SettingKeyWeChatConnectAppSecret:                    "",
@@ -2919,6 +2929,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		LobeHubBaseURL:                   strings.TrimSpace(settings[SettingKeyLobeHubBaseURL]),
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubExchangeSecret:            strings.TrimSpace(settings[SettingKeyLobeHubExchangeSecret]),
+		LobeHubAllowedEmails:             NormalizeLobeHubAllowedEmailsValue(lobeHubAllowedEmailsForSettingsView(settings)),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",

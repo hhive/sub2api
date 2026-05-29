@@ -258,7 +258,7 @@ import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
-import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
+import { FeatureFlags, isFeatureFlagEnabled, makeSidebarFlag } from '@/utils/featureFlags'
 import { launchImagePlayground, launchLobeHub, launchOnyx } from '@/api/onyx'
 
 interface NavItem {
@@ -315,6 +315,11 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const lobeHubLaunching = ref(false)
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
+const isLobeHubUserAllowed = computed(() => {
+  const email = authStore.user?.email?.trim().toLowerCase()
+  const allowedEmails = appStore.cachedPublicSettings?.lobehub_allowed_emails ?? []
+  return typeof email === 'string' && email.length > 0 && allowedEmails.includes(email)
+})
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -757,7 +762,7 @@ const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
-const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
+const flagLobeHub = () => isFeatureFlagEnabled(FeatureFlags.lobehub) && isLobeHubUserAllowed.value
 const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled

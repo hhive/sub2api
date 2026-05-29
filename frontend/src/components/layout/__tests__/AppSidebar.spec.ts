@@ -69,6 +69,12 @@ describe('AppSidebar LobeHub menu wiring', () => {
     expect(selfNavBlock.indexOf("path: '__lobehub__'")).toBeLessThan(selfNavBlock.indexOf("path: '__onyx__'"))
     expect(adminNavBlock).not.toContain("path: '__lobehub__'")
   })
+
+  it('reads the LobeHub visible email whitelist from public settings', () => {
+    expect(componentSource).toContain('cachedPublicSettings?.lobehub_allowed_emails')
+    expect(componentSource).toContain('isLobeHubUserAllowed')
+    expect(componentSource).not.toContain('lobeHubAllowedEmails = new Set')
+  })
 })
 
 describe('AppSidebar purchase menu wiring', () => {

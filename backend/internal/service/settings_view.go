@@ -161,6 +161,7 @@ type SystemSettings struct {
 	LobeHubBaseURL              string
 	LobeHubMenuLabel            string
 	LobeHubExchangeSecret       string
+	LobeHubAllowedEmails        string
 
 	DefaultConcurrency               int
 	DefaultBalance                   float64
@@ -296,6 +297,7 @@ type PublicSettings struct {
 	LobeHubEnabled              bool
 	LobeHubMenuLabel            string
 	LobeHubLaunchPath           string
+	LobeHubAllowedEmails        []string
 
 	LinuxDoOAuthEnabled      bool
 	DingTalkOAuthEnabled     bool

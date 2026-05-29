@@ -249,6 +249,7 @@ export interface PublicSettings {
   lobehub_enabled: boolean
   lobehub_menu_label: string
   lobehub_launch_path: string
+  lobehub_allowed_emails: string[]
 }
 
 export interface AuthResponse {

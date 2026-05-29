@@ -86,6 +86,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		LobeHubEnabled:                   settings.LobeHubEnabled,
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
+		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
 		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,

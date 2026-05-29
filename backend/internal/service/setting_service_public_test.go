@@ -86,6 +86,32 @@ func TestSettingService_GetPublicSettings_DefaultsRedeemPurchaseURL(t *testing.T
 	require.Equal(t, "https://pay.ldxp.cn/shop/xiaoni-ai", settings.RedeemPurchaseURL)
 }
 
+func TestSettingService_GetPublicSettings_DefaultsLobeHubAllowedEmails(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"oncethewindblows@gmail.com",
+		"136469770@qq.com",
+		"1643689728@qq.com",
+		"2910703711@qq.com",
+		"1312623967@qq.com",
+	}, settings.LobeHubAllowedEmails)
+}
+
+func TestSettingService_GetPublicSettings_NormalizesLobeHubAllowedEmails(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyLobeHubAllowedEmails: " User@Example.COM \n\nuser@example.com\nother@qq.com ",
+		},
+	}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []string{"user@example.com", "other@qq.com"}, settings.LobeHubAllowedEmails)
+}
+
 func TestSettingService_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

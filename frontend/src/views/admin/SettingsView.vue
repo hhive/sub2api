@@ -4799,6 +4799,30 @@
             </div>
           </div>
 
+          <!-- LobeHub Visibility -->
+          <div class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                LobeHub 新聊天台可见白名单
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                仅控制 Sub2API 侧边栏入口是否可见；不改变后端鉴权。
+              </p>
+            </div>
+            <div class="space-y-3 p-6">
+              <label class="input-label">邮箱白名单</label>
+              <textarea
+                v-model="form.lobehub_allowed_emails"
+                rows="6"
+                class="input font-mono text-sm"
+                placeholder="user@example.com"
+              ></textarea>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                一行一个邮箱，保存后用户刷新页面即可生效。
+              </p>
+            </div>
+          </div>
+
           <!-- Custom Menu Items -->
           <div class="card">
             <div
@@ -7208,6 +7232,8 @@ const form = reactive<SettingsForm>({
     endpoint: string;
     description: string;
   }>,
+  lobehub_allowed_emails:
+    "oncethewindblows@gmail.com\n136469770@qq.com\n1643689728@qq.com\n2910703711@qq.com\n1312623967@qq.com",
   frontend_url: "",
   smtp_host: "",
   smtp_port: 587,
@@ -8330,6 +8356,7 @@ async function saveSettings() {
       table_page_size_options: form.table_page_size_options,
       custom_menu_items: form.custom_menu_items,
       custom_endpoints: form.custom_endpoints,
+      lobehub_allowed_emails: form.lobehub_allowed_emails,
       frontend_url: form.frontend_url,
       smtp_host: form.smtp_host,
       smtp_port: form.smtp_port,

@@ -161,6 +161,7 @@ type SystemSettings struct {
 	LobeHubBaseURL                  string           `json:"lobehub_base_url"`
 	LobeHubMenuLabel                string           `json:"lobehub_menu_label"`
 	LobeHubExchangeSecretConfigured bool             `json:"lobehub_exchange_secret_configured"`
+	LobeHubAllowedEmails            string           `json:"lobehub_allowed_emails"`
 
 	DefaultConcurrency               int                          `json:"default_concurrency"`
 	DefaultBalance                   float64                      `json:"default_balance"`
@@ -324,6 +325,7 @@ type PublicSettings struct {
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
+	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
