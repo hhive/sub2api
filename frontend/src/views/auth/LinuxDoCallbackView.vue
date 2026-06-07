@@ -630,7 +630,7 @@ async function finalizePendingAccountResponse(completion: LinuxDoPendingActionRe
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
-  if (!invitationCode.value.trim()) return
+  const code = invitationCode.value.trim()
 
   isSubmitting.value = true
   try {
@@ -640,14 +640,14 @@ async function handleSubmitInvitation() {
       ? (
           await apiClient.post<LinuxDoPendingActionResponse>('/auth/oauth/linuxdo/complete-registration', {
             pending_oauth_token: legacyPendingOAuthToken.value,
-            invitation_code: invitationCode.value.trim(),
+            ...(code ? { invitation_code: code } : {}),
             ...oauthAffiliatePayload(affCode),
             ...serializeAdoptionDecision(decision)
           })
         ).data
       : affCode
-        ? await completeLinuxDoOAuthRegistration(invitationCode.value.trim(), decision, affCode)
-        : await completeLinuxDoOAuthRegistration(invitationCode.value.trim(), decision)
+        ? await completeLinuxDoOAuthRegistration(code, decision, affCode)
+        : await completeLinuxDoOAuthRegistration(code, decision)
     await finalizePendingAccountResponse(completion)
   } catch (e: unknown) {
     const err = e as { message?: string; response?: { data?: { message?: string } } }
@@ -677,11 +677,12 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
 
   isSubmitting.value = true
   try {
+    const invitationCode = payload.invitationCode?.trim()
     const { data } = await apiClient.post<LinuxDoPendingActionResponse>('/auth/oauth/pending/create-account', {
       email: payload.email,
       password: payload.password,
       verify_code: payload.verifyCode || undefined,
-      invitation_code: payload.invitationCode || undefined,
+      ...(invitationCode ? { invitation_code: invitationCode } : {}),
       ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })

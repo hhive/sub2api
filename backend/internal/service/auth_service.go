@@ -148,12 +148,10 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 		return "", nil, err
 	}
 
-	// 检查是否需要邀请码
+	// 邀请码注册开启时展示邀请码入口；邀请码本身为可选，只有填写后才校验和消费。
 	var invitationRedeemCode *RedeemCode
-	if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) {
-		if invitationCode == "" {
-			return "", nil, ErrInvitationCodeRequired
-		}
+	invitationCode = strings.TrimSpace(invitationCode)
+	if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) && invitationCode != "" {
 		// 验证邀请码
 		redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
 		if err != nil {
@@ -613,12 +611,10 @@ func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 				return nil, nil, ErrRegDisabled
 			}
 
-			// 检查是否需要邀请码
+			// 邀请码注册开启时展示邀请码入口；邀请码本身为可选，只有填写后才校验和消费。
 			var invitationRedeemCode *RedeemCode
-			if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) {
-				if invitationCode == "" {
-					return nil, nil, ErrOAuthInvitationRequired
-				}
+			invitationCode = strings.TrimSpace(invitationCode)
+			if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) && invitationCode != "" {
 				redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
 				if err != nil {
 					return nil, nil, ErrInvitationCodeInvalid

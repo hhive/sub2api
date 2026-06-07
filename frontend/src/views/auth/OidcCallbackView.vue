@@ -654,7 +654,7 @@ async function finalizePendingAccountResponse(completion: PendingOidcCompletion)
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
-  if (!invitationCode.value.trim()) return
+  const code = invitationCode.value.trim()
 
   isSubmitting.value = true
   try {
@@ -664,14 +664,14 @@ async function handleSubmitInvitation() {
       ? (
           await apiClient.post<PendingOidcCompletion>('/auth/oauth/oidc/complete-registration', {
             pending_oauth_token: legacyPendingOAuthToken.value,
-            invitation_code: invitationCode.value.trim(),
+            ...(code ? { invitation_code: code } : {}),
             ...oauthAffiliatePayload(affCode),
             ...serializeAdoptionDecision(decision)
           })
         ).data
       : affCode
-        ? await completeOIDCOAuthRegistration(invitationCode.value.trim(), decision, affCode)
-        : await completeOIDCOAuthRegistration(invitationCode.value.trim(), decision)
+        ? await completeOIDCOAuthRegistration(code, decision, affCode)
+        : await completeOIDCOAuthRegistration(code, decision)
     await finalizePendingAccountResponse(completion)
   } catch (e: unknown) {
     const err = e as { message?: string; response?: { data?: { message?: string } } }
@@ -701,11 +701,12 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
 
   isSubmitting.value = true
   try {
+    const invitationCode = payload.invitationCode?.trim()
     const { data } = await apiClient.post<PendingOidcCompletion>('/auth/oauth/pending/create-account', {
       email: payload.email,
       password: payload.password,
       verify_code: payload.verifyCode || undefined,
-      invitation_code: payload.invitationCode || undefined,
+      ...(invitationCode ? { invitation_code: invitationCode } : {}),
       ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })

@@ -635,7 +635,7 @@ async function finalizePendingAccountResponse(completion: DingTalkPendingActionR
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
-  if (!invitationCode.value.trim()) return
+  const code = invitationCode.value.trim()
 
   isSubmitting.value = true
   try {
@@ -645,7 +645,7 @@ async function handleSubmitInvitation() {
       '/auth/oauth/dingtalk/complete-registration',
       {
         pending_oauth_token: legacyPendingOAuthToken.value || undefined,
-        invitation_code: invitationCode.value.trim(),
+        ...(code ? { invitation_code: code } : {}),
         ...oauthAffiliatePayload(affCode),
         ...serializeAdoptionDecision(decision)
       }
@@ -679,11 +679,12 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
 
   isSubmitting.value = true
   try {
+    const invitationCode = payload.invitationCode?.trim()
     const { data } = await apiClient.post<DingTalkPendingActionResponse>('/auth/oauth/pending/create-account', {
       email: payload.email,
       password: payload.password,
       verify_code: payload.verifyCode || undefined,
-      invitation_code: payload.invitationCode || undefined,
+      ...(invitationCode ? { invitation_code: invitationCode } : {}),
       ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })

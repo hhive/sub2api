@@ -362,6 +362,21 @@ func TestAuthService_Register_EmailVerifyInvalid(t *testing.T) {
 	require.ErrorContains(t, err, "verify code")
 }
 
+func TestAuthService_Register_InvitationEnabledAllowsEmptyInvitationCode(t *testing.T) {
+	repo := &userRepoStub{}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled:   "true",
+		SettingKeyInvitationCodeEnabled: "true",
+	}, nil, nil)
+
+	token, user, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
+
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+	require.NotNil(t, user)
+	require.Len(t, repo.created, 1)
+}
+
 func TestAuthService_Register_EmailExists(t *testing.T) {
 	repo := &userRepoStub{exists: true}
 	service := newAuthService(repo, map[string]string{

@@ -499,6 +499,14 @@ async function handleVerify(): Promise<void> {
       return
     }
 
+    const optionalInvitationCode = invitationCode.value.trim()
+    const adoptionPayload = pendingAdoptionDecision.value
+      ? {
+          adopt_display_name: pendingAdoptionDecision.value.adoptDisplayName,
+          adopt_avatar: pendingAdoptionDecision.value.adoptAvatar
+        }
+      : {}
+
     if (isPendingOAuthFlow()) {
       const { data } = await apiClient.post<PendingOAuthCreateAccountResponse>(
         '/auth/oauth/pending/create-account',
@@ -506,10 +514,9 @@ async function handleVerify(): Promise<void> {
           email: email.value,
           password: password.value,
           verify_code: verifyCode.value.trim(),
-          invitation_code: invitationCode.value || undefined,
+          ...(optionalInvitationCode ? { invitation_code: optionalInvitationCode } : {}),
           ...oauthAffiliatePayload(affCode.value || loadAffiliateReferralCode()),
-          adopt_display_name: pendingAdoptionDecision.value?.adoptDisplayName,
-          adopt_avatar: pendingAdoptionDecision.value?.adoptAvatar
+          ...adoptionPayload
         }
       )
       if (isPendingOAuthSessionResponse(data)) {
@@ -533,7 +540,7 @@ async function handleVerify(): Promise<void> {
         verify_code: verifyCode.value.trim(),
         turnstile_token: initialTurnstileToken.value || undefined,
         promo_code: promoCode.value || undefined,
-        invitation_code: invitationCode.value || undefined,
+        ...(optionalInvitationCode ? { invitation_code: optionalInvitationCode } : {}),
         ...(affCode.value ? { aff_code: affCode.value } : {})
       })
     }

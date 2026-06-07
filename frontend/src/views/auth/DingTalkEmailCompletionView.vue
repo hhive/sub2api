@@ -70,6 +70,7 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
 
   isSubmitting.value = true
   try {
+    const invitationCode = payload.invitationCode?.trim()
     const { data } = await apiClient.post<
       PendingOAuthExchangeResponse & {
         step?: string
@@ -82,7 +83,7 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
         email: payload.email,
         password: payload.password,
         verify_code: payload.verifyCode || undefined,
-        invitation_code: payload.invitationCode || undefined
+        ...(invitationCode ? { invitation_code: invitationCode } : {})
       }
     )
 

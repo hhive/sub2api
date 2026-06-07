@@ -337,6 +337,44 @@ func TestRegisterOAuthEmailAccountFallsBackUnknownSignupSourceToEmail(t *testing
 	require.Equal(t, "email", userRepo.created[0].SignupSource)
 }
 
+func TestRegisterOAuthEmailAccountInvitationEnabledAllowsEmptyInvitationCode(t *testing.T) {
+	userRepo := &userRepoStub{nextID: 42}
+	emailCache := &emailCacheStub{
+		data: &VerificationCodeData{
+			Code:      "246810",
+			Attempts:  0,
+			CreatedAt: time.Now().UTC(),
+			ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
+		},
+	}
+	authService := newOAuthEmailFlowAuthService(
+		userRepo,
+		&redeemCodeRepoStub{},
+		&refreshTokenCacheStub{},
+		map[string]string{
+			SettingKeyRegistrationEnabled:   "true",
+			SettingKeyInvitationCodeEnabled: "true",
+			SettingKeyEmailVerifyEnabled:    "true",
+		},
+		emailCache,
+		nil,
+	)
+
+	tokenPair, user, err := authService.RegisterOAuthEmailAccount(
+		context.Background(),
+		"fresh@example.com",
+		"secret-123",
+		"246810",
+		"",
+		"oidc",
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, tokenPair)
+	require.NotNil(t, user)
+	require.Len(t, userRepo.created, 1)
+}
+
 func TestRollbackOAuthEmailAccountCreationRestoresInvitationUsage(t *testing.T) {
 	userRepo := &userRepoStub{}
 	redeemRepo := &redeemCodeRepoStub{

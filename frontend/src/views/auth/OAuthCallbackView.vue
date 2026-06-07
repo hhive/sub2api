@@ -339,7 +339,6 @@ async function handleSubmitRegistration() {
     return
   }
   const code = invitationCode.value.trim()
-  if (invitationRequired.value && !code) return
 
   isSubmitting.value = true
   try {
@@ -347,7 +346,7 @@ async function handleSubmitRegistration() {
       password: password.value,
       ...oauthAffiliatePayload(loadOAuthAffiliateCode())
     }
-    if (invitationRequired.value) {
+    if (code) {
       payload.invitation_code = code
     }
     const { data } = await apiClient.post<OAuthTokenResponse>(

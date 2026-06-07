@@ -59,13 +59,12 @@ func (s *AuthService) validateOAuthRegistrationInvitation(ctx context.Context, i
 	if s == nil || s.settingService == nil || !s.settingService.IsInvitationCodeEnabled(ctx) {
 		return nil, nil
 	}
-	if s.redeemRepo == nil && s.oauthEmailFlowClient(ctx) == nil {
-		return nil, ErrServiceUnavailable
-	}
-
 	invitationCode = strings.TrimSpace(invitationCode)
 	if invitationCode == "" {
-		return nil, ErrInvitationCodeRequired
+		return nil, nil
+	}
+	if s.redeemRepo == nil && s.oauthEmailFlowClient(ctx) == nil {
+		return nil, ErrServiceUnavailable
 	}
 
 	redeemCode, err := s.loadOAuthRegistrationInvitation(ctx, invitationCode)

@@ -87,10 +87,11 @@
           </p>
         </div>
 
-        <!-- Invitation Code Input (Required when enabled) -->
+        <!-- Invitation Code Input (Optional when enabled) -->
         <div v-if="invitationCodeEnabled">
           <label for="invitation_code" class="input-label">
             {{ t('auth.invitationCodeLabel') }}
+            <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -404,6 +405,9 @@ const invitationValidation = reactive({
   message: ''
 })
 let invitationValidateTimeout: ReturnType<typeof setTimeout> | null = null
+const INVITATION_CODE_QUERY_KEYS = ['invitation_code', 'invitation', 'invite', 'code'] as const
+type InvitationCodeSource = 'query' | 'affiliate' | 'manual' | ''
+const invitationCodeSource = ref<InvitationCodeSource>('')
 
 const formData = reactive({
   email: '',
@@ -467,6 +471,43 @@ function syncAffiliateReferralCode(): string {
   return code
 }
 
+function normalizeQueryCode(value: unknown): string {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+function resolveInvitationCodeFromRoute(): { code: string; source: InvitationCodeSource } {
+  for (const key of INVITATION_CODE_QUERY_KEYS) {
+    const code = normalizeQueryCode(route.query[key])
+    if (code) return { code, source: 'query' }
+  }
+  const affiliateCode = resolveAffiliateReferralCode(route.query.aff, route.query.aff_code)
+  if (affiliateCode) return { code: affiliateCode, source: 'affiliate' }
+  return { code: '', source: '' }
+}
+
+async function syncInvitationCodeFromRoute(validate = false): Promise<string> {
+  if (!invitationCodeEnabled.value) return ''
+
+  const { code, source } = resolveInvitationCodeFromRoute()
+  if (!code) return ''
+
+  if (formData.invitation_code.trim() !== code) {
+    formData.invitation_code = code
+    invitationValidation.valid = false
+    invitationValidation.invalid = false
+    invitationValidation.message = ''
+    errors.invitation_code = ''
+  }
+  invitationCodeSource.value = source
+
+  if (validate && source === 'query') {
+    await validateInvitationCodeDebounced(code)
+  }
+
+  return code
+}
+
 // ==================== Lifecycle ====================
 
 onMounted(async () => {
@@ -503,6 +544,7 @@ onMounted(async () => {
         await validatePromoCodeDebounced(promoParam)
       }
     }
+    await syncInvitationCodeFromRoute(true)
     syncAffiliateReferralCode()
   } catch (error) {
     console.error('Failed to load public settings:', error)
@@ -534,6 +576,14 @@ watch(
   () => [route.query.aff, route.query.aff_code],
   () => {
     syncAffiliateReferralCode()
+    void syncInvitationCodeFromRoute(false)
+  }
+)
+
+watch(
+  () => INVITATION_CODE_QUERY_KEYS.map((key) => route.query[key]),
+  () => {
+    void syncInvitationCodeFromRoute(true)
   }
 )
 
@@ -686,6 +736,7 @@ function getPromoErrorMessage(errorCode?: string): string {
 
 function handleInvitationCodeInput(): void {
   const code = formData.invitation_code.trim()
+  invitationCodeSource.value = code ? 'manual' : ''
 
   // Clear previous validation
   invitationValidation.valid = false
@@ -705,6 +756,18 @@ function handleInvitationCodeInput(): void {
   invitationValidateTimeout = setTimeout(() => {
     validateInvitationCodeDebounced(code)
   }, 500)
+}
+
+function resolveInvitationCodeForSubmission(): string {
+  const code = formData.invitation_code.trim()
+  if (!code) return ''
+
+  const affiliateCode = formData.aff_code.trim() || loadAffiliateReferralCode()
+  if (invitationCodeSource.value === 'affiliate' && affiliateCode && code === affiliateCode) {
+    return ''
+  }
+
+  return code
 }
 
 async function validateInvitationCodeDebounced(code: string): Promise<void> {
@@ -834,14 +897,6 @@ function validateForm(): boolean {
     isValid = false
   }
 
-  // Invitation code validation (required when enabled)
-  if (invitationCodeEnabled.value) {
-    if (!formData.invitation_code.trim()) {
-      errors.invitation_code = t('auth.invitationCodeRequired')
-      isValid = false
-    }
-  }
-
   // Turnstile validation
   if (turnstileEnabled.value && !turnstileToken.value) {
     errors.turnstile = t('auth.completeVerification')
@@ -876,8 +931,9 @@ async function handleRegister(): Promise<void> {
     }
   }
 
-  // Check invitation code validation status (if enabled and code provided)
-  if (invitationCodeEnabled.value) {
+  // Check invitation code validation status when the optional code is provided
+  const invitationCodeForSubmission = resolveInvitationCodeForSubmission()
+  if (invitationCodeEnabled.value && invitationCodeForSubmission) {
     // If still validating, wait
     if (invitationValidating.value) {
       errorMessage.value = t('auth.invitationCodeValidating')
@@ -888,11 +944,11 @@ async function handleRegister(): Promise<void> {
       errorMessage.value = t('auth.invitationCodeInvalidCannotRegister')
       return
     }
-    // If invitation code is required but not validated yet
-    if (formData.invitation_code.trim() && !invitationValidation.valid) {
+    // If invitation code was provided but not validated yet
+    if (!invitationValidation.valid) {
       errorMessage.value = t('auth.invitationCodeValidating')
       // Trigger validation
-      await validateInvitationCodeDebounced(formData.invitation_code.trim())
+      await validateInvitationCodeDebounced(invitationCodeForSubmission)
       if (!invitationValidation.valid) {
         errorMessage.value = t('auth.invitationCodeInvalidCannotRegister')
         return
@@ -904,6 +960,7 @@ async function handleRegister(): Promise<void> {
 
   try {
     const affCode = formData.aff_code.trim() || loadAffiliateReferralCode()
+    const invitationCode = resolveInvitationCodeForSubmission()
     if (affCode) {
       formData.aff_code = affCode
     }
@@ -918,7 +975,7 @@ async function handleRegister(): Promise<void> {
           password: formData.password,
           turnstile_token: turnstileToken.value,
           promo_code: formData.promo_code || undefined,
-          invitation_code: formData.invitation_code || undefined,
+          ...(invitationCode ? { invitation_code: invitationCode } : {}),
           ...(affCode ? { aff_code: affCode } : {})
         })
       )
@@ -934,7 +991,7 @@ async function handleRegister(): Promise<void> {
       password: formData.password,
       turnstile_token: turnstileEnabled.value ? turnstileToken.value : undefined,
       promo_code: formData.promo_code || undefined,
-      invitation_code: formData.invitation_code || undefined,
+      ...(invitationCode ? { invitation_code: invitationCode } : {}),
       ...(affCode ? { aff_code: affCode } : {})
     })
     clearAffiliateReferralCode()
