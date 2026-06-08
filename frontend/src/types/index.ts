@@ -987,6 +987,7 @@ export interface AccountUsageInfo {
   updated_at: string | null
   five_hour: UsageProgress | null
   seven_day: UsageProgress | null
+  codex_7d_window_stats?: WindowStats | null
   seven_day_sonnet: UsageProgress | null
   gemini_shared_daily?: UsageProgress | null
   gemini_pro_daily?: UsageProgress | null

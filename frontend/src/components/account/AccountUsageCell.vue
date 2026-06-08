@@ -126,6 +126,14 @@
           :show-now-when-idle="true"
           color="emerald"
         />
+        <UsageProgressBar
+          v-if="usageInfo?.codex_7d_window_stats"
+          label="7d W"
+          :utilization="usageInfo.seven_day?.utilization ?? 0"
+          :resets-at="usageInfo.seven_day?.resets_at"
+          :window-stats="usageInfo.codex_7d_window_stats"
+          color="purple"
+        />
         <div class="flex items-center gap-1.5 mt-0.5">
           <button
             type="button"
