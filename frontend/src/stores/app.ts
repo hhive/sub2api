@@ -366,6 +366,7 @@ export const useAppStore = defineStore('app', () => {
         channel_monitor_default_interval_seconds: 60,
         available_channels_enabled: false,
         risk_control_enabled: false,
+        service_quota_enabled: false,
         affiliate_enabled: false,
         onyx_enabled: false,
         onyx_menu_label: 'Onyx',
@@ -380,6 +381,7 @@ export const useAppStore = defineStore('app', () => {
           '2910703711@qq.com',
           '1312623967@qq.com',
         ],
+        allow_user_view_error_requests: false,
       }
     }
 
