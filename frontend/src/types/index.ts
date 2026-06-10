@@ -575,9 +575,6 @@ export interface UserSupportedModel {
 }
 
 export interface AdminGroup extends Group {
-  // 隐藏修正倍率，仅管理员可见；用户实际扣费倍率 = 用户可见费用倍率 × 修正倍率
-  rate_correction_multiplier: number
-
   // 模型路由配置（仅管理员可见，内部信息）
   model_routing: Record<string, number[]> | null
   model_routing_enabled: boolean
@@ -670,7 +667,6 @@ export interface CreateGroupRequest {
   description?: string | null
   platform?: GroupPlatform
   rate_multiplier?: number
-  rate_correction_multiplier?: number
   is_exclusive?: boolean
   subscription_type?: SubscriptionType
   daily_limit_usd?: number | null
@@ -705,7 +701,6 @@ export interface UpdateGroupRequest {
   description?: string | null
   platform?: GroupPlatform
   rate_multiplier?: number
-  rate_correction_multiplier?: number
   is_exclusive?: boolean
   status?: 'active' | 'inactive'
   subscription_type?: SubscriptionType
@@ -996,7 +991,6 @@ export interface AccountUsageInfo {
   updated_at: string | null
   five_hour: UsageProgress | null
   seven_day: UsageProgress | null
-  codex_7d_window_stats?: WindowStats | null
   seven_day_sonnet: UsageProgress | null
   gemini_shared_daily?: UsageProgress | null
   gemini_pro_daily?: UsageProgress | null

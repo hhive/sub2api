@@ -105,20 +105,6 @@ func (_c *GroupCreate) SetNillableRateMultiplier(v *float64) *GroupCreate {
 	return _c
 }
 
-// SetRateCorrectionMultiplier sets the "rate_correction_multiplier" field.
-func (_c *GroupCreate) SetRateCorrectionMultiplier(v float64) *GroupCreate {
-	_c.mutation.SetRateCorrectionMultiplier(v)
-	return _c
-}
-
-// SetNillableRateCorrectionMultiplier sets the "rate_correction_multiplier" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableRateCorrectionMultiplier(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetRateCorrectionMultiplier(*v)
-	}
-	return _c
-}
-
 // SetIsExclusive sets the "is_exclusive" field.
 func (_c *GroupCreate) SetIsExclusive(v bool) *GroupCreate {
 	_c.mutation.SetIsExclusive(v)
@@ -654,10 +640,6 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultRateMultiplier
 		_c.mutation.SetRateMultiplier(v)
 	}
-	if _, ok := _c.mutation.RateCorrectionMultiplier(); !ok {
-		v := group.DefaultRateCorrectionMultiplier
-		_c.mutation.SetRateCorrectionMultiplier(v)
-	}
 	if _, ok := _c.mutation.IsExclusive(); !ok {
 		v := group.DefaultIsExclusive
 		_c.mutation.SetIsExclusive(v)
@@ -759,9 +741,6 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.RateMultiplier(); !ok {
 		return &ValidationError{Name: "rate_multiplier", err: errors.New(`ent: missing required field "Group.rate_multiplier"`)}
-	}
-	if _, ok := _c.mutation.RateCorrectionMultiplier(); !ok {
-		return &ValidationError{Name: "rate_correction_multiplier", err: errors.New(`ent: missing required field "Group.rate_correction_multiplier"`)}
 	}
 	if _, ok := _c.mutation.IsExclusive(); !ok {
 		return &ValidationError{Name: "is_exclusive", err: errors.New(`ent: missing required field "Group.is_exclusive"`)}
@@ -893,10 +872,6 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 		_node.RateMultiplier = value
-	}
-	if value, ok := _c.mutation.RateCorrectionMultiplier(); ok {
-		_spec.SetField(group.FieldRateCorrectionMultiplier, field.TypeFloat64, value)
-		_node.RateCorrectionMultiplier = value
 	}
 	if value, ok := _c.mutation.IsExclusive(); ok {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
@@ -1245,24 +1220,6 @@ func (u *GroupUpsert) UpdateRateMultiplier() *GroupUpsert {
 // AddRateMultiplier adds v to the "rate_multiplier" field.
 func (u *GroupUpsert) AddRateMultiplier(v float64) *GroupUpsert {
 	u.Add(group.FieldRateMultiplier, v)
-	return u
-}
-
-// SetRateCorrectionMultiplier sets the "rate_correction_multiplier" field.
-func (u *GroupUpsert) SetRateCorrectionMultiplier(v float64) *GroupUpsert {
-	u.Set(group.FieldRateCorrectionMultiplier, v)
-	return u
-}
-
-// UpdateRateCorrectionMultiplier sets the "rate_correction_multiplier" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateRateCorrectionMultiplier() *GroupUpsert {
-	u.SetExcluded(group.FieldRateCorrectionMultiplier)
-	return u
-}
-
-// AddRateCorrectionMultiplier adds v to the "rate_correction_multiplier" field.
-func (u *GroupUpsert) AddRateCorrectionMultiplier(v float64) *GroupUpsert {
-	u.Add(group.FieldRateCorrectionMultiplier, v)
 	return u
 }
 
@@ -1873,27 +1830,6 @@ func (u *GroupUpsertOne) AddRateMultiplier(v float64) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateRateMultiplier() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRateMultiplier()
-	})
-}
-
-// SetRateCorrectionMultiplier sets the "rate_correction_multiplier" field.
-func (u *GroupUpsertOne) SetRateCorrectionMultiplier(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetRateCorrectionMultiplier(v)
-	})
-}
-
-// AddRateCorrectionMultiplier adds v to the "rate_correction_multiplier" field.
-func (u *GroupUpsertOne) AddRateCorrectionMultiplier(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddRateCorrectionMultiplier(v)
-	})
-}
-
-// UpdateRateCorrectionMultiplier sets the "rate_correction_multiplier" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateRateCorrectionMultiplier() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateRateCorrectionMultiplier()
 	})
 }
 
@@ -2749,27 +2685,6 @@ func (u *GroupUpsertBulk) AddRateMultiplier(v float64) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateRateMultiplier() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRateMultiplier()
-	})
-}
-
-// SetRateCorrectionMultiplier sets the "rate_correction_multiplier" field.
-func (u *GroupUpsertBulk) SetRateCorrectionMultiplier(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetRateCorrectionMultiplier(v)
-	})
-}
-
-// AddRateCorrectionMultiplier adds v to the "rate_correction_multiplier" field.
-func (u *GroupUpsertBulk) AddRateCorrectionMultiplier(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddRateCorrectionMultiplier(v)
-	})
-}
-
-// UpdateRateCorrectionMultiplier sets the "rate_correction_multiplier" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateRateCorrectionMultiplier() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateRateCorrectionMultiplier()
 	})
 }
 

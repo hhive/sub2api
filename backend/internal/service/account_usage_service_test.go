@@ -211,54 +211,6 @@ func TestBuildCodexUsageProgressFromExtra_ZerosExpiredWindow(t *testing.T) {
 	})
 }
 
-func TestCurrentCodex7dWindowStart(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 3, 8, 12, 0, 0, 0, time.UTC)
-
-	t.Run("uses explicit window minutes", func(t *testing.T) {
-		start, ok := currentCodex7dWindowStart(map[string]any{
-			"codex_7d_reset_at":       "2026-03-15T12:00:00Z",
-			"codex_7d_window_minutes": 10080,
-		}, now)
-		if !ok {
-			t.Fatal("expected valid current 7d window")
-		}
-		want := time.Date(2026, 3, 8, 12, 0, 0, 0, time.UTC)
-		if !start.Equal(want) {
-			t.Fatalf("start = %v, want %v", start, want)
-		}
-	})
-
-	t.Run("defaults missing window minutes to 7 days", func(t *testing.T) {
-		start, ok := currentCodex7dWindowStart(map[string]any{
-			"codex_7d_reset_at": "2026-03-15T12:00:00Z",
-		}, now)
-		if !ok {
-			t.Fatal("expected valid current 7d window")
-		}
-		want := time.Date(2026, 3, 8, 12, 0, 0, 0, time.UTC)
-		if !start.Equal(want) {
-			t.Fatalf("start = %v, want %v", start, want)
-		}
-	})
-
-	t.Run("rejects expired reset", func(t *testing.T) {
-		if _, ok := currentCodex7dWindowStart(map[string]any{
-			"codex_7d_reset_at": "2026-03-08T11:00:00Z",
-		}, now); ok {
-			t.Fatal("expected expired 7d reset to be rejected")
-		}
-	})
-
-	t.Run("rejects invalid reset", func(t *testing.T) {
-		if _, ok := currentCodex7dWindowStart(map[string]any{
-			"codex_7d_reset_at": "not-a-time",
-		}, now); ok {
-			t.Fatal("expected invalid 7d reset to be rejected")
-		}
-	})
-}
-
 type accountUsageWindowRepoStub struct {
 	UsageLogRepository
 	calls []time.Time
@@ -271,16 +223,15 @@ func (r *accountUsageWindowRepoStub) GetAccountWindowStats(_ context.Context, _ 
 		return &usagestats.AccountStats{Requests: 1, Tokens: 100, Cost: 1, StandardCost: 1, UserCost: 1}, nil
 	case 2:
 		return &usagestats.AccountStats{Requests: 2, Tokens: 200, Cost: 2, StandardCost: 2, UserCost: 2}, nil
-	case 3:
-		return &usagestats.AccountStats{Requests: 3, Tokens: 300, Cost: 3, StandardCost: 3, UserCost: 3}, nil
 	default:
 		return nil, errors.New("unexpected window stats call")
 	}
 }
 
-func TestAccountUsageService_GetOpenAIUsageAddsCurrentCodex7dWindowStats(t *testing.T) {
+func TestAccountUsageService_GetOpenAIUsageUsesCodex7dWindowStatsStart(t *testing.T) {
 	t.Parallel()
-	resetAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+	now := time.Now().UTC()
+	resetAt := now.Add(24 * time.Hour).Truncate(time.Second)
 	repo := &accountUsageWindowRepoStub{}
 	svc := &AccountUsageService{usageLogRepo: repo}
 	account := &Account{
@@ -288,11 +239,10 @@ func TestAccountUsageService_GetOpenAIUsageAddsCurrentCodex7dWindowStats(t *test
 		Platform: PlatformOpenAI,
 		Type:     AccountTypeOAuth,
 		Extra: map[string]any{
-			"codex_5h_used_percent":   1.0,
-			"codex_5h_reset_at":       time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
-			"codex_7d_used_percent":   42.0,
-			"codex_7d_reset_at":       resetAt.Format(time.RFC3339),
-			"codex_7d_window_minutes": 10080,
+			"codex_5h_used_percent": 1.0,
+			"codex_5h_reset_at":     now.Add(2 * time.Hour).Format(time.RFC3339),
+			"codex_7d_used_percent": 42.0,
+			"codex_7d_reset_at":     resetAt.Format(time.RFC3339),
 		},
 	}
 
@@ -300,17 +250,17 @@ func TestAccountUsageService_GetOpenAIUsageAddsCurrentCodex7dWindowStats(t *test
 	if err != nil {
 		t.Fatalf("getOpenAIUsage() error = %v", err)
 	}
-	if usage.Codex7dWindowStats == nil {
-		t.Fatal("expected Codex7dWindowStats")
+	if usage.SevenDay == nil || usage.SevenDay.WindowStats == nil {
+		t.Fatal("expected SevenDay.WindowStats")
 	}
-	if usage.Codex7dWindowStats.Tokens != 300 {
-		t.Fatalf("Codex7dWindowStats.Tokens = %d, want 300", usage.Codex7dWindowStats.Tokens)
+	if usage.SevenDay.WindowStats.Tokens != 200 {
+		t.Fatalf("SevenDay.WindowStats.Tokens = %d, want 200", usage.SevenDay.WindowStats.Tokens)
 	}
-	if len(repo.calls) != 3 {
-		t.Fatalf("window stats calls = %d, want 3", len(repo.calls))
+	if len(repo.calls) != 2 {
+		t.Fatalf("window stats calls = %d, want 2", len(repo.calls))
 	}
 	wantStart := resetAt.Add(-7 * 24 * time.Hour)
-	if !repo.calls[2].Equal(wantStart) {
-		t.Fatalf("codex 7d window start = %v, want %v", repo.calls[2], wantStart)
+	if !repo.calls[1].Equal(wantStart) {
+		t.Fatalf("7d window start = %v, want %v", repo.calls[1], wantStart)
 	}
 }

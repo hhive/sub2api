@@ -163,9 +163,6 @@ type UserSupportedModel struct {
 type AdminGroup struct {
 	Group
 
-	// RateCorrectionMultiplier is an admin-only hidden multiplier applied to actual billing.
-	RateCorrectionMultiplier float64 `json:"rate_correction_multiplier"`
-
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`

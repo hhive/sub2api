@@ -14971,8 +14971,6 @@ type GroupMutation struct {
 	description                             *string
 	rate_multiplier                         *float64
 	addrate_multiplier                      *float64
-	rate_correction_multiplier              *float64
-	addrate_correction_multiplier           *float64
 	is_exclusive                            *bool
 	status                                  *string
 	platform                                *string
@@ -15397,62 +15395,6 @@ func (m *GroupMutation) AddedRateMultiplier() (r float64, exists bool) {
 func (m *GroupMutation) ResetRateMultiplier() {
 	m.rate_multiplier = nil
 	m.addrate_multiplier = nil
-}
-
-// SetRateCorrectionMultiplier sets the "rate_correction_multiplier" field.
-func (m *GroupMutation) SetRateCorrectionMultiplier(f float64) {
-	m.rate_correction_multiplier = &f
-	m.addrate_correction_multiplier = nil
-}
-
-// RateCorrectionMultiplier returns the value of the "rate_correction_multiplier" field in the mutation.
-func (m *GroupMutation) RateCorrectionMultiplier() (r float64, exists bool) {
-	v := m.rate_correction_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldRateCorrectionMultiplier returns the old "rate_correction_multiplier" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldRateCorrectionMultiplier(ctx context.Context) (v float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRateCorrectionMultiplier is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRateCorrectionMultiplier requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRateCorrectionMultiplier: %w", err)
-	}
-	return oldValue.RateCorrectionMultiplier, nil
-}
-
-// AddRateCorrectionMultiplier adds f to the "rate_correction_multiplier" field.
-func (m *GroupMutation) AddRateCorrectionMultiplier(f float64) {
-	if m.addrate_correction_multiplier != nil {
-		*m.addrate_correction_multiplier += f
-	} else {
-		m.addrate_correction_multiplier = &f
-	}
-}
-
-// AddedRateCorrectionMultiplier returns the value that was added to the "rate_correction_multiplier" field in this mutation.
-func (m *GroupMutation) AddedRateCorrectionMultiplier() (r float64, exists bool) {
-	v := m.addrate_correction_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetRateCorrectionMultiplier resets all changes to the "rate_correction_multiplier" field.
-func (m *GroupMutation) ResetRateCorrectionMultiplier() {
-	m.rate_correction_multiplier = nil
-	m.addrate_correction_multiplier = nil
 }
 
 // SetIsExclusive sets the "is_exclusive" field.
@@ -17237,7 +17179,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 36)
+	fields := make([]string, 0, 35)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -17255,9 +17197,6 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.rate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
-	}
-	if m.rate_correction_multiplier != nil {
-		fields = append(fields, group.FieldRateCorrectionMultiplier)
 	}
 	if m.is_exclusive != nil {
 		fields = append(fields, group.FieldIsExclusive)
@@ -17366,8 +17305,6 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case group.FieldRateMultiplier:
 		return m.RateMultiplier()
-	case group.FieldRateCorrectionMultiplier:
-		return m.RateCorrectionMultiplier()
 	case group.FieldIsExclusive:
 		return m.IsExclusive()
 	case group.FieldStatus:
@@ -17447,8 +17384,6 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDescription(ctx)
 	case group.FieldRateMultiplier:
 		return m.OldRateMultiplier(ctx)
-	case group.FieldRateCorrectionMultiplier:
-		return m.OldRateCorrectionMultiplier(ctx)
 	case group.FieldIsExclusive:
 		return m.OldIsExclusive(ctx)
 	case group.FieldStatus:
@@ -17557,13 +17492,6 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRateMultiplier(v)
-		return nil
-	case group.FieldRateCorrectionMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetRateCorrectionMultiplier(v)
 		return nil
 	case group.FieldIsExclusive:
 		v, ok := value.(bool)
@@ -17779,9 +17707,6 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
 	}
-	if m.addrate_correction_multiplier != nil {
-		fields = append(fields, group.FieldRateCorrectionMultiplier)
-	}
 	if m.adddaily_limit_usd != nil {
 		fields = append(fields, group.FieldDailyLimitUsd)
 	}
@@ -17828,8 +17753,6 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case group.FieldRateMultiplier:
 		return m.AddedRateMultiplier()
-	case group.FieldRateCorrectionMultiplier:
-		return m.AddedRateCorrectionMultiplier()
 	case group.FieldDailyLimitUsd:
 		return m.AddedDailyLimitUsd()
 	case group.FieldWeeklyLimitUsd:
@@ -17869,13 +17792,6 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddRateMultiplier(v)
-		return nil
-	case group.FieldRateCorrectionMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddRateCorrectionMultiplier(v)
 		return nil
 	case group.FieldDailyLimitUsd:
 		v, ok := value.(float64)
@@ -18074,9 +17990,6 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldRateMultiplier:
 		m.ResetRateMultiplier()
-		return nil
-	case group.FieldRateCorrectionMultiplier:
-		m.ResetRateCorrectionMultiplier()
 		return nil
 	case group.FieldIsExclusive:
 		m.ResetIsExclusive()

@@ -236,13 +236,6 @@ describe('AccountUsageCell', () => {
           standard_cost: 0.09,
           user_cost: 0.09
         }
-      },
-      codex_7d_window_stats: {
-        requests: 7,
-        tokens: 700,
-        cost: 0.07,
-        standard_cost: 0.07,
-        user_cost: 0.07
       }
     })
 
@@ -278,7 +271,7 @@ describe('AccountUsageCell', () => {
     // 单一数据源：始终使用 /usage API 返回值，忽略 codex 快照
     expect(wrapper.text()).toContain('5h|18|900')
     expect(wrapper.text()).toContain('7d|36|900')
-    expect(wrapper.text()).toContain('7d W|36|700')
+    expect(wrapper.findAll('.usage-bar')).toHaveLength(2)
   })
 
   it('OpenAI OAuth 有现成快照时，手动刷新信号会触发 usage 重拉', async () => {

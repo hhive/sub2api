@@ -8898,18 +8898,15 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		cacheTTLOverridden = (result.Usage.CacheCreation5mTokens + result.Usage.CacheCreation1hTokens) > 0
 	}
 
-	// 获取用户可见费率倍数（优先级：用户专属 > 分组默认 > 系统默认）。
-	// 隐藏修正倍率仅参与实际扣费，不写入用户可见 usage log。
-	visibleMultiplier := 1.0
+	// 获取费率倍数（优先级：用户专属 > 分组默认 > 系统默认）。
+	effectiveMultiplier := 1.0
 	if s.cfg != nil {
-		visibleMultiplier = s.cfg.Default.RateMultiplier
+		effectiveMultiplier = s.cfg.Default.RateMultiplier
 	}
 	if apiKey.GroupID != nil && apiKey.Group != nil {
 		groupDefault := apiKey.Group.RateMultiplier
-		visibleMultiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
+		effectiveMultiplier = s.getUserGroupRateMultiplier(ctx, user.ID, *apiKey.GroupID, groupDefault)
 	}
-	effectiveMultiplier := applyGroupRateCorrectionMultiplier(apiKey.Group, visibleMultiplier)
-	visibleImageMultiplier := resolveImageRateMultiplier(apiKey, visibleMultiplier)
 	effectiveImageMultiplier := resolveImageRateMultiplier(apiKey, effectiveMultiplier)
 
 	// 确定计费模型
@@ -8940,7 +8937,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	// 创建使用日志
 	accountRateMultiplier := account.BillingRateMultiplier()
 	usageLog := s.buildRecordUsageLog(ctx, input, result, apiKey, user, account, subscription,
-		requestedModel, visibleMultiplier, visibleImageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
+		requestedModel, effectiveMultiplier, effectiveImageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
 
 	// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
 	if apiKey.GroupID != nil {

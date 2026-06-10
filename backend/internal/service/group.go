@@ -16,11 +16,9 @@ type Group struct {
 	Description    string
 	Platform       string
 	RateMultiplier float64
-	// RateCorrectionMultiplier is an admin-only hidden multiplier applied to text/token billing.
-	RateCorrectionMultiplier float64
-	IsExclusive              bool
-	Status                   string
-	Hydrated                 bool // indicates the group was loaded from a trusted repository source
+	IsExclusive    bool
+	Status         string
+	Hydrated       bool // indicates the group was loaded from a trusted repository source
 
 	SubscriptionType    string
 	DailyLimitUSD       *float64

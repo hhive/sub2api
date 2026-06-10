@@ -13,10 +13,6 @@
         <span class="text-gray-600 dark:text-gray-400">
           {{ t('admin.groups.columns.rateMultiplier') }}: {{ group.rate_multiplier }}x
         </span>
-        <span class="text-gray-400">|</span>
-        <span class="text-gray-600 dark:text-gray-400">
-          {{ t('admin.groups.columns.rateCorrectionMultiplier') }}: {{ group.rate_correction_multiplier ?? 1 }}x
-        </span>
       </div>
 
       <!-- 操作区 -->
@@ -301,9 +297,8 @@ const showFinalRate = computed(() => {
 // 计算最终倍率预览
 const computeFinalRate = (rate: number | null | undefined) => {
   const base = rate ?? props.group?.rate_multiplier ?? 1
-  const corrected = base * (props.group?.rate_correction_multiplier ?? 1)
-  if (!batchFactor.value) return parseFloat(corrected.toFixed(6))
-  return parseFloat((corrected * batchFactor.value).toFixed(6))
+  if (!batchFactor.value) return parseFloat(base.toFixed(6))
+  return parseFloat((base * batchFactor.value).toFixed(6))
 }
 
 // 检测是否有未保存的修改

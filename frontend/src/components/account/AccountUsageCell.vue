@@ -50,7 +50,7 @@
           color="indigo"
         />
 
-        <!-- 7d Window (OAuth only) -->
+        <!-- 7d Window -->
         <UsageProgressBar
           v-if="usageInfo.seven_day"
           label="7d"
@@ -125,14 +125,6 @@
           :window-stats="usageInfo.seven_day.window_stats"
           :show-now-when-idle="true"
           color="emerald"
-        />
-        <UsageProgressBar
-          v-if="usageInfo?.codex_7d_window_stats"
-          label="7d W"
-          :utilization="usageInfo.seven_day?.utilization ?? 0"
-          :resets-at="usageInfo.seven_day?.resets_at"
-          :window-stats="usageInfo.codex_7d_window_stats"
-          color="purple"
         />
         <div class="flex items-center gap-1.5 mt-0.5">
           <button

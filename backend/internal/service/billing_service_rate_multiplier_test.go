@@ -62,25 +62,13 @@ func TestCalculateImageCost_RateMultiplier_NegativeClampedToZero(t *testing.T) {
 	}
 }
 
-func TestApplyGroupRateCorrectionMultiplier(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, 1.5, applyGroupRateCorrectionMultiplier(nil, 1.5))
-	require.Equal(t, 1.5, applyGroupRateCorrectionMultiplier(&Group{}, 1.5))
-	require.InDelta(t, 1.8, applyGroupRateCorrectionMultiplier(&Group{RateCorrectionMultiplier: 1.2}, 1.5), 1e-12)
-	require.Equal(t, 0.0, applyGroupRateCorrectionMultiplier(&Group{RateCorrectionMultiplier: -1}, 1.5))
-}
-
-func TestResolveImageRateMultiplier_IndependentDoesNotApplyCorrection(t *testing.T) {
+func TestResolveImageRateMultiplier_IndependentUsesImageMultiplier(t *testing.T) {
 	t.Parallel()
 
 	apiKey := &APIKey{Group: &Group{
-		RateCorrectionMultiplier: 1.5,
-		ImageRateIndependent:     true,
-		ImageRateMultiplier:      0.8,
+		ImageRateIndependent: true,
+		ImageRateMultiplier:  0.8,
 	}}
 
-	effectiveGroupMultiplier := applyGroupRateCorrectionMultiplier(apiKey.Group, 2.0)
-	require.Equal(t, 3.0, effectiveGroupMultiplier)
-	require.Equal(t, 0.8, resolveImageRateMultiplier(apiKey, effectiveGroupMultiplier))
+	require.Equal(t, 0.8, resolveImageRateMultiplier(apiKey, 2.0))
 }
