@@ -163,18 +163,19 @@ type SystemSettings struct {
 	LobeHubExchangeSecret       string
 	LobeHubAllowedEmails        string
 
-	DefaultConcurrency               int
-	DefaultBalance                   float64
-	BalanceCreditValidityDays        int
-	BalanceCreditDailySettlementHour *int
-	RiskControlEnabled               bool
-	AffiliateEnabled                 bool
-	AffiliateRebateRate              float64
-	AffiliateRebateFreezeHours       int
-	AffiliateRebateDurationDays      int
-	AffiliateRebatePerInviteeCap     float64
-	DefaultUserRPMLimit              int
-	DefaultSubscriptions             []DefaultSubscriptionSetting
+	DefaultConcurrency                    int
+	DefaultBalance                        float64
+	BalanceCreditValidityDays             int
+	BalanceCreditDailySettlementHour      *int
+	RiskControlEnabled                    bool
+	AffiliateEnabled                      bool
+	AffiliateRebateRate                   float64
+	AffiliateSubscriptionRebateMultiplier float64
+	AffiliateRebateFreezeHours            int
+	AffiliateRebateDurationDays           int
+	AffiliateRebatePerInviteeCap          float64
+	DefaultUserRPMLimit                   int
+	DefaultSubscriptions                  []DefaultSubscriptionSetting
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

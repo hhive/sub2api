@@ -163,16 +163,17 @@ type SystemSettings struct {
 	LobeHubExchangeSecretConfigured bool             `json:"lobehub_exchange_secret_configured"`
 	LobeHubAllowedEmails            string           `json:"lobehub_allowed_emails"`
 
-	DefaultConcurrency               int                          `json:"default_concurrency"`
-	DefaultBalance                   float64                      `json:"default_balance"`
-	BalanceCreditValidityDays        int                          `json:"balance_credit_validity_days"`
-	BalanceCreditDailySettlementHour *int                         `json:"balance_credit_daily_settlement_hour"`
-	AffiliateRebateRate              float64                      `json:"affiliate_rebate_rate"`
-	AffiliateRebateFreezeHours       int                          `json:"affiliate_rebate_freeze_hours"`
-	AffiliateRebateDurationDays      int                          `json:"affiliate_rebate_duration_days"`
-	AffiliateRebatePerInviteeCap     float64                      `json:"affiliate_rebate_per_invitee_cap"`
-	DefaultUserRPMLimit              int                          `json:"default_user_rpm_limit"`
-	DefaultSubscriptions             []DefaultSubscriptionSetting `json:"default_subscriptions"`
+	DefaultConcurrency                    int                          `json:"default_concurrency"`
+	DefaultBalance                        float64                      `json:"default_balance"`
+	BalanceCreditValidityDays             int                          `json:"balance_credit_validity_days"`
+	BalanceCreditDailySettlementHour      *int                         `json:"balance_credit_daily_settlement_hour"`
+	AffiliateRebateRate                   float64                      `json:"affiliate_rebate_rate"`
+	AffiliateSubscriptionRebateMultiplier float64                      `json:"affiliate_subscription_rebate_multiplier"`
+	AffiliateRebateFreezeHours            int                          `json:"affiliate_rebate_freeze_hours"`
+	AffiliateRebateDurationDays           int                          `json:"affiliate_rebate_duration_days"`
+	AffiliateRebatePerInviteeCap          float64                      `json:"affiliate_rebate_per_invitee_cap"`
+	DefaultUserRPMLimit                   int                          `json:"default_user_rpm_limit"`
+	DefaultSubscriptions                  []DefaultSubscriptionSetting `json:"default_subscriptions"`
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

@@ -382,6 +382,7 @@ export interface SystemSettings {
   balance_credit_validity_days: number;
   balance_credit_daily_settlement_hour: number | null;
   affiliate_rebate_rate: number;
+  affiliate_subscription_rebate_multiplier: number;
   affiliate_rebate_freeze_hours: number;
   affiliate_rebate_duration_days: number;
   affiliate_rebate_per_invitee_cap: number;
@@ -652,6 +653,7 @@ export interface UpdateSettingsRequest {
   balance_credit_validity_days?: number;
   balance_credit_daily_settlement_hour?: number;
   affiliate_rebate_rate?: number;
+  affiliate_subscription_rebate_multiplier?: number;
   affiliate_rebate_freeze_hours?: number;
   affiliate_rebate_duration_days?: number;
   affiliate_rebate_per_invitee_cap?: number;
