@@ -51,29 +51,12 @@ WHERE ua.user_id = $1
 LIMIT 1`
 
 const countPaidInviteesSQL = `
-SELECT COUNT(DISTINCT ua.user_id)::integer
-FROM user_affiliates ua
-WHERE ua.inviter_id = $1
-  AND (
-    EXISTS (
-      SELECT 1
-      FROM payment_orders po
-      WHERE po.user_id = ua.user_id
-        AND po.status IN ('PAID', 'RECHARGING', 'COMPLETED')
-        AND po.order_type IN ('balance', 'subscription')
-        AND po.pay_amount > 0
-      LIMIT 1
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM redeem_codes rc
-      WHERE rc.used_by = ua.user_id
-        AND rc.type = 'subscription'
-        AND rc.status = 'used'
-        AND rc.value > 0
-      LIMIT 1
-    )
-  )`
+SELECT COUNT(DISTINCT source_user_id)::integer
+FROM user_affiliate_ledger
+WHERE user_id = $1
+  AND action = 'accrue'
+  AND source_user_id IS NOT NULL
+  AND amount > 0`
 
 type affiliateQueryExecer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -415,7 +398,7 @@ func (r *affiliateRepository) CountPaidInvitees(ctx context.Context, inviterID i
 	client := clientFromContext(ctx, r.client)
 	rows, err := client.QueryContext(ctx, countPaidInviteesSQL, inviterID)
 	if err != nil {
-		return 0, fmt.Errorf("count paid invitees: %w", err)
+		return 0, fmt.Errorf("count rebated invitees: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	if !rows.Next() {

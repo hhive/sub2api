@@ -150,11 +150,11 @@ export interface UserAffiliateDetail {
   effective_subscription_rebate_rate_percent: number
   /** 当前返利等级，1-3。 */
   rebate_tier_level: number
-  /** 已产生有效付费行为的被邀请人数。 */
+  /** 已产生有效返利流水的被邀请人数。 */
   paid_invitee_count: number
   /** 当前等级倍率，100 表示基础比例。 */
   rebate_tier_multiplier_percent: number
-  /** 升到下一等级还需要的有效付费邀请人数；最高级为 0。 */
+  /** 升到下一等级还需要的有效返利邀请人数；最高级为 0。 */
   next_tier_paid_invitee_count: number
   invitees: AffiliateInvitee[]
 }

@@ -170,6 +170,68 @@ func TestAffiliateRepository_AccrueQuota_ReusesOuterTransaction(t *testing.T) {
 		"AccrueQuota must propagate the outer tx — found persisted rows after rollback")
 }
 
+func TestAffiliateRepository_CountPaidInvitees_UsesPositiveAccrueLedgerSources(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+
+	repo := NewAffiliateRepository(client, integrationDB)
+
+	inviter := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-tier-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Concurrency:  5,
+	})
+	inviteeA := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-tier-a-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Concurrency:  5,
+	})
+	inviteeB := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-tier-b-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Concurrency:  5,
+	})
+	inviteeC := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("affiliate-tier-c-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		Concurrency:  5,
+	})
+
+	_, err := repo.EnsureUserAffiliate(txCtx, inviter.ID)
+	require.NoError(t, err)
+	for _, invitee := range []*service.User{inviteeA, inviteeB, inviteeC} {
+		_, err = repo.EnsureUserAffiliate(txCtx, invitee.ID)
+		require.NoError(t, err)
+	}
+
+	_, err = client.ExecContext(txCtx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_user_id, created_at, updated_at)
+VALUES
+  ($1, 'accrue', 10, $2, NOW(), NOW()),
+  ($1, 'accrue', 20, $2, NOW(), NOW()),
+  ($1, 'accrue', 30, $3, NOW(), NOW()),
+  ($1, 'transfer', 40, $4, NOW(), NOW()),
+  ($1, 'accrue', 50, NULL, NOW(), NOW()),
+  ($1, 'accrue', 0, $4, NOW(), NOW()),
+  ($1, 'accrue', -1, $4, NOW(), NOW())`,
+		inviter.ID, inviteeA.ID, inviteeB.ID, inviteeC.ID)
+	require.NoError(t, err)
+
+	count, err := repo.CountPaidInvitees(txCtx, inviter.ID)
+	require.NoError(t, err)
+	require.Equal(t, 2, count)
+}
+
 func TestAffiliateRepository_TransferQuotaToBalance_EmptyQuota(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)

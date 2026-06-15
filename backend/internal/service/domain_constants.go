@@ -140,9 +140,9 @@ const (
 	SettingKeyAffiliateEnabled                      = "affiliate_enabled"                        // 邀请返利功能总开关
 	SettingKeyAffiliateRebateRate                   = "affiliate_rebate_rate"                    // 邀请返利比例（百分比，0-100）
 	SettingKeyAffiliateSubscriptionRebateMultiplier = "affiliate_subscription_rebate_multiplier" // 订阅返利系数（余额返利比例的百分比，0-100）
-	SettingKeyAffiliateTieredRebateEnabled          = "affiliate_tiered_rebate_enabled"          // 是否启用按有效付费邀请人数分级返利
-	SettingKeyAffiliateTier2MinPaidInvitees         = "affiliate_tier2_min_paid_invitees"        // 二级起始有效付费邀请人数
-	SettingKeyAffiliateTier3MinPaidInvitees         = "affiliate_tier3_min_paid_invitees"        // 三级起始有效付费邀请人数
+	SettingKeyAffiliateTieredRebateEnabled          = "affiliate_tiered_rebate_enabled"          // 是否启用按有效返利邀请人数分级返利
+	SettingKeyAffiliateTier2MinPaidInvitees         = "affiliate_tier2_min_paid_invitees"        // 二级起始有效返利邀请人数
+	SettingKeyAffiliateTier3MinPaidInvitees         = "affiliate_tier3_min_paid_invitees"        // 三级起始有效返利邀请人数
 	SettingKeyAffiliateTier2MultiplierPercent       = "affiliate_tier2_multiplier_percent"       // 二级返利倍率（基础比例百分比）
 	SettingKeyAffiliateTier3MultiplierPercent       = "affiliate_tier3_multiplier_percent"       // 三级返利倍率（基础比例百分比）
 	SettingKeyAffiliateRebateFreezeHours            = "affiliate_rebate_freeze_hours"            // 返利冻结期（小时，0=不冻结）
