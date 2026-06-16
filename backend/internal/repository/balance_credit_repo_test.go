@@ -51,6 +51,54 @@ func TestBalanceCreditRepositoryCreateCreditInsertsPositiveCredit(t *testing.T) 
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestBalanceCreditRepositoryCreateCreditIfAbsentReportsInserted(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	expiresAt := time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC)
+	mock.ExpectExec("ON CONFLICT").
+		WithArgs(int64(9), "", service.BalanceCreditSourceFirstRechargeBonus, "1001", "FIRST", 5.0, 5.0, expiresAt).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	repo := NewBalanceCreditRepository(nil, db)
+	created, err := repo.CreateCreditIfAbsent(context.Background(), service.BalanceCreditCreate{
+		UserID:     9,
+		SourceType: service.BalanceCreditSourceFirstRechargeBonus,
+		SourceID:   "1001",
+		SourceCode: "FIRST",
+		Amount:     5,
+		ExpiresAt:  &expiresAt,
+	})
+	require.NoError(t, err)
+	require.True(t, created)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBalanceCreditRepositoryCreateCreditIfAbsentReportsConflict(t *testing.T) {
+	t.Parallel()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectExec("ON CONFLICT").
+		WithArgs(int64(9), "", service.BalanceCreditSourceFirstRechargeBonus, "1001", "FIRST", 5.0, 5.0, nil).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	repo := NewBalanceCreditRepository(nil, db)
+	created, err := repo.CreateCreditIfAbsent(context.Background(), service.BalanceCreditCreate{
+		UserID:     9,
+		SourceType: service.BalanceCreditSourceFirstRechargeBonus,
+		SourceID:   "1001",
+		SourceCode: "FIRST",
+		Amount:     5,
+	})
+	require.NoError(t, err)
+	require.False(t, created)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestBalanceCreditRepositoryListDailyBalanceUsageAggregatesUsageLogs(t *testing.T) {
 	t.Parallel()
 	db, mock, err := sqlmock.New()

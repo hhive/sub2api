@@ -12,10 +12,11 @@ const (
 	BalanceCreditStatusConsumed = "consumed"
 	BalanceCreditStatusExpired  = "expired"
 
-	BalanceCreditSourceRedeem    = "redeem"
-	BalanceCreditSourceAdmin     = "admin"
-	BalanceCreditSourcePromo     = "promo"
-	BalanceCreditSourceAffiliate = "affiliate"
+	BalanceCreditSourceRedeem             = "redeem"
+	BalanceCreditSourceAdmin              = "admin"
+	BalanceCreditSourcePromo              = "promo"
+	BalanceCreditSourceAffiliate          = "affiliate"
+	BalanceCreditSourceFirstRechargeBonus = "first_recharge_bonus"
 )
 
 type BalanceCreditCreate struct {
@@ -65,6 +66,7 @@ type BalanceCreditListSummary struct {
 
 type BalanceCreditRepository interface {
 	CreateCredit(ctx context.Context, credit BalanceCreditCreate) error
+	CreateCreditIfAbsent(ctx context.Context, credit BalanceCreditCreate) (bool, error)
 	ListUserCredits(ctx context.Context, userID int64, params pagination.PaginationParams) ([]BalanceCredit, int64, error)
 	ListCredits(ctx context.Context, params pagination.PaginationParams, filters BalanceCreditListFilters) ([]BalanceCredit, int64, BalanceCreditListSummary, error)
 	ListDailyBalanceUsage(ctx context.Context, start, end time.Time) ([]DailyBalanceUsage, error)

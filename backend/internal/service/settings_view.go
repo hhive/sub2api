@@ -179,6 +179,9 @@ type SystemSettings struct {
 	AffiliateRebateFreezeHours            int
 	AffiliateRebateDurationDays           int
 	AffiliateRebatePerInviteeCap          float64
+	FirstRechargeBonusEnabled             bool
+	FirstRechargeBonusAmount              float64
+	FirstRechargeBonusValidityDays        int
 	DefaultUserRPMLimit                   int
 	DefaultSubscriptions                  []DefaultSubscriptionSetting
 

@@ -212,6 +212,7 @@ const sourceOptions = computed(() => [
   { value: 'admin', label: t('admin.users.ledgerSourceAdmin') },
   { value: 'promo', label: t('admin.users.ledgerSourcePromo') },
   { value: 'affiliate', label: t('admin.users.ledgerSourceAffiliate') },
+  { value: 'first_recharge_bonus', label: t('admin.users.ledgerSourceFirstRechargeBonus') },
   { value: 'initial', label: t('admin.users.ledgerSourceInitial') }
 ])
 

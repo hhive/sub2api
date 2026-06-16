@@ -21,6 +21,11 @@ func (s *redeemBalanceCreditRepoStub) CreateCredit(ctx context.Context, credit B
 	return nil
 }
 
+func (s *redeemBalanceCreditRepoStub) CreateCreditIfAbsent(ctx context.Context, credit BalanceCreditCreate) (bool, error) {
+	s.created = append(s.created, credit)
+	return true, nil
+}
+
 func (s *redeemBalanceCreditRepoStub) ListUserCredits(ctx context.Context, userID int64, params pagination.PaginationParams) ([]BalanceCredit, int64, error) {
 	panic("unexpected ListUserCredits call")
 }

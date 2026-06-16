@@ -381,6 +381,9 @@ export interface SystemSettings {
   default_balance: number;
   balance_credit_validity_days: number;
   balance_credit_daily_settlement_hour: number | null;
+  first_recharge_bonus_enabled: boolean;
+  first_recharge_bonus_amount: number;
+  first_recharge_bonus_validity_days: number;
   affiliate_rebate_rate: number;
   affiliate_subscription_rebate_multiplier: number;
   affiliate_tiered_rebate_enabled: boolean;
@@ -657,6 +660,9 @@ export interface UpdateSettingsRequest {
   default_balance?: number;
   balance_credit_validity_days?: number;
   balance_credit_daily_settlement_hour?: number;
+  first_recharge_bonus_enabled?: boolean;
+  first_recharge_bonus_amount?: number;
+  first_recharge_bonus_validity_days?: number;
   affiliate_rebate_rate?: number;
   affiliate_subscription_rebate_multiplier?: number;
   affiliate_tiered_rebate_enabled?: boolean;

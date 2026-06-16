@@ -1990,6 +1990,15 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 		settings.AffiliateRebatePerInviteeCap = AffiliateRebatePerInviteeCapDefault
 	}
 	updates[SettingKeyAffiliateRebatePerInviteeCap] = strconv.FormatFloat(settings.AffiliateRebatePerInviteeCap, 'f', 8, 64)
+	updates[SettingKeyFirstRechargeBonusEnabled] = strconv.FormatBool(settings.FirstRechargeBonusEnabled)
+	if settings.FirstRechargeBonusAmount < 0 {
+		settings.FirstRechargeBonusAmount = 0
+	}
+	updates[SettingKeyFirstRechargeBonusAmount] = strconv.FormatFloat(settings.FirstRechargeBonusAmount, 'f', 8, 64)
+	if settings.FirstRechargeBonusValidityDays < 0 {
+		settings.FirstRechargeBonusValidityDays = 0
+	}
+	updates[SettingKeyFirstRechargeBonusValidityDays] = strconv.Itoa(settings.FirstRechargeBonusValidityDays)
 	updates[SettingKeyDefaultUserRPMLimit] = strconv.Itoa(settings.DefaultUserRPMLimit)
 	defaultSubsJSON, err := json.Marshal(settings.DefaultSubscriptions)
 	if err != nil {
@@ -2950,6 +2959,9 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAffiliateRebateFreezeHours:                strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:               strconv.Itoa(AffiliateRebateDurationDaysDefault),
 		SettingKeyAffiliateRebatePerInviteeCap:              strconv.FormatFloat(AffiliateRebatePerInviteeCapDefault, 'f', 2, 64),
+		SettingKeyFirstRechargeBonusEnabled:                 strconv.FormatBool(FirstRechargeBonusEnabledDefault),
+		SettingKeyFirstRechargeBonusAmount:                  strconv.FormatFloat(FirstRechargeBonusAmountDefault, 'f', 8, 64),
+		SettingKeyFirstRechargeBonusValidityDays:            strconv.Itoa(FirstRechargeBonusValidityDaysDefault),
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -3182,6 +3194,17 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	}
 	if perInviteeCap, err := strconv.ParseFloat(settings[SettingKeyAffiliateRebatePerInviteeCap], 64); err == nil && perInviteeCap >= 0 {
 		result.AffiliateRebatePerInviteeCap = perInviteeCap
+	}
+	result.FirstRechargeBonusEnabled = settings[SettingKeyFirstRechargeBonusEnabled] == "true"
+	if amount, err := strconv.ParseFloat(settings[SettingKeyFirstRechargeBonusAmount], 64); err == nil && amount >= 0 {
+		result.FirstRechargeBonusAmount = amount
+	} else {
+		result.FirstRechargeBonusAmount = FirstRechargeBonusAmountDefault
+	}
+	if days, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyFirstRechargeBonusValidityDays])); err == nil && days >= 0 {
+		result.FirstRechargeBonusValidityDays = days
+	} else {
+		result.FirstRechargeBonusValidityDays = FirstRechargeBonusValidityDaysDefault
 	}
 	result.DefaultSubscriptions = parseDefaultSubscriptions(settings[SettingKeyDefaultSubscriptions])
 

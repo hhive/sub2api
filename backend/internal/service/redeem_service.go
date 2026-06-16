@@ -10,6 +10,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -458,6 +459,9 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			if err := s.createBalanceCredit(txCtx, userID, redeemCode, amount); err != nil {
 				return nil, fmt.Errorf("create balance credit: %w", err)
 			}
+			if err := s.applyFirstRechargeBonus(txCtx, userID, redeemCode); err != nil {
+				return nil, fmt.Errorf("apply first recharge bonus: %w", err)
+			}
 		}
 
 	case RedeemTypeConcurrency:
@@ -539,6 +543,64 @@ func (s *RedeemService) createBalanceCredit(ctx context.Context, userID int64, r
 		Amount:     amount,
 		ExpiresAt:  expiresAt,
 	})
+}
+
+func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int64, redeemCode *RedeemCode) error {
+	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || s.userRepo == nil || redeemCode == nil {
+		return nil
+	}
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return err
+	}
+	if !settings.FirstRechargeBonusEnabled || settings.FirstRechargeBonusAmount <= 0 {
+		return nil
+	}
+	hasPrior, err := s.hasPriorPositiveBalanceRedeem(ctx, userID, redeemCode.ID)
+	if err != nil {
+		return err
+	}
+	if hasPrior {
+		return nil
+	}
+	expiresAt := balanceCreditExpiresAt(settings.FirstRechargeBonusValidityDays, time.Now())
+	created, err := s.balanceCreditRepo.CreateCreditIfAbsent(ctx, BalanceCreditCreate{
+		UserID:     userID,
+		SourceType: BalanceCreditSourceFirstRechargeBonus,
+		SourceID:   fmt.Sprintf("%d", redeemCode.ID),
+		SourceCode: redeemCode.Code,
+		Amount:     settings.FirstRechargeBonusAmount,
+		ExpiresAt:  expiresAt,
+	})
+	if err != nil {
+		return err
+	}
+	if !created {
+		return nil
+	}
+	return s.userRepo.UpdateBalance(ctx, userID, settings.FirstRechargeBonusAmount)
+}
+
+func (s *RedeemService) hasPriorPositiveBalanceRedeem(ctx context.Context, userID int64, currentRedeemCodeID int64) (bool, error) {
+	if s == nil || s.entClient == nil || userID <= 0 {
+		return false, nil
+	}
+	client := s.entClient
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		client = tx.Client()
+	}
+	count, err := client.RedeemCode.Query().
+		Where(
+			redeemcode.UsedByEQ(userID),
+			redeemcode.ValueGT(0),
+			redeemcode.TypeEQ(RedeemTypeBalance),
+			redeemcode.IDNEQ(currentRedeemCodeID),
+		).
+		Count(ctx)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // invalidateRedeemCaches 失效兑换相关的缓存

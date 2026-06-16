@@ -281,6 +281,9 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             settings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            settings.AffiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           settings.AffiliateRebatePerInviteeCap,
+		FirstRechargeBonusEnabled:              settings.FirstRechargeBonusEnabled,
+		FirstRechargeBonusAmount:               settings.FirstRechargeBonusAmount,
+		FirstRechargeBonusValidityDays:         settings.FirstRechargeBonusValidityDays,
 		DefaultUserRPMLimit:                    settings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
 		EnableModelFallback:                    settings.EnableModelFallback,
@@ -592,6 +595,9 @@ type UpdateSettingsRequest struct {
 	AffiliateRebateFreezeHours                *int                              `json:"affiliate_rebate_freeze_hours"`
 	AffiliateRebateDurationDays               *int                              `json:"affiliate_rebate_duration_days"`
 	AffiliateRebatePerInviteeCap              *float64                          `json:"affiliate_rebate_per_invitee_cap"`
+	FirstRechargeBonusEnabled                 *bool                             `json:"first_recharge_bonus_enabled"`
+	FirstRechargeBonusAmount                  *float64                          `json:"first_recharge_bonus_amount"`
+	FirstRechargeBonusValidityDays            *int                              `json:"first_recharge_bonus_validity_days"`
 	DefaultUserRPMLimit                       int                               `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                      []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
@@ -854,6 +860,24 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	if affiliateRebatePerInviteeCap < 0 {
 		affiliateRebatePerInviteeCap = service.AffiliateRebatePerInviteeCapDefault
+	}
+	firstRechargeBonusEnabled := previousSettings.FirstRechargeBonusEnabled
+	if req.FirstRechargeBonusEnabled != nil {
+		firstRechargeBonusEnabled = *req.FirstRechargeBonusEnabled
+	}
+	firstRechargeBonusAmount := previousSettings.FirstRechargeBonusAmount
+	if req.FirstRechargeBonusAmount != nil {
+		firstRechargeBonusAmount = *req.FirstRechargeBonusAmount
+	}
+	if firstRechargeBonusAmount < 0 {
+		firstRechargeBonusAmount = 0
+	}
+	firstRechargeBonusValidityDays := previousSettings.FirstRechargeBonusValidityDays
+	if req.FirstRechargeBonusValidityDays != nil {
+		firstRechargeBonusValidityDays = *req.FirstRechargeBonusValidityDays
+	}
+	if firstRechargeBonusValidityDays < 0 {
+		firstRechargeBonusValidityDays = 0
 	}
 	// 通用表格配置：兼容旧客户端未传字段时保留当前值。
 	if req.TableDefaultPageSize <= 0 {
@@ -1836,6 +1860,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             affiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            affiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           affiliateRebatePerInviteeCap,
+		FirstRechargeBonusEnabled:              firstRechargeBonusEnabled,
+		FirstRechargeBonusAmount:               firstRechargeBonusAmount,
+		FirstRechargeBonusValidityDays:         firstRechargeBonusValidityDays,
 		DefaultUserRPMLimit:                    req.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
 		EnableModelFallback:                    req.EnableModelFallback,
@@ -2294,6 +2321,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebateFreezeHours:             updatedSettings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            updatedSettings.AffiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           updatedSettings.AffiliateRebatePerInviteeCap,
+		FirstRechargeBonusEnabled:              updatedSettings.FirstRechargeBonusEnabled,
+		FirstRechargeBonusAmount:               updatedSettings.FirstRechargeBonusAmount,
+		FirstRechargeBonusValidityDays:         updatedSettings.FirstRechargeBonusValidityDays,
 		DefaultUserRPMLimit:                    updatedSettings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   updatedDefaultSubscriptions,
 		EnableModelFallback:                    updatedSettings.EnableModelFallback,

@@ -59,6 +59,34 @@ INSERT INTO user_balance_credits (
 	return err
 }
 
+func (r *balanceCreditRepository) CreateCreditIfAbsent(ctx context.Context, credit service.BalanceCreditCreate) (bool, error) {
+	if credit.Amount <= 0 {
+		return false, nil
+	}
+	db, err := r.execer(ctx)
+	if err != nil {
+		return false, err
+	}
+	sourceType := strings.TrimSpace(credit.SourceType)
+	if sourceType == "" {
+		sourceType = service.BalanceCreditSourceRedeem
+	}
+	result, err := db.ExecContext(ctx, `
+INSERT INTO user_balance_credits (
+	user_id, email, source_type, source_id, source_code, amount, remaining_amount, expires_at, status, created_at, updated_at
+) VALUES ($1, COALESCE(NULLIF($2, ''), (SELECT email FROM users WHERE id = $1), ''), $3, $4, $5, $6, $7, $8, 'active', NOW(), NOW())
+ON CONFLICT (user_id, source_type) WHERE source_type = 'first_recharge_bonus' DO NOTHING
+`, credit.UserID, strings.TrimSpace(credit.Email), sourceType, strings.TrimSpace(credit.SourceID), strings.TrimSpace(credit.SourceCode), credit.Amount, credit.Amount, credit.ExpiresAt)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
 func (r *balanceCreditRepository) ListUserCredits(ctx context.Context, userID int64, params pagination.PaginationParams) ([]service.BalanceCredit, int64, error) {
 	if userID <= 0 {
 		return []service.BalanceCredit{}, 0, nil
