@@ -1,4 +1,4 @@
-INSERT INTO settings (key, value, created_at)
+INSERT INTO settings (key, value, updated_at)
 VALUES
     ('first_recharge_bonus_enabled', 'false', NOW()),
     ('first_recharge_bonus_amount', '5', NOW()),
