@@ -231,6 +231,11 @@ func (s *OnyxLaunchService) selectFirstEligibleAPIKey(ctx context.Context, userI
 	}
 
 	sort.SliceStable(eligible, func(i, j int) bool {
+		iSupportsImages := apiKeySupportsImageGeneration(eligible[i])
+		jSupportsImages := apiKeySupportsImageGeneration(eligible[j])
+		if iSupportsImages != jSupportsImages {
+			return iSupportsImages
+		}
 		if eligible[i].CreatedAt.Equal(eligible[j].CreatedAt) {
 			return eligible[i].ID < eligible[j].ID
 		}
@@ -239,6 +244,10 @@ func (s *OnyxLaunchService) selectFirstEligibleAPIKey(ctx context.Context, userI
 
 	selected := eligible[0]
 	return &selected, nil
+}
+
+func apiKeySupportsImageGeneration(key APIKey) bool {
+	return key.Group != nil && key.Group.AllowImageGeneration
 }
 
 func isOnyxAPIKeyEligible(key APIKey, now time.Time) bool {

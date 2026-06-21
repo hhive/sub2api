@@ -139,6 +139,47 @@ func TestOnyxLaunchService_SelectFirstEligibleAPIKey_TreatsUnlimitedQuotaAsEligi
 	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
 }
 
+func TestOnyxLaunchService_SelectFirstEligibleAPIKey_PrefersImageGenerationGroup(t *testing.T) {
+	now := time.Now()
+	repo := &onyxLaunchAPIKeyRepoStub{
+		listByUserIDResult: []APIKey{
+			{
+				ID:        101,
+				UserID:    42,
+				Status:    StatusActive,
+				Quota:     10,
+				QuotaUsed: 1,
+				CreatedAt: now.Add(-5 * time.Hour),
+				Group:     &Group{AllowImageGeneration: false},
+			},
+			{
+				ID:        102,
+				UserID:    42,
+				Status:    StatusActive,
+				Quota:     10,
+				QuotaUsed: 1,
+				CreatedAt: now.Add(-4 * time.Hour),
+				Group:     &Group{AllowImageGeneration: true},
+			},
+			{
+				ID:        103,
+				UserID:    42,
+				Status:    StatusActive,
+				Quota:     10,
+				QuotaUsed: 1,
+				CreatedAt: now.Add(-3 * time.Hour),
+				Group:     &Group{AllowImageGeneration: true},
+			},
+		},
+	}
+	svc := &OnyxLaunchService{apiKeyRepo: repo}
+
+	key, err := svc.selectFirstEligibleAPIKey(context.Background(), 42)
+	require.NoError(t, err)
+	require.NotNil(t, key)
+	require.Equal(t, int64(102), key.ID)
+}
+
 func TestOnyxLaunchService_SelectFirstEligibleAPIKey_ReturnsConflictWhenNoEligibleKeyExists(t *testing.T) {
 	now := time.Now()
 	repo := &onyxLaunchAPIKeyRepoStub{
