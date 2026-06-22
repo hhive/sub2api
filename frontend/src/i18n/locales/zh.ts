@@ -1165,7 +1165,7 @@ export default {
     loadFailed: '加载邀请返利数据失败',
     transferFailed: '转入余额失败',
     stats: {
-      rebateRate: '余额订阅比例',
+      rebateRate: '余额返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',
       subscriptionRebateRate: '订阅返利比例',
       subscriptionRebateRateHint: '被邀请用户购买订阅套餐后你可获得的返利比例',
