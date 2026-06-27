@@ -133,6 +133,38 @@ func TestUserHandlerEndpoints(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestUserHandlerUpdateBalancePassesValidityDays(t *testing.T) {
+	router, adminSvc := setupAdminRouter()
+
+	body := `{"balance":12.5,"operation":"add","notes":"manual top-up","validity_days":7}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/42/balance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, 1, adminSvc.lastUpdateUserBalance.calls)
+	require.Equal(t, int64(42), adminSvc.lastUpdateUserBalance.userID)
+	require.Equal(t, 12.5, adminSvc.lastUpdateUserBalance.balance)
+	require.Equal(t, "add", adminSvc.lastUpdateUserBalance.operation)
+	require.Equal(t, "manual top-up", adminSvc.lastUpdateUserBalance.notes)
+	require.NotNil(t, adminSvc.lastUpdateUserBalance.validityDays)
+	require.Equal(t, 7, *adminSvc.lastUpdateUserBalance.validityDays)
+}
+
+func TestUserHandlerUpdateBalanceRejectsNegativeValidityDays(t *testing.T) {
+	router, adminSvc := setupAdminRouter()
+
+	body := `{"balance":1,"operation":"add","validity_days":-1}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/balance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Equal(t, 0, adminSvc.lastUpdateUserBalance.calls)
+}
+
 func TestUserHandlerBindAuthIdentityMapsRequest(t *testing.T) {
 	router, adminSvc := setupAdminRouter()
 

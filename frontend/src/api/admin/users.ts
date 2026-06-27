@@ -163,13 +163,25 @@ export async function updateBalance(
   id: number,
   balance: number,
   operation: 'set' | 'add' | 'subtract' = 'set',
-  notes?: string
+  notes?: string,
+  validityDays?: number
 ): Promise<AdminUser> {
-  const { data } = await apiClient.post<AdminUser>(`/admin/users/${id}/balance`, {
+  const payload: {
+    balance: number
+    operation: 'set' | 'add' | 'subtract'
+    notes: string
+    validity_days?: number
+  } = {
     balance,
     operation,
     notes: notes || ''
-  })
+  }
+
+  if (operation === 'add' && validityDays !== undefined) {
+    payload.validity_days = validityDays
+  }
+
+  const { data } = await apiClient.post<AdminUser>(`/admin/users/${id}/balance`, payload)
   return data
 }
 

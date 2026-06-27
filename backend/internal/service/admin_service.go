@@ -38,7 +38,7 @@ type AdminService interface {
 	CreateUser(ctx context.Context, input *CreateUserInput) (*User, error)
 	UpdateUser(ctx context.Context, id int64, input *UpdateUserInput) (*User, error)
 	DeleteUser(ctx context.Context, id int64) error
-	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error)
+	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string, validityDays *int) (*User, error)
 	BatchUpdateConcurrency(ctx context.Context, userIDs []int64, value int, mode string) (int, error)
 	GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error)
 	GetUserUsageStats(ctx context.Context, userID int64, period string) (any, error)
@@ -990,7 +990,7 @@ func (s *adminServiceImpl) BatchUpdateConcurrency(ctx context.Context, userIDs [
 	return affected, nil
 }
 
-func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error) {
+func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string, validityDays *int) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -1048,7 +1048,7 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 			return nil, fmt.Errorf("create balance adjustment redeem code: %w", err)
 		}
 		if balanceDiff > 0 {
-			if err := s.createAdminBalanceCredit(opCtx, user.ID, adjustmentRecord, balanceDiff); err != nil {
+			if err := s.createAdminBalanceCredit(opCtx, user.ID, adjustmentRecord, balanceDiff, validityDays); err != nil {
 				return nil, fmt.Errorf("create balance credit: %w", err)
 			}
 		}
@@ -1076,15 +1076,24 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 	return user, nil
 }
 
-func (s *adminServiceImpl) createAdminBalanceCredit(ctx context.Context, userID int64, record *RedeemCode, amount float64) error {
+func (s *adminServiceImpl) createAdminBalanceCredit(ctx context.Context, userID int64, record *RedeemCode, amount float64, validityDays *int) error {
 	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || record == nil || amount <= 0 {
 		return nil
 	}
-	settings, err := s.settingService.GetAllSettings(ctx)
-	if err != nil {
-		return err
+	days := 0
+	if validityDays != nil {
+		days = *validityDays
+		if days < 0 {
+			days = 0
+		}
+	} else {
+		settings, err := s.settingService.GetAllSettings(ctx)
+		if err != nil {
+			return err
+		}
+		days = settings.BalanceCreditValidityDays
 	}
-	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
+	expiresAt := balanceCreditExpiresAt(days, time.Now())
 	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourceAdmin,

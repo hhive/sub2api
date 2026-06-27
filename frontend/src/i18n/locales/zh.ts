@@ -2090,6 +2090,8 @@ export default {
       withdraw: '退款',
       depositAmount: '充值金额',
       withdrawAmount: '退款金额',
+      balanceValidityDays: '余额有效期（天）',
+      balanceValidityDaysHint: '0 表示永不过期；默认使用系统余额有效期设置',
       withdrawAll: '全部',
       depositNotesPlaceholder: '例如：新用户注册奖励、活动充值、补偿充值等',
       withdrawNotesPlaceholder: '例如：服务问题退款、错误充值退回、账户注销退款等',

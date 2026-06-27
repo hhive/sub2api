@@ -2030,6 +2030,8 @@ export default {
       withdraw: 'Withdraw',
       depositAmount: 'Deposit Amount',
       withdrawAmount: 'Withdraw Amount',
+      balanceValidityDays: 'Balance Validity (Days)',
+      balanceValidityDaysHint: '0 means never expires. Defaults to the system balance validity setting.',
       withdrawAll: 'All',
       currentBalance: 'Current Balance',
       depositNotesPlaceholder:
