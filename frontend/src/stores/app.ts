@@ -341,6 +341,8 @@ export const useAppStore = defineStore('app', () => {
         contact_info: contactInfo.value,
         doc_url: docUrl.value,
         redeem_purchase_url: 'https://pay.ldxp.cn/shop/xiaoni-ai',
+        purchase_subscription_enabled: false,
+        purchase_subscription_url: '',
         home_content: '',
         hide_ccs_import_button: false,
         payment_enabled: false,
@@ -381,6 +383,9 @@ export const useAppStore = defineStore('app', () => {
           '2910703711@qq.com',
           '1312623967@qq.com',
         ],
+        video_playground_enabled: false,
+        video_playground_menu_label: '视频生成',
+        video_playground_launch_path: '/api/v1/video-playground/launch',
         allow_user_view_error_requests: false,
       }
     }

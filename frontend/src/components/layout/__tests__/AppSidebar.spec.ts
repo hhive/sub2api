@@ -33,7 +33,7 @@ describe('AppSidebar header styles', () => {
 
 describe('AppSidebar Onyx menu wiring', () => {
   it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
-    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx } from '@/api/onyx'")
+    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVideoPlayground } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
@@ -45,12 +45,23 @@ describe('AppSidebar Onyx menu wiring', () => {
 
 describe('AppSidebar image playground menu wiring', () => {
   it('adds an authenticated launch action next to the chat menu', () => {
-    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground'")
+    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground'")
     expect(componentSource).toContain("label: t('nav.imagePlayground')")
     expect(componentSource).toContain("action: 'imagePlayground'")
     expect(componentSource).toContain('handleImagePlaygroundLaunch')
     expect(componentSource).toContain('launchImagePlayground()')
     expect(componentSource).toContain("handleMenuItemClick('__image_playground__')")
+  })
+})
+
+describe('AppSidebar video playground menu wiring', () => {
+  it('adds an authenticated video launch action', () => {
+    expect(componentSource).toContain('FeatureFlags.videoPlayground')
+    expect(componentSource).toContain("label: t('nav.videoPlayground')")
+    expect(componentSource).toContain("action: 'videoPlayground'")
+    expect(componentSource).toContain('handleVideoPlaygroundLaunch')
+    expect(componentSource).toContain('launchVideoPlayground()')
+    expect(componentSource).toContain("handleMenuItemClick('__video_playground__')")
   })
 })
 
@@ -72,14 +83,14 @@ describe('AppSidebar LobeHub menu wiring', () => {
 })
 
 describe('AppSidebar purchase menu wiring', () => {
-  it('opens the recharge subscription shop in a new tab above redeem', () => {
+  it('keeps the recharge subscription shop entry behind a system setting', () => {
+    expect(componentSource).toContain('FeatureFlags.purchaseSubscription')
+    expect(componentSource).toContain('purchaseSubscriptionUrl')
     expect(componentSource).toContain('externalUrl?: string')
     expect(componentSource).toContain('target="_blank"')
     expect(componentSource).toContain("path: '__purchase_external__'")
     expect(componentSource).toContain("label: t('nav.buySubscription')")
-    expect(componentSource).toContain("externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai'")
-    expect(componentSource.indexOf("path: '__purchase_external__'")).toBeLessThan(
-      componentSource.indexOf("path: '/redeem'")
-    )
+    expect(componentSource).toContain('featureFlag: flagRechargeSubscription')
+    expect(componentSource).not.toContain("externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai'")
   })
 })

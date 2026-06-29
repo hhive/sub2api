@@ -827,6 +827,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyLobeHubEnabled,
 		SettingKeyLobeHubMenuLabel,
 		SettingKeyLobeHubAllowedEmails,
+		SettingKeyVideoPlaygroundEnabled,
+		SettingKeyVideoPlaygroundMenuLabel,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
@@ -971,6 +973,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
 		LobeHubAllowedEmails:             ParseLobeHubAllowedEmails(lobeHubAllowedEmailsRaw),
+		VideoPlaygroundEnabled:           settings[SettingKeyVideoPlaygroundEnabled] == "true",
+		VideoPlaygroundMenuLabel:         s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
+		VideoPlaygroundLaunchPath:        "/api/v1/video-playground/launch",
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		DingTalkOAuthEnabled:             dingTalkEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
@@ -1511,6 +1516,9 @@ type PublicSettingsInjectionPayload struct {
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
+	VideoPlaygroundEnabled           bool                     `json:"video_playground_enabled"`
+	VideoPlaygroundMenuLabel         string                   `json:"video_playground_menu_label"`
+	VideoPlaygroundLaunchPath        string                   `json:"video_playground_launch_path"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
@@ -1593,6 +1601,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
 		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
+		VideoPlaygroundEnabled:           settings.VideoPlaygroundEnabled,
+		VideoPlaygroundMenuLabel:         settings.VideoPlaygroundMenuLabel,
+		VideoPlaygroundLaunchPath:        settings.VideoPlaygroundLaunchPath,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
@@ -2221,6 +2232,14 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyLobeHubAllowedEmails] = NormalizeLobeHubAllowedEmailsValue(settings.LobeHubAllowedEmails)
 	if settings.LobeHubExchangeSecret != "" {
 		updates[SettingKeyLobeHubExchangeSecret] = strings.TrimSpace(settings.LobeHubExchangeSecret)
+	}
+	if settings.VideoPlaygroundEnabled != nil {
+		updates[SettingKeyVideoPlaygroundEnabled] = strconv.FormatBool(*settings.VideoPlaygroundEnabled)
+	}
+	updates[SettingKeyVideoPlaygroundBaseURL] = strings.TrimSpace(settings.VideoPlaygroundBaseURL)
+	updates[SettingKeyVideoPlaygroundMenuLabel] = strings.TrimSpace(settings.VideoPlaygroundMenuLabel)
+	if settings.VideoPlaygroundExchangeSecret != "" {
+		updates[SettingKeyVideoPlaygroundExchangeSecret] = strings.TrimSpace(settings.VideoPlaygroundExchangeSecret)
 	}
 
 	// 默认配置
@@ -3232,6 +3251,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyLobeHubMenuLabel:                          "LobeHub",
 		SettingKeyLobeHubExchangeSecret:                     "",
 		SettingKeyLobeHubAllowedEmails:                      defaultLobeHubAllowedEmailsValue,
+		SettingKeyVideoPlaygroundEnabled:                    "false",
+		SettingKeyVideoPlaygroundBaseURL:                    "",
+		SettingKeyVideoPlaygroundMenuLabel:                  "视频生成",
+		SettingKeyVideoPlaygroundExchangeSecret:             "",
 		SettingKeyWeChatConnectEnabled:                      "false",
 		SettingKeyWeChatConnectAppID:                        "",
 		SettingKeyWeChatConnectAppSecret:                    "",
@@ -3466,6 +3489,10 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubExchangeSecret:            strings.TrimSpace(settings[SettingKeyLobeHubExchangeSecret]),
 		LobeHubAllowedEmails:             NormalizeLobeHubAllowedEmailsValue(lobeHubAllowedEmailsForSettingsView(settings)),
+		VideoPlaygroundEnabled:           boolPtr(settings[SettingKeyVideoPlaygroundEnabled] == "true"),
+		VideoPlaygroundBaseURL:           strings.TrimSpace(settings[SettingKeyVideoPlaygroundBaseURL]),
+		VideoPlaygroundMenuLabel:         s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
+		VideoPlaygroundExchangeSecret:    strings.TrimSpace(settings[SettingKeyVideoPlaygroundExchangeSecret]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",

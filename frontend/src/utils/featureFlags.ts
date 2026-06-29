@@ -109,6 +109,11 @@ export const FeatureFlags = {
     mode: 'opt-out',
     label: 'Payment',
   }),
+  purchaseSubscription: defineFlag({
+    key: 'purchase_subscription_enabled',
+    mode: 'opt-in',
+    label: 'Recharge / Subscription',
+  }),
   riskControl: defineFlag({
     key: 'risk_control_enabled',
     mode: 'opt-in',
@@ -128,6 +133,11 @@ export const FeatureFlags = {
     key: 'lobehub_enabled',
     mode: 'opt-in',
     label: 'LobeHub',
+  }),
+  videoPlayground: defineFlag({
+    key: 'video_playground_enabled',
+    mode: 'opt-in',
+    label: 'Video Playground',
   }),
 } as const
 

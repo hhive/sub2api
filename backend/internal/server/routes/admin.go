@@ -101,11 +101,24 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
+		// 独立视频站模型配置
+		registerVideoPlaygroundRoutes(admin, h)
+
 		// 风控中心
 		registerContentModerationRoutes(admin, h)
 
 		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
+	}
+}
+
+func registerVideoPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	videoPlayground := admin.Group("/video-playground")
+	{
+		videoPlayground.GET("/models", h.Admin.VideoPlayground.ListModels)
+		videoPlayground.POST("/models", h.Admin.VideoPlayground.CreateModel)
+		videoPlayground.PATCH("/models/:id", h.Admin.VideoPlayground.UpdateModel)
+		videoPlayground.DELETE("/models/:id", h.Admin.VideoPlayground.DeleteModel)
 	}
 }
 

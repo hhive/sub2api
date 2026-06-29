@@ -69,7 +69,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -117,7 +117,7 @@
 
           <template v-for="item in personalNavItems" :key="item.path">
             <button
-              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -166,7 +166,7 @@
         <div class="sidebar-section">
           <template v-for="item in userNavItems" :key="item.path">
             <button
-              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -259,7 +259,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchImagePlayground, launchLobeHub, launchOnyx } from '@/api/onyx'
+import { launchImagePlayground, launchLobeHub, launchOnyx, launchVideoPlayground } from '@/api/onyx'
 
 interface NavItem {
   path: string
@@ -274,7 +274,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'lobehub' | 'onyx' | 'imagePlayground'
+  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -315,6 +315,7 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const lobeHubLaunching = ref(false)
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
+const videoPlaygroundLaunching = ref(false)
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -455,6 +456,21 @@ const ImageIcon = {
           'stroke-linecap': 'round',
           'stroke-linejoin': 'round',
           d: 'm2.25 15.75 5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z'
+        })
+      ]
+    )
+}
+
+const VideoIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h8.25A3.75 3.75 0 0016.5 15V9a3.75 3.75 0 00-3.75-3.75H4.5A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z'
         })
       ]
     )
@@ -759,9 +775,15 @@ const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
+const flagVideoPlayground = makeSidebarFlag(FeatureFlags.videoPlayground)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
+const flagRechargeSubscription = makeSidebarFlag(FeatureFlags.purchaseSubscription)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled
+const purchaseSubscriptionUrl = computed(() => {
+  const url = appStore.cachedPublicSettings?.purchase_subscription_url?.trim()
+  return url || 'https://pay.ldxp.cn/shop/xiaoni-ai'
+})
 
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
 // withDashboard=true 时包含仪表盘（用户端），false 时不含（管理员的个人区已经有独立仪表盘入口）。
@@ -779,11 +801,12 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
     { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'imagePlayground' },
+    { path: '__video_playground__', label: t('nav.videoPlayground'), icon: VideoIcon, hideInSimpleMode: true, featureFlag: flagVideoPlayground, action: 'videoPlayground' },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/orders', label: t('nav.myOrders'), icon: OrderListIcon, hideInSimpleMode: true, featureFlag: flagPayment },
-    { path: '__purchase_external__', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai', hideInSimpleMode: true },
+    { path: '__purchase_external__', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, externalUrl: purchaseSubscriptionUrl.value, hideInSimpleMode: true, featureFlag: flagRechargeSubscription },
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
@@ -844,6 +867,7 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
+    { path: '/admin/video-playground', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
@@ -994,6 +1018,20 @@ async function handleImagePlaygroundLaunch() {
   }
 }
 
+async function handleVideoPlaygroundLaunch() {
+  if (videoPlaygroundLaunching.value) return
+  handleMenuItemClick('__video_playground__')
+  videoPlaygroundLaunching.value = true
+  try {
+    const result = await launchVideoPlayground()
+    window.open(result.redirect_url, '_blank', 'noopener')
+  } catch (error) {
+    appStore.showError(resolveVideoPlaygroundLaunchError(error))
+  } finally {
+    videoPlaygroundLaunching.value = false
+  }
+}
+
 function handleActionLaunch(action: NavItem['action']) {
   if (action === 'lobehub') {
     return handleLobeHubLaunch()
@@ -1004,12 +1042,16 @@ function handleActionLaunch(action: NavItem['action']) {
   if (action === 'imagePlayground') {
     return handleImagePlaygroundLaunch()
   }
+  if (action === 'videoPlayground') {
+    return handleVideoPlaygroundLaunch()
+  }
 }
 
 function isActionLaunching(action: NavItem['action']): boolean {
   if (action === 'lobehub') return lobeHubLaunching.value
   if (action === 'onyx') return onyxLaunching.value
   if (action === 'imagePlayground') return imagePlaygroundLaunching.value
+  if (action === 'videoPlayground') return videoPlaygroundLaunching.value
   return false
 }
 
@@ -1017,6 +1059,7 @@ function actionLabel(item: NavItem): string {
   if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
   if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
+  if (item.action === 'videoPlayground' && videoPlaygroundLaunching.value) return t('videoPlayground.opening')
   return item.label
 }
 
@@ -1051,6 +1094,17 @@ function resolveImagePlaygroundLaunchError(error: unknown): string {
     return t('imagePlayground.notConfigured')
   }
   return apiError.message || t('imagePlayground.openFailed')
+}
+
+function resolveVideoPlaygroundLaunchError(error: unknown): string {
+  const apiError = error as { status?: number; reason?: string; message?: string }
+  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
+    return t('onyx.noAvailableApiKey')
+  }
+  if (apiError.status === 503) {
+    return t('videoPlayground.notConfigured')
+  }
+  return apiError.message || t('videoPlayground.openFailed')
 }
 
 function isActive(path: string): boolean {

@@ -134,34 +134,38 @@ type SystemSettings struct {
 	GoogleOAuthRedirectURL            string
 	GoogleOAuthFrontendRedirectURL    string
 
-	SiteName                    string
-	SiteLogo                    string
-	SiteSubtitle                string
-	APIBaseURL                  string
-	ContactInfo                 string
-	DocURL                      string
-	RedeemPurchaseURL           string
-	HomeContent                 string
-	HideCcsImportButton         bool
-	PurchaseSubscriptionEnabled bool
-	PurchaseSubscriptionURL     string
-	TableDefaultPageSize        int
-	TablePageSizeOptions        []int
-	CustomMenuItems             string // JSON array of custom menu items
-	CustomEndpoints             string // JSON array of custom endpoints
-	OnyxEnabled                 bool
-	OnyxBaseURL                 string
-	OnyxMenuLabel               string
-	OnyxExchangeSecret          string
-	OnyxLaunchTokenTTLSeconds   int
-	OnyxDefaultRedirectPath     string
-	OnyxDefaultTextModel        string
-	OnyxDefaultImageModel       string
-	LobeHubEnabled              bool
-	LobeHubBaseURL              string
-	LobeHubMenuLabel            string
-	LobeHubExchangeSecret       string
-	LobeHubAllowedEmails        string
+	SiteName                      string
+	SiteLogo                      string
+	SiteSubtitle                  string
+	APIBaseURL                    string
+	ContactInfo                   string
+	DocURL                        string
+	RedeemPurchaseURL             string
+	HomeContent                   string
+	HideCcsImportButton           bool
+	PurchaseSubscriptionEnabled   bool
+	PurchaseSubscriptionURL       string
+	TableDefaultPageSize          int
+	TablePageSizeOptions          []int
+	CustomMenuItems               string // JSON array of custom menu items
+	CustomEndpoints               string // JSON array of custom endpoints
+	OnyxEnabled                   bool
+	OnyxBaseURL                   string
+	OnyxMenuLabel                 string
+	OnyxExchangeSecret            string
+	OnyxLaunchTokenTTLSeconds     int
+	OnyxDefaultRedirectPath       string
+	OnyxDefaultTextModel          string
+	OnyxDefaultImageModel         string
+	LobeHubEnabled                bool
+	LobeHubBaseURL                string
+	LobeHubMenuLabel              string
+	LobeHubExchangeSecret         string
+	LobeHubAllowedEmails          string
+	VideoPlaygroundEnabled        *bool
+	VideoPlaygroundBaseURL        string
+	VideoPlaygroundMenuLabel      string
+	VideoPlaygroundExchangeSecret string
 
 	DefaultConcurrency                    int
 	DefaultBalance                        float64
@@ -329,6 +333,9 @@ type PublicSettings struct {
 	LobeHubMenuLabel            string
 	LobeHubLaunchPath           string
 	LobeHubAllowedEmails        []string
+	VideoPlaygroundEnabled      bool
+	VideoPlaygroundMenuLabel    string
+	VideoPlaygroundLaunchPath   string
 
 	LinuxDoOAuthEnabled      bool
 	DingTalkOAuthEnabled     bool

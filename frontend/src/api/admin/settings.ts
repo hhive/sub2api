@@ -450,6 +450,8 @@ export interface SystemSettings {
   contact_info: string;
   doc_url: string;
   redeem_purchase_url: string;
+  purchase_subscription_enabled: boolean;
+  purchase_subscription_url: string;
   home_content: string;
   hide_ccs_import_button: boolean;
   table_default_page_size: number;
@@ -458,6 +460,10 @@ export interface SystemSettings {
   custom_menu_items: CustomMenuItem[];
   custom_endpoints: CustomEndpoint[];
   lobehub_allowed_emails: string;
+  video_playground_enabled: boolean;
+  video_playground_base_url: string;
+  video_playground_menu_label: string;
+  video_playground_exchange_secret_configured: boolean;
   // SMTP settings
   smtp_host: string;
   smtp_port: number;
@@ -742,6 +748,8 @@ export interface UpdateSettingsRequest {
   contact_info?: string;
   doc_url?: string;
   redeem_purchase_url?: string;
+  purchase_subscription_enabled?: boolean;
+  purchase_subscription_url?: string;
   home_content?: string;
   hide_ccs_import_button?: boolean;
   table_default_page_size?: number;
@@ -750,6 +758,10 @@ export interface UpdateSettingsRequest {
   custom_menu_items?: CustomMenuItem[];
   custom_endpoints?: CustomEndpoint[];
   lobehub_allowed_emails?: string;
+  video_playground_enabled?: boolean;
+  video_playground_base_url?: string;
+  video_playground_menu_label?: string;
+  video_playground_exchange_secret?: string;
   smtp_host?: string;
   smtp_port?: number;
   smtp_username?: string;

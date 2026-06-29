@@ -27,9 +27,15 @@ type onyxLaunchServiceStub struct {
 	createLobeHubUserID         int64
 	createLobeHubResult         *service.OnyxLaunchResult
 	createLobeHubErr            error
+	createVideoPlaygroundUserID int64
+	createVideoPlaygroundResult *service.OnyxLaunchResult
+	createVideoPlaygroundErr    error
 	consumeToken                string
 	consumeResult               *service.OnyxLaunchPayload
 	consumeErr                  error
+	consumeVideoToken           string
+	consumeVideoResult          *service.VideoPlaygroundLaunchPayload
+	consumeVideoErr             error
 }
 
 func (s *onyxLaunchServiceStub) CreateLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
@@ -56,12 +62,28 @@ func (s *onyxLaunchServiceStub) CreateLobeHubLaunch(ctx context.Context, userID 
 	return s.createLobeHubResult, nil
 }
 
+func (s *onyxLaunchServiceStub) CreateVideoPlaygroundLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
+	s.createVideoPlaygroundUserID = userID
+	if s.createVideoPlaygroundErr != nil {
+		return nil, s.createVideoPlaygroundErr
+	}
+	return s.createVideoPlaygroundResult, nil
+}
+
 func (s *onyxLaunchServiceStub) ConsumeLaunch(ctx context.Context, token string) (*service.OnyxLaunchPayload, error) {
 	s.consumeToken = token
 	if s.consumeErr != nil {
 		return nil, s.consumeErr
 	}
 	return s.consumeResult, nil
+}
+
+func (s *onyxLaunchServiceStub) ConsumeVideoPlaygroundLaunch(ctx context.Context, token string) (*service.VideoPlaygroundLaunchPayload, error) {
+	s.consumeVideoToken = token
+	if s.consumeVideoErr != nil {
+		return nil, s.consumeVideoErr
+	}
+	return s.consumeVideoResult, nil
 }
 
 func TestOnyxHandler_Launch_ReturnsRedirectURLForAuthenticatedUser(t *testing.T) {

@@ -227,6 +227,8 @@ export interface PublicSettings {
   contact_info: string
   doc_url: string
   redeem_purchase_url: string
+  purchase_subscription_enabled: boolean
+  purchase_subscription_url: string
   home_content: string
   hide_ccs_import_button: boolean
   payment_enabled: boolean
@@ -262,6 +264,9 @@ export interface PublicSettings {
   lobehub_menu_label: string
   lobehub_launch_path: string
   lobehub_allowed_emails: string[]
+  video_playground_enabled: boolean
+  video_playground_menu_label: string
+  video_playground_launch_path: string
   allow_user_view_error_requests?: boolean
 }
 

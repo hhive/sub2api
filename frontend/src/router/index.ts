@@ -293,6 +293,10 @@ const routes: RouteRecordRaw[] = [
     path: '/purchase',
     name: 'PurchaseSubscription',
     component: () => import('@/views/user/PaymentView.vue'),
+    beforeEnter: () => {
+      const appStore = useAppStore()
+      return appStore.cachedPublicSettings?.purchase_subscription_enabled === true ? true : '/dashboard'
+    },
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
@@ -476,6 +480,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Channel Monitor',
       titleKey: 'admin.channelMonitor.title',
       descriptionKey: 'admin.channelMonitor.description'
+    }
+  },
+  {
+    path: '/admin/video-playground',
+    name: 'AdminVideoPlayground',
+    component: () => import('@/views/admin/VideoPlaygroundView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Video Playground Models',
+      titleKey: 'admin.videoPlayground.title',
+      descriptionKey: 'admin.videoPlayground.description'
     }
   },
   {

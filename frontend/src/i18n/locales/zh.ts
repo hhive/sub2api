@@ -396,6 +396,7 @@ export default {
     chat: '聊天台',
     lobehub: '新·聊天台',
     imagePlayground: '图片生成',
+    videoPlayground: '视频生成',
     onyx: 'Onyx',
     redeem: '兑换',
     affiliate: '邀请返利',
@@ -435,6 +436,7 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
+    videoPlaygroundConfig: '视频模型配置',
     riskControl: '风控中心',
   },
 
@@ -449,6 +451,12 @@ export default {
     opening: '正在打开图片生成',
     notConfigured: '图片生成尚未配置，请联系管理员',
     openFailed: '打开图片生成失败'
+  },
+
+  videoPlayground: {
+    opening: '正在打开视频生成',
+    notConfigured: '视频生成尚未配置，请联系管理员',
+    openFailed: '打开视频生成失败'
   },
 
   lobehub: {
@@ -1484,6 +1492,41 @@ export default {
 
   // Admin
   admin: {
+    videoPlayground: {
+      title: '视频模型配置',
+      description: '配置独立视频站可用模型、上游域名、单次价格与失败退款策略',
+      createModel: '新建模型',
+      editModel: '编辑模型',
+      loadFailed: '加载视频模型失败',
+      saveFailed: '保存视频模型失败',
+      deleteFailed: '删除视频模型失败',
+      deleteConfirm: '确定删除视频模型“{name}”？',
+      billingModes: {
+        balance_prepaid: '按次预扣余额'
+      },
+      columns: {
+        name: '模型',
+        provider: '供应商',
+        upstream: '上游域名',
+        price: '单次价格',
+        billingMode: '扣款方式',
+        refund: '失败退款',
+        enabled: '启用'
+      },
+      fields: {
+        displayName: '显示名',
+        model: '模型 ID',
+        providerName: '供应商',
+        upstreamBaseURL: '上游域名',
+        upstreamAPIKey: '上游 API Key',
+        priceQuota: '固定单次价格',
+        billingMode: '扣款方式',
+        refundEnabled: '视频生成失败时自动退款',
+        timeoutSeconds: '超时秒数',
+        sortOrder: '排序',
+        enabled: '启用模型'
+      }
+    },
     // Dashboard
     dashboard: {
       title: '管理控制台',
@@ -5843,6 +5886,26 @@ export default {
             placeholder: '例如 30',
             clearHint: '留空提交将清除所选用户的专属比例。',
           },
+        },
+        purchaseSubscription: {
+          title: '充值/订阅入口',
+          description: '控制用户侧边栏是否展示“充值/订阅”，并配置点击后打开的购买页面。',
+          enabled: '显示充值/订阅入口',
+          enabledHint: '关闭后用户侧边栏隐藏入口，直接访问购买页会回到仪表盘。',
+          url: '购买页面 URL',
+          urlPlaceholder: 'https://pay.ldxp.cn/shop/xiaoni-ai',
+          urlHint: '必须是完整的 http(s) 链接；留空时前端会使用默认购买地址。',
+        },
+        videoPlayground: {
+          title: '视频生成展示',
+          description: '控制用户侧边栏是否展示独立视频生成入口。',
+          enabled: '显示视频生成入口',
+          enabledHint: '关闭后用户侧边栏隐藏视频生成入口。',
+          baseUrl: '视频生成基础 URL',
+          menuLabel: '菜单名称',
+          exchangeSecret: '交换密钥',
+          exchangeSecretConfigured: '已配置，留空表示不修改',
+          exchangeSecretHint: '仅在首次启用或需要轮换密钥时填写；保存后不会在前端回显。',
         },
       },
       emailTabDisabledTitle: '邮箱验证未启用',

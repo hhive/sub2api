@@ -396,6 +396,7 @@ export default {
     chat: 'Chat',
     lobehub: 'New Chat',
     imagePlayground: 'Image Generation',
+    videoPlayground: 'Video Generation',
     onyx: 'Onyx',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
@@ -435,6 +436,7 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
+    videoPlaygroundConfig: 'Video Model Config',
     riskControl: 'Risk Control',
   },
 
@@ -449,6 +451,12 @@ export default {
     opening: 'Opening image generation',
     notConfigured: 'Image generation is not configured. Contact an administrator.',
     openFailed: 'Failed to open image generation'
+  },
+
+  videoPlayground: {
+    opening: 'Opening video generation',
+    notConfigured: 'Video generation is not configured. Contact an administrator.',
+    openFailed: 'Failed to open video generation'
   },
 
   lobehub: {
@@ -1480,6 +1488,41 @@ export default {
 
   // Admin
   admin: {
+    videoPlayground: {
+      title: 'Video Model Config',
+      description: 'Configure independent video site models, upstream domains, per-call pricing, and failure refunds',
+      createModel: 'Create model',
+      editModel: 'Edit model',
+      loadFailed: 'Failed to load video models',
+      saveFailed: 'Failed to save video model',
+      deleteFailed: 'Failed to delete video model',
+      deleteConfirm: 'Delete video model "{name}"?',
+      billingModes: {
+        balance_prepaid: 'Prepaid balance per call'
+      },
+      columns: {
+        name: 'Model',
+        provider: 'Provider',
+        upstream: 'Upstream',
+        price: 'Price',
+        billingMode: 'Billing',
+        refund: 'Refund',
+        enabled: 'Enabled'
+      },
+      fields: {
+        displayName: 'Display name',
+        model: 'Model ID',
+        providerName: 'Provider',
+        upstreamBaseURL: 'Upstream domain',
+        upstreamAPIKey: 'Upstream API Key',
+        priceQuota: 'Fixed per-call price',
+        billingMode: 'Billing mode',
+        refundEnabled: 'Refund failed generations automatically',
+        timeoutSeconds: 'Timeout seconds',
+        sortOrder: 'Sort order',
+        enabled: 'Enable model'
+      }
+    },
     // Dashboard
     dashboard: {
       title: 'Admin Dashboard',
@@ -5683,6 +5726,26 @@ export default {
             placeholder: 'e.g. 30',
             clearHint: 'Submitting empty will clear the exclusive rate for selected users.',
           },
+        },
+        purchaseSubscription: {
+          title: 'Recharge / Subscription Entry',
+          description: 'Control whether the user sidebar shows Recharge / Subscription and configure the purchase URL.',
+          enabled: 'Show Recharge / Subscription Entry',
+          enabledHint: 'When off, the sidebar entry is hidden and direct purchase-page visits return to the dashboard.',
+          url: 'Purchase URL',
+          urlPlaceholder: 'https://pay.ldxp.cn/shop/xiaoni-ai',
+          urlHint: 'Must be an absolute http(s) URL; when empty, the frontend uses the default purchase URL.',
+        },
+        videoPlayground: {
+          title: 'Video Generation Entry',
+          description: 'Control whether the user sidebar shows the standalone video generation entry.',
+          enabled: 'Show Video Generation Entry',
+          enabledHint: 'When off, the video generation sidebar entry is hidden.',
+          baseUrl: 'Video Generation Base URL',
+          menuLabel: 'Menu Label',
+          exchangeSecret: 'Exchange Secret',
+          exchangeSecretConfigured: 'Configured; leave empty to keep unchanged',
+          exchangeSecretHint: 'Fill only for first-time enablement or secret rotation. It is cleared after saving.',
         },
       },
       emailTabDisabledTitle: 'Email Verification Not Enabled',
