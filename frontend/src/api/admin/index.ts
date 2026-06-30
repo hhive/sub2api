@@ -34,6 +34,7 @@ import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
 import videoPlaygroundAPI from './videoPlayground'
+import imagePlaygroundAPI from './imagePlayground'
 
 /**
  * Unified admin API object for convenient access
@@ -69,7 +70,8 @@ export const adminAPI = {
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
-  videoPlayground: videoPlaygroundAPI
+  videoPlayground: videoPlaygroundAPI,
+  imagePlayground: imagePlaygroundAPI
 }
 
 export {
@@ -103,7 +105,8 @@ export {
   affiliatesAPI,
   riskControlAPI,
   adminComplianceAPI,
-  videoPlaygroundAPI
+  videoPlaygroundAPI,
+  imagePlaygroundAPI
 }
 
 export default adminAPI
@@ -115,3 +118,4 @@ export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
 export type { VideoPlaygroundModel, VideoPlaygroundModelPayload } from './videoPlayground'
+export type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImageSizeTier } from './imagePlayground'

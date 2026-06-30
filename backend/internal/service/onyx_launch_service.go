@@ -33,6 +33,7 @@ type OnyxLaunchResult struct {
 }
 
 const defaultImagePlaygroundBaseURL = "https://xiaoni-ai.top/image_playground/"
+const defaultImagePlaygroundGoBaseURL = "http://127.0.0.1:3304/"
 const defaultVideoPlaygroundBaseURL = "https://video.xiaoni-ai.top/"
 
 type OnyxLaunchPayload struct {
@@ -52,7 +53,9 @@ type VideoPlaygroundLaunchPayload struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	APIKeyID int64  `json:"api_key_id"`
 	APIKey   string `json:"api_key"`
+	GroupID  *int64 `json:"group_id,omitempty"`
 }
 
 type OnyxLaunchService struct {
@@ -112,21 +115,29 @@ func (s *OnyxLaunchService) CreateImagePlaygroundLaunch(ctx context.Context, use
 	if s.settingService == nil {
 		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_SETTINGS_UNAVAILABLE", "image playground settings unavailable")
 	}
-
 	settings, err := s.settingService.GetAllSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
-	apiBaseURL := normalizeOnyxOpenAICompatibleAPIBaseURL(settings.APIBaseURL)
-	if apiBaseURL == "" {
-		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_API_BASE_URL_MISSING", "api base url not configured")
+	baseURL := imagePlaygroundGoLaunchBaseURL()
+	if baseURL == "" {
+		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_BASE_URL_MISSING", "image playground base url not configured")
 	}
-
+	if ImagePlaygroundExchangeSecret() == "" {
+		return nil, infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_EXCHANGE_SECRET_MISSING", "image playground exchange secret not configured")
+	}
 	selectedKey, err := s.selectFirstEligibleAPIKey(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	redirectURL, err := buildImagePlaygroundRedirectURL(imagePlaygroundLaunchBaseURL(), apiBaseURL, selectedKey.Key)
+	launchToken, err := randomOnyxLaunchToken()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.storeLaunchToken(ctx, launchToken, userID, selectedKey.ID, settings.OnyxLaunchTokenTTLSeconds); err != nil {
+		return nil, err
+	}
+	redirectURL, err := buildVideoPlaygroundLaunchRedirectURL(baseURL, launchToken)
 	if err != nil {
 		return nil, err
 	}
@@ -261,9 +272,17 @@ func (s *OnyxLaunchService) ConsumeLaunch(ctx context.Context, token string) (*O
 }
 
 func (s *OnyxLaunchService) ConsumeVideoPlaygroundLaunch(ctx context.Context, token string) (*VideoPlaygroundLaunchPayload, error) {
+	return s.consumePlaygroundLaunch(ctx, token, "VIDEO_PLAYGROUND")
+}
+
+func (s *OnyxLaunchService) ConsumeImagePlaygroundLaunch(ctx context.Context, token string) (*VideoPlaygroundLaunchPayload, error) {
+	return s.consumePlaygroundLaunch(ctx, token, "IMAGE_PLAYGROUND")
+}
+
+func (s *OnyxLaunchService) consumePlaygroundLaunch(ctx context.Context, token, codePrefix string) (*VideoPlaygroundLaunchPayload, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return nil, infraerrors.Unauthorized("VIDEO_PLAYGROUND_LAUNCH_TOKEN_INVALID", "launch token invalid")
+		return nil, infraerrors.Unauthorized(codePrefix+"_LAUNCH_TOKEN_INVALID", "launch token invalid")
 	}
 	data, err := s.getLaunchToken(ctx, token)
 	if err != nil {
@@ -273,10 +292,10 @@ func (s *OnyxLaunchService) ConsumeVideoPlaygroundLaunch(ctx context.Context, to
 		return nil, err
 	}
 	if data.UserID <= 0 || data.APIKeyID <= 0 {
-		return nil, infraerrors.Unauthorized("VIDEO_PLAYGROUND_LAUNCH_TOKEN_INVALID", "launch token invalid")
+		return nil, infraerrors.Unauthorized(codePrefix+"_LAUNCH_TOKEN_INVALID", "launch token invalid")
 	}
 	if s.apiKeyRepo == nil {
-		return nil, infraerrors.ServiceUnavailable("VIDEO_PLAYGROUND_API_KEY_REPOSITORY_UNAVAILABLE", "api key repository unavailable")
+		return nil, infraerrors.ServiceUnavailable(codePrefix+"_API_KEY_REPOSITORY_UNAVAILABLE", "api key repository unavailable")
 	}
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, data.APIKeyID)
 	if err != nil {
@@ -285,7 +304,10 @@ func (s *OnyxLaunchService) ConsumeVideoPlaygroundLaunch(ctx context.Context, to
 	if apiKey == nil || apiKey.UserID != data.UserID || !isOnyxAPIKeyEligible(*apiKey, time.Now()) {
 		return nil, ErrOnyxNoEligibleAPIKey
 	}
-	payload := &VideoPlaygroundLaunchPayload{UserID: data.UserID, APIKey: apiKey.Key}
+	payload := &VideoPlaygroundLaunchPayload{UserID: data.UserID, APIKeyID: apiKey.ID, APIKey: apiKey.Key}
+	if apiKey.GroupID != nil && *apiKey.GroupID > 0 {
+		payload.GroupID = apiKey.GroupID
+	}
 	if apiKey.User != nil {
 		payload.Email = apiKey.User.Email
 		payload.Username = apiKey.User.Username
@@ -390,6 +412,17 @@ func imagePlaygroundLaunchBaseURL() string {
 		return baseURL
 	}
 	return defaultImagePlaygroundBaseURL
+}
+
+func imagePlaygroundGoLaunchBaseURL() string {
+	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_GO_BASE_URL")); baseURL != "" {
+		return baseURL
+	}
+	return defaultImagePlaygroundGoBaseURL
+}
+
+func ImagePlaygroundExchangeSecret() string {
+	return strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_EXCHANGE_SECRET"))
 }
 
 func videoPlaygroundLaunchBaseURL(settingValue string) string {

@@ -436,6 +436,7 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
+    imagePlaygroundConfig: 'Image Model Config',
     videoPlaygroundConfig: 'Video Model Config',
     riskControl: 'Risk Control',
   },
@@ -1518,6 +1519,39 @@ export default {
         priceQuota: 'Fixed per-call price',
         billingMode: 'Billing mode',
         refundEnabled: 'Refund failed generations automatically',
+        timeoutSeconds: 'Timeout seconds',
+        sortOrder: 'Sort order',
+        enabled: 'Enable model'
+      }
+    },
+    imagePlayground: {
+      title: 'Image Model Config',
+      description: 'Configure independent image site models, upstream domains, 1k/2k/4k pricing, and enabled state',
+      createModel: 'Create model',
+      editModel: 'Edit model',
+      loadFailed: 'Failed to load image models',
+      saveFailed: 'Failed to save image model',
+      deleteFailed: 'Failed to delete image model',
+      deleteConfirm: 'Delete image model "{name}"?',
+      sizeRequired: 'Select at least one supported size',
+      columns: {
+        name: 'Model',
+        provider: 'Provider',
+        upstream: 'Upstream',
+        prices: 'Tier prices',
+        sizes: 'Sizes',
+        enabled: 'Enabled'
+      },
+      fields: {
+        displayName: 'Display name',
+        model: 'Model ID',
+        providerName: 'Provider',
+        upstreamBaseURL: 'Upstream domain',
+        upstreamAPIKey: 'Upstream API Key',
+        price1k: '1k price',
+        price2k: '2k price',
+        price4k: '4k price',
+        supportedSizes: 'Supported sizes',
         timeoutSeconds: 'Timeout seconds',
         sortOrder: 'Sort order',
         enabled: 'Enable model'

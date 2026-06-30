@@ -333,6 +333,9 @@ type PublicSettings struct {
 	LobeHubMenuLabel            string
 	LobeHubLaunchPath           string
 	LobeHubAllowedEmails        []string
+	ImagePlaygroundEnabled      bool
+	ImagePlaygroundMenuLabel    string
+	ImagePlaygroundLaunchPath   string
 	VideoPlaygroundEnabled      bool
 	VideoPlaygroundMenuLabel    string
 	VideoPlaygroundLaunchPath   string

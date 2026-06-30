@@ -134,6 +134,11 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'LobeHub',
   }),
+  imagePlayground: defineFlag({
+    key: 'image_playground_enabled',
+    mode: 'opt-in',
+    label: 'Image Playground',
+  }),
   videoPlayground: defineFlag({
     key: 'video_playground_enabled',
     mode: 'opt-in',

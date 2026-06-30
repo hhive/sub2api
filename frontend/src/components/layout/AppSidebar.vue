@@ -775,6 +775,7 @@ const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
+const flagImagePlayground = makeSidebarFlag(FeatureFlags.imagePlayground)
 const flagVideoPlayground = makeSidebarFlag(FeatureFlags.videoPlayground)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagRechargeSubscription = makeSidebarFlag(FeatureFlags.purchaseSubscription)
@@ -800,7 +801,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
-    { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'imagePlayground' },
+    { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagImagePlayground, action: 'imagePlayground' },
     { path: '__video_playground__', label: t('nav.videoPlayground'), icon: VideoIcon, hideInSimpleMode: true, featureFlag: flagVideoPlayground, action: 'videoPlayground' },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
@@ -867,6 +868,7 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
+    { path: '/admin/image-playground', label: t('nav.imagePlaygroundConfig'), icon: ImageIcon, hideInSimpleMode: true },
     { path: '/admin/video-playground', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },

@@ -26,6 +26,10 @@ func RegisterOnyxRoutes(
 	{
 		videoPlaygroundPublic.POST("/exchange", h.Onyx.VideoPlaygroundExchange)
 	}
+	imagePlaygroundPublic := v1.Group("/image-playground")
+	{
+		imagePlaygroundPublic.POST("/exchange", h.Onyx.ImagePlaygroundExchange)
+	}
 
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))

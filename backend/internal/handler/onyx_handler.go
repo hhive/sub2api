@@ -14,6 +14,7 @@ import (
 
 const onyxExchangeSecretHeader = "X-Sub2API-Onyx-Secret"
 const lobeHubExchangeSecretHeader = "X-Sub2API-LobeHub-Secret"
+const imagePlaygroundExchangeSecretHeader = "X-Sub2API-Image-Playground-Secret"
 const videoPlaygroundExchangeSecretHeader = "X-Sub2API-Video-Playground-Secret"
 
 type onyxLaunchService interface {
@@ -22,6 +23,7 @@ type onyxLaunchService interface {
 	CreateLobeHubLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error)
 	CreateVideoPlaygroundLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error)
 	ConsumeLaunch(ctx context.Context, token string) (*service.OnyxLaunchPayload, error)
+	ConsumeImagePlaygroundLaunch(ctx context.Context, token string) (*service.VideoPlaygroundLaunchPayload, error)
 	ConsumeVideoPlaygroundLaunch(ctx context.Context, token string) (*service.VideoPlaygroundLaunchPayload, error)
 }
 
@@ -127,6 +129,31 @@ func (h *OnyxHandler) Exchange(c *gin.Context) {
 	response.Success(c, payload)
 }
 
+func (h *OnyxHandler) ImagePlaygroundExchange(c *gin.Context) {
+	if err := h.validateImagePlaygroundExchangeSecret(c); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	var req onyxExchangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	req.Token = strings.TrimSpace(req.Token)
+	if req.Token == "" {
+		response.BadRequest(c, "launch token is required")
+		return
+	}
+
+	payload, err := h.launchService.ConsumeImagePlaygroundLaunch(c.Request.Context(), req.Token)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, payload)
+}
+
 func (h *OnyxHandler) LobeHubExchange(c *gin.Context) {
 	if err := h.validateLobeHubExchangeSecret(c); err != nil {
 		response.ErrorFrom(c, err)
@@ -211,6 +238,18 @@ func (h *OnyxHandler) validateLobeHubExchangeSecret(c *gin.Context) error {
 	actual := strings.TrimSpace(c.GetHeader(lobeHubExchangeSecretHeader))
 	if actual == "" || subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
 		return infraerrors.Unauthorized("LOBEHUB_EXCHANGE_SECRET_INVALID", "lobehub exchange secret invalid")
+	}
+	return nil
+}
+
+func (h *OnyxHandler) validateImagePlaygroundExchangeSecret(c *gin.Context) error {
+	expected := service.ImagePlaygroundExchangeSecret()
+	if expected == "" {
+		return infraerrors.ServiceUnavailable("IMAGE_PLAYGROUND_EXCHANGE_SECRET_MISSING", "image playground exchange secret not configured")
+	}
+	actual := strings.TrimSpace(c.GetHeader(imagePlaygroundExchangeSecretHeader))
+	if actual == "" || subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
+		return infraerrors.Unauthorized("IMAGE_PLAYGROUND_EXCHANGE_SECRET_INVALID", "image playground exchange secret invalid")
 	}
 	return nil
 }

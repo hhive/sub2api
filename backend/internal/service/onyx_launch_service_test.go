@@ -377,8 +377,10 @@ func TestOnyxLaunchService_CreateLobeHubLaunch_ReturnsServiceUnavailableWhenDisa
 }
 
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPISettings(t *testing.T) {
+	t.Setenv("IMAGE_PLAYGROUND_EXCHANGE_SECRET", "exchange-secret")
+	t.Setenv("IMAGE_PLAYGROUND_GO_BASE_URL", "https://image.example.com/")
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{
-		SettingKeyAPIBaseURL: "https://xiaoni-ai.zle.ee/v1",
+		SettingKeyOnyxLaunchTokenTTLSeconds: "60",
 	}}, &config.Config{})
 	now := time.Now()
 	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{{
@@ -390,30 +392,33 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsRedirectURLWithAPI
 		QuotaUsed: 1,
 		CreatedAt: now.Add(-1 * time.Hour),
 	}}}
-	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
+	store := &onyxLaunchTokenStoreStub{}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings, tokenStore: store}
 
 	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.NotContains(t, result.RedirectURL, "sk-user-image-key")
 
 	redirectURL, parseErr := url.Parse(result.RedirectURL)
 	require.NoError(t, parseErr)
 	require.Equal(t, "https", redirectURL.Scheme)
-	require.Equal(t, "xiaoni-ai.top", redirectURL.Host)
-	require.Equal(t, "/image_playground/", redirectURL.Path)
-	require.Equal(t, "https://xiaoni-ai.zle.ee/v1", redirectURL.Query().Get("apiUrl"))
-	require.Equal(t, "sk-user-image-key", redirectURL.Query().Get("apiKey"))
-	require.Equal(t, "images", redirectURL.Query().Get("apiMode"))
-	require.Equal(t, "true", redirectURL.Query().Get("codexCli"))
-	require.Len(t, redirectURL.Query(), 4)
+	require.Equal(t, "image.example.com", redirectURL.Host)
+	require.Equal(t, "/api/sub2api/launch", redirectURL.Path)
+	require.NotEmpty(t, redirectURL.Query().Get("token"))
+	require.Len(t, redirectURL.Query(), 1)
+	require.Len(t, store.storeCalls, 1)
+	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
+	require.Equal(t, 60*time.Second, store.storeCalls[0].ttl)
+	require.Equal(t, int64(42), store.storeCalls[0].data.UserID)
+	require.Equal(t, int64(401), store.storeCalls[0].data.APIKeyID)
 	require.Equal(t, []int64{42}, repo.listByUserIDCalls)
 }
 
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_UsesEnvBaseURLOverride(t *testing.T) {
-	t.Setenv("IMAGE_PLAYGROUND_BASE_URL", "http://127.0.0.1:5173/")
-	settings := NewSettingService(&settingRepoStub{values: map[string]string{
-		SettingKeyAPIBaseURL: "http://127.0.0.1:8080",
-	}}, &config.Config{})
+	t.Setenv("IMAGE_PLAYGROUND_EXCHANGE_SECRET", "exchange-secret")
+	t.Setenv("IMAGE_PLAYGROUND_GO_BASE_URL", "http://127.0.0.1:5173/")
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
 	now := time.Now()
 	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{{
 		ID:        402,
@@ -424,25 +429,26 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_UsesEnvBaseURLOverride(t 
 		QuotaUsed: 1,
 		CreatedAt: now.Add(-1 * time.Hour),
 	}}}
-	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
+	store := &onyxLaunchTokenStoreStub{}
+	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings, tokenStore: store}
 
 	result, err := svc.CreateImagePlaygroundLaunch(context.Background(), 42)
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.NotContains(t, result.RedirectURL, "sk-user-local-image-key")
 
 	redirectURL, parseErr := url.Parse(result.RedirectURL)
 	require.NoError(t, parseErr)
 	require.Equal(t, "http", redirectURL.Scheme)
 	require.Equal(t, "127.0.0.1:5173", redirectURL.Host)
-	require.Equal(t, "/", redirectURL.Path)
-	require.Equal(t, "http://127.0.0.1:8080/v1", redirectURL.Query().Get("apiUrl"))
-	require.Equal(t, "sk-user-local-image-key", redirectURL.Query().Get("apiKey"))
-	require.Equal(t, "images", redirectURL.Query().Get("apiMode"))
-	require.Equal(t, "true", redirectURL.Query().Get("codexCli"))
-	require.Len(t, redirectURL.Query(), 4)
+	require.Equal(t, "/api/sub2api/launch", redirectURL.Path)
+	require.NotEmpty(t, redirectURL.Query().Get("token"))
+	require.Len(t, redirectURL.Query(), 1)
+	require.Len(t, store.storeCalls, 1)
+	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
 }
 
-func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailableWhenAPIBaseURLMissing(t *testing.T) {
+func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailableWhenExchangeSecretMissing(t *testing.T) {
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
 	svc := &OnyxLaunchService{settingService: settings}
 
@@ -453,9 +459,8 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailable
 }
 
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsConflictWhenNoEligibleAPIKeyExists(t *testing.T) {
-	settings := NewSettingService(&settingRepoStub{values: map[string]string{
-		SettingKeyAPIBaseURL: "https://xiaoni-ai.zle.ee/v1",
-	}}, &config.Config{})
+	t.Setenv("IMAGE_PLAYGROUND_EXCHANGE_SECRET", "exchange-secret")
+	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
 	repo := &onyxLaunchAPIKeyRepoStub{listByUserIDResult: []APIKey{}}
 	svc := &OnyxLaunchService{apiKeyRepo: repo, settingService: settings}
 

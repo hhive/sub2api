@@ -902,6 +902,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	gitHubEnabled := s.emailOAuthPublicEnabled(settings, "github")
 	googleEnabled := s.emailOAuthPublicEnabled(settings, "google")
 	weChatEnabled, weChatOpenEnabled, weChatMPEnabled, weChatMobileEnabled := s.weChatOAuthCapabilitiesFromSettings(settings)
+	imagePlaygroundEnabled := imagePlaygroundGoLaunchBaseURL() != "" && ImagePlaygroundExchangeSecret() != ""
 
 	// Password reset requires email verification to be enabled
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"
@@ -973,6 +974,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
 		LobeHubAllowedEmails:             ParseLobeHubAllowedEmails(lobeHubAllowedEmailsRaw),
+		ImagePlaygroundEnabled:           imagePlaygroundEnabled,
+		ImagePlaygroundMenuLabel:         "图片生成",
+		ImagePlaygroundLaunchPath:        "/api/v1/image-playground/launch",
 		VideoPlaygroundEnabled:           settings[SettingKeyVideoPlaygroundEnabled] == "true",
 		VideoPlaygroundMenuLabel:         s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
 		VideoPlaygroundLaunchPath:        "/api/v1/video-playground/launch",
@@ -1516,6 +1520,9 @@ type PublicSettingsInjectionPayload struct {
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
+	ImagePlaygroundEnabled           bool                     `json:"image_playground_enabled"`
+	ImagePlaygroundMenuLabel         string                   `json:"image_playground_menu_label"`
+	ImagePlaygroundLaunchPath        string                   `json:"image_playground_launch_path"`
 	VideoPlaygroundEnabled           bool                     `json:"video_playground_enabled"`
 	VideoPlaygroundMenuLabel         string                   `json:"video_playground_menu_label"`
 	VideoPlaygroundLaunchPath        string                   `json:"video_playground_launch_path"`
@@ -1601,6 +1608,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
 		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
+		ImagePlaygroundEnabled:           settings.ImagePlaygroundEnabled,
+		ImagePlaygroundMenuLabel:         settings.ImagePlaygroundMenuLabel,
+		ImagePlaygroundLaunchPath:        settings.ImagePlaygroundLaunchPath,
 		VideoPlaygroundEnabled:           settings.VideoPlaygroundEnabled,
 		VideoPlaygroundMenuLabel:         settings.VideoPlaygroundMenuLabel,
 		VideoPlaygroundLaunchPath:        settings.VideoPlaygroundLaunchPath,

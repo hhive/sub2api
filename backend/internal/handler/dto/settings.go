@@ -357,6 +357,9 @@ type PublicSettings struct {
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
+	ImagePlaygroundEnabled           bool                     `json:"image_playground_enabled"`
+	ImagePlaygroundMenuLabel         string                   `json:"image_playground_menu_label"`
+	ImagePlaygroundLaunchPath        string                   `json:"image_playground_launch_path"`
 	VideoPlaygroundEnabled           bool                     `json:"video_playground_enabled"`
 	VideoPlaygroundMenuLabel         string                   `json:"video_playground_menu_label"`
 	VideoPlaygroundLaunchPath        string                   `json:"video_playground_launch_path"`

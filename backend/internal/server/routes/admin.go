@@ -103,6 +103,7 @@ func RegisterAdminRoutes(
 
 		// 独立视频站模型配置
 		registerVideoPlaygroundRoutes(admin, h)
+		registerImagePlaygroundRoutes(admin, h)
 
 		// 风控中心
 		registerContentModerationRoutes(admin, h)
@@ -119,6 +120,16 @@ func registerVideoPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) 
 		videoPlayground.POST("/models", h.Admin.VideoPlayground.CreateModel)
 		videoPlayground.PATCH("/models/:id", h.Admin.VideoPlayground.UpdateModel)
 		videoPlayground.DELETE("/models/:id", h.Admin.VideoPlayground.DeleteModel)
+	}
+}
+
+func registerImagePlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	imagePlayground := admin.Group("/image-playground")
+	{
+		imagePlayground.GET("/models", h.Admin.ImagePlayground.ListModels)
+		imagePlayground.POST("/models", h.Admin.ImagePlayground.CreateModel)
+		imagePlayground.PATCH("/models/:id", h.Admin.ImagePlayground.UpdateModel)
+		imagePlayground.DELETE("/models/:id", h.Admin.ImagePlayground.DeleteModel)
 	}
 }
 

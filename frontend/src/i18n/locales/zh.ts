@@ -436,6 +436,7 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
+    imagePlaygroundConfig: '图片模型配置',
     videoPlaygroundConfig: '视频模型配置',
     riskControl: '风控中心',
   },
@@ -1522,6 +1523,39 @@ export default {
         priceQuota: '固定单次价格',
         billingMode: '扣款方式',
         refundEnabled: '视频生成失败时自动退款',
+        timeoutSeconds: '超时秒数',
+        sortOrder: '排序',
+        enabled: '启用模型'
+      }
+    },
+    imagePlayground: {
+      title: '图片模型配置',
+      description: '配置独立图片站可用模型、上游域名、1k/2k/4k 价格与启用状态',
+      createModel: '新建模型',
+      editModel: '编辑模型',
+      loadFailed: '加载图片模型失败',
+      saveFailed: '保存图片模型失败',
+      deleteFailed: '删除图片模型失败',
+      deleteConfirm: '确定删除图片模型“{name}”？',
+      sizeRequired: '至少选择一个支持尺寸',
+      columns: {
+        name: '模型',
+        provider: '供应商',
+        upstream: '上游域名',
+        prices: '档位价格',
+        sizes: '尺寸',
+        enabled: '启用'
+      },
+      fields: {
+        displayName: '显示名',
+        model: '模型 ID',
+        providerName: '供应商',
+        upstreamBaseURL: '上游域名',
+        upstreamAPIKey: '上游 API Key',
+        price1k: '1k 价格',
+        price2k: '2k 价格',
+        price4k: '4k 价格',
+        supportedSizes: '支持尺寸',
         timeoutSeconds: '超时秒数',
         sortOrder: '排序',
         enabled: '启用模型'

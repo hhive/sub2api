@@ -483,6 +483,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/image-playground',
+    name: 'AdminImagePlayground',
+    component: () => import('@/views/admin/ImagePlaygroundView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Image Playground Models',
+      titleKey: 'admin.imagePlayground.title',
+      descriptionKey: 'admin.imagePlayground.description'
+    }
+  },
+  {
     path: '/admin/video-playground',
     name: 'AdminVideoPlayground',
     component: () => import('@/views/admin/VideoPlaygroundView.vue'),

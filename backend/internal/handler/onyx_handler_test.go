@@ -36,6 +36,9 @@ type onyxLaunchServiceStub struct {
 	consumeVideoToken           string
 	consumeVideoResult          *service.VideoPlaygroundLaunchPayload
 	consumeVideoErr             error
+	consumeImageToken           string
+	consumeImageResult          *service.VideoPlaygroundLaunchPayload
+	consumeImageErr             error
 }
 
 func (s *onyxLaunchServiceStub) CreateLaunch(ctx context.Context, userID int64) (*service.OnyxLaunchResult, error) {
@@ -84,6 +87,14 @@ func (s *onyxLaunchServiceStub) ConsumeVideoPlaygroundLaunch(ctx context.Context
 		return nil, s.consumeVideoErr
 	}
 	return s.consumeVideoResult, nil
+}
+
+func (s *onyxLaunchServiceStub) ConsumeImagePlaygroundLaunch(ctx context.Context, token string) (*service.VideoPlaygroundLaunchPayload, error) {
+	s.consumeImageToken = token
+	if s.consumeImageErr != nil {
+		return nil, s.consumeImageErr
+	}
+	return s.consumeImageResult, nil
 }
 
 func TestOnyxHandler_Launch_ReturnsRedirectURLForAuthenticatedUser(t *testing.T) {
