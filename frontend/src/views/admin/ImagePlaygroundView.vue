@@ -96,7 +96,22 @@
             </label>
             <label class="block">
               <span class="input-label">{{ t('admin.imagePlayground.fields.upstreamAPIKey') }}</span>
-              <input v-model.trim="form.upstream_api_key" class="input" type="password" autocomplete="off" placeholder="sk-..." />
+              <div class="relative">
+                <input
+                  v-model.trim="form.upstream_api_key"
+                  class="input pr-10"
+                  :type="upstreamKeyVisible ? 'text' : 'password'"
+                  autocomplete="off"
+                  placeholder="sk-..."
+                />
+                <button
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  @click="upstreamKeyVisible = !upstreamKeyVisible"
+                >
+                  <Icon :name="upstreamKeyVisible ? 'eyeOff' : 'eye'" size="md" />
+                </button>
+              </div>
             </label>
             <div class="grid gap-4 sm:grid-cols-3">
               <label class="block">
@@ -166,6 +181,7 @@ const loading = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
 const editingKeyMask = ref('')
+const upstreamKeyVisible = ref(false)
 
 const defaultForm = (): ImagePlaygroundModelPayload => ({
   display_name: '',
@@ -211,6 +227,7 @@ async function loadModels() {
 function editModel(model: ImagePlaygroundModel) {
   editingId.value = model.id
   editingKeyMask.value = model.upstream_api_key_mask || model.upstream_api_key || ''
+  upstreamKeyVisible.value = false
   Object.assign(form, {
     display_name: model.display_name,
     model: model.model,
@@ -237,6 +254,7 @@ function apiModeLabel(mode: string) {
 function resetForm() {
   editingId.value = null
   editingKeyMask.value = ''
+  upstreamKeyVisible.value = false
   Object.assign(form, defaultForm())
 }
 
