@@ -6,64 +6,85 @@
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ t('admin.videoPlayground.title') }}</h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.videoPlayground.description') }}</p>
         </div>
-        <button class="btn btn-secondary" :disabled="loading" @click="loadModels">
-          <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
-          {{ t('common.refresh') }}
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button class="btn btn-secondary" :disabled="loading" @click="loadModels">
+            <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
+            {{ t('common.refresh') }}
+          </button>
+          <button class="btn btn-primary" type="button" @click="openCreateDialog">
+            {{ t('admin.videoPlayground.createModel') }}
+          </button>
+        </div>
       </div>
 
-      <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-          <DataTable :columns="columns" :data="models" :loading="loading">
-            <template #cell-display_name="{ row }">
-              <div>
-                <div class="font-medium text-gray-900 dark:text-white">{{ row.display_name }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ row.model }}</div>
-              </div>
-            </template>
-            <template #cell-provider_name="{ row }">
-              <span class="badge badge-gray">{{ row.provider_name }}</span>
-            </template>
-            <template #cell-price_quota="{ row }">
-              <span class="font-mono text-sm">{{ row.price_quota }}</span>
-            </template>
-            <template #cell-billing_mode="{ row }">
-              {{ t(`admin.videoPlayground.billingModes.${row.billing_mode}`) }}
-            </template>
-            <template #cell-refund_enabled="{ row }">
-              <span :class="row.refund_enabled ? 'badge badge-success' : 'badge badge-gray'">
-                {{ row.refund_enabled ? t('common.enabled') : t('common.disabled') }}
-              </span>
-            </template>
-            <template #cell-enabled="{ row }">
-              <span :class="row.enabled ? 'badge badge-success' : 'badge badge-gray'">
-                {{ row.enabled ? t('common.enabled') : t('common.disabled') }}
-              </span>
-            </template>
-            <template #cell-actions="{ row }">
-              <div class="flex items-center gap-2">
-                <button class="btn btn-sm btn-secondary" @click="editModel(row)">
-                  {{ t('common.edit') }}
-                </button>
-                <button class="btn btn-sm btn-danger" @click="deleteModel(row)">
-                  {{ t('common.delete') }}
-                </button>
-              </div>
-            </template>
-          </DataTable>
-        </div>
-
-        <form class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900" @submit.prevent="saveModel">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ editingId ? t('admin.videoPlayground.editModel') : t('admin.videoPlayground.createModel') }}
-            </h2>
-            <button v-if="editingId" type="button" class="btn btn-sm btn-secondary" @click="resetForm">
-              {{ t('common.cancel') }}
+      <section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+        <DataTable :columns="columns" :data="models" :loading="loading">
+          <template #cell-display_name="{ row }">
+            <div>
+              <div class="font-medium text-gray-900 dark:text-white">{{ row.display_name }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ row.model }}</div>
+            </div>
+          </template>
+          <template #cell-provider_name="{ row }">
+            <span class="badge badge-gray">{{ row.provider_name }}</span>
+          </template>
+          <template #cell-price_quota="{ row }">
+            <span class="font-mono text-sm">{{ row.price_quota }}</span>
+          </template>
+          <template #cell-billing_mode="{ row }">
+            {{ t(`admin.videoPlayground.billingModes.${row.billing_mode}`) }}
+          </template>
+          <template #cell-refund_enabled="{ row }">
+            <span :class="row.refund_enabled ? 'badge badge-success' : 'badge badge-gray'">
+              {{ row.refund_enabled ? t('common.enabled') : t('common.disabled') }}
+            </span>
+          </template>
+          <template #cell-enabled="{ row }">
+            <button
+              type="button"
+              :class="row.enabled ? 'badge badge-success' : 'badge badge-gray'"
+              :disabled="togglingId === row.id"
+              @click="toggleModelEnabled(row)"
+            >
+              {{ row.enabled ? t('common.enabled') : t('common.disabled') }}
             </button>
-          </div>
+          </template>
+          <template #cell-actions="{ row }">
+            <div class="flex flex-wrap items-center gap-2">
+              <button class="btn btn-sm btn-secondary" @click="openReuseDialog(row)">
+                {{ t('admin.videoPlayground.reuse') }}
+              </button>
+              <button class="btn btn-sm btn-secondary" @click="openEditDialog(row)">
+                {{ t('common.edit') }}
+              </button>
+              <button class="btn btn-sm btn-danger" @click="requestDeleteModel(row)">
+                {{ t('common.delete') }}
+              </button>
+            </div>
+          </template>
+        </DataTable>
+      </section>
 
-          <div class="space-y-4">
+      <BaseDialog
+        :show="showDialog"
+        :title="dialogTitle"
+        width="extra-wide"
+        :close-on-escape="!saving"
+        :show-close-button="!saving"
+        @close="closeDialog"
+      >
+        <form id="video-playground-model-form" class="space-y-4" @submit.prevent="saveModel">
+          <label v-if="!editingId && models.length" class="block">
+            <span class="input-label">{{ t('admin.videoPlayground.reuseFrom') }}</span>
+            <select class="input" @change="handleReuseSelect">
+              <option value="">{{ t('admin.videoPlayground.reuseFromPlaceholder') }}</option>
+              <option v-for="model in models" :key="model.id" :value="model.id">
+                {{ model.display_name }} · {{ model.model }}
+              </option>
+            </select>
+          </label>
+
+          <div class="grid gap-4 lg:grid-cols-2">
             <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.displayName') }}</span>
               <input v-model.trim="form.display_name" class="input" required />
@@ -133,7 +154,9 @@
                 </button>
               </div>
             </label>
-            <div class="grid gap-4 sm:grid-cols-2">
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-3">
               <label class="block">
                 <span class="input-label">{{ t('admin.videoPlayground.fields.priceQuota') }}</span>
                 <input v-model.number="form.price_quota" class="input" type="number" min="0" step="0.000001" required />
@@ -142,41 +165,59 @@
                 <span class="input-label">{{ t('admin.videoPlayground.fields.timeoutSeconds') }}</span>
                 <input v-model.number="form.timeout_seconds" class="input" type="number" min="1" required />
               </label>
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
                 <span class="input-label">{{ t('admin.videoPlayground.fields.billingMode') }}</span>
                 <select v-model="form.billing_mode" class="input">
                   <option value="balance_prepaid">{{ t('admin.videoPlayground.billingModes.balance_prepaid') }}</option>
                 </select>
               </label>
-            </div>
-            <div class="space-y-3">
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-2">
               <label class="block">
                 <span class="input-label">{{ t('admin.videoPlayground.fields.inputSchemaJSON') }}</span>
-                <textarea v-model.trim="form.input_schema_json" class="input font-mono text-xs" rows="4" />
+                <textarea v-model.trim="form.input_schema_json" class="input font-mono text-xs" rows="6" />
               </label>
               <label class="block">
                 <span class="input-label">{{ t('admin.videoPlayground.fields.payloadMappingJSON') }}</span>
-                <textarea v-model.trim="form.payload_mapping_json" class="input font-mono text-xs" rows="3" />
+                <textarea v-model.trim="form.payload_mapping_json" class="input font-mono text-xs" rows="6" />
               </label>
-            </div>
-            <div class="flex flex-wrap gap-4">
-              <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input v-model="form.refund_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                {{ t('admin.videoPlayground.fields.refundEnabled') }}
-              </label>
-              <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                {{ t('admin.videoPlayground.fields.enabled') }}
-              </label>
-            </div>
-            <button class="btn btn-primary w-full" type="submit" :disabled="saving">
+          </div>
+
+          <div class="flex flex-wrap gap-4">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input v-model="form.refund_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {{ t('admin.videoPlayground.fields.refundEnabled') }}
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {{ t('admin.videoPlayground.fields.enabled') }}
+            </label>
+          </div>
+        </form>
+
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <button class="btn btn-secondary" type="button" :disabled="saving" @click="closeDialog">
+              {{ t('common.cancel') }}
+            </button>
+            <button class="btn btn-primary" type="submit" form="video-playground-model-form" :disabled="saving">
               {{ saving ? t('common.saving') : t('common.save') }}
             </button>
           </div>
-        </form>
-      </section>
+        </template>
+      </BaseDialog>
+
+      <ConfirmDialog
+        :show="showDeleteDialog"
+        :title="t('admin.videoPlayground.deleteTitle')"
+        :message="t('admin.videoPlayground.deleteConfirm', { name: deletingModel?.display_name || '' })"
+        :confirm-text="t('common.delete')"
+        :cancel-text="t('common.cancel')"
+        :danger="true"
+        @confirm="confirmDeleteModel"
+        @cancel="closeDeleteDialog"
+      />
     </div>
   </AppLayout>
 </template>
@@ -190,6 +231,8 @@ import type { VideoPlaygroundModel, VideoPlaygroundModelPayload } from '@/api/ad
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
@@ -199,9 +242,14 @@ const appStore = useAppStore()
 const models = ref<VideoPlaygroundModel[]>([])
 const loading = ref(false)
 const saving = ref(false)
+const togglingId = ref<number | null>(null)
 const editingId = ref<number | null>(null)
 const editingUpstreamKeyMask = ref('')
+const reusedUpstreamKeyMask = ref('')
 const upstreamKeyVisible = ref(false)
+const showDialog = ref(false)
+const showDeleteDialog = ref(false)
+const deletingModel = ref<VideoPlaygroundModel | null>(null)
 const modelKindOptions = ['t2v', 'i2v', 'reference_video', 'extend'] as const
 
 const seedanceTemplates = [
@@ -241,9 +289,16 @@ const defaultForm = (): VideoPlaygroundModelPayload => ({
 
 const form = reactive<VideoPlaygroundModelPayload>(defaultForm())
 
+const dialogTitle = computed(() => {
+  return editingId.value ? t('admin.videoPlayground.editModel') : t('admin.videoPlayground.createModel')
+})
+
 const upstreamKeyPlaceholder = computed(() => {
   if (editingId.value && editingUpstreamKeyMask.value) {
     return t('admin.videoPlayground.keyConfigured', { mask: editingUpstreamKeyMask.value })
+  }
+  if (reusedUpstreamKeyMask.value) {
+    return t('admin.videoPlayground.keyNotCopied', { mask: reusedUpstreamKeyMask.value })
   }
   return 'sk-...'
 })
@@ -264,15 +319,13 @@ async function loadModels() {
   try {
     models.value = await adminAPI.videoPlayground.listModels()
   } catch (err) {
-    appStore.showToast('error', extractApiErrorMessage(err, t('admin.videoPlayground.loadFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.loadFailed')))
   } finally {
     loading.value = false
   }
 }
 
-function editModel(model: VideoPlaygroundModel) {
-  editingId.value = model.id
-  upstreamKeyVisible.value = false
+function assignFormFromModel(model: VideoPlaygroundModel) {
   Object.assign(form, {
     display_name: model.display_name,
     model: model.model,
@@ -290,7 +343,35 @@ function editModel(model: VideoPlaygroundModel) {
     input_schema_json: model.input_schema_json || '{}',
     payload_mapping_json: model.payload_mapping_json || '{}',
   })
+}
+
+function openCreateDialog() {
+  resetForm()
+  showDialog.value = true
+}
+
+function openEditDialog(model: VideoPlaygroundModel) {
+  editingId.value = model.id
   editingUpstreamKeyMask.value = model.upstream_api_key_mask || ''
+  reusedUpstreamKeyMask.value = ''
+  upstreamKeyVisible.value = false
+  assignFormFromModel(model)
+  showDialog.value = true
+}
+
+function openReuseDialog(model: VideoPlaygroundModel) {
+  resetForm()
+  assignFormFromModel(model)
+  reusedUpstreamKeyMask.value = model.upstream_api_key_mask || ''
+  showDialog.value = true
+}
+
+function handleReuseSelect(event: Event) {
+  const id = Number((event.target as HTMLSelectElement).value)
+  const model = models.value.find((item) => item.id === id)
+  if (model) {
+    openReuseDialog(model)
+  }
 }
 
 function applyStudioTemplate() {
@@ -315,8 +396,53 @@ function selectModelKind(kind: typeof modelKindOptions[number]) {
 function resetForm() {
   editingId.value = null
   editingUpstreamKeyMask.value = ''
+  reusedUpstreamKeyMask.value = ''
   upstreamKeyVisible.value = false
   Object.assign(form, defaultForm())
+}
+
+function closeDialog() {
+  if (saving.value) return
+  finishDialog()
+}
+
+function finishDialog() {
+  showDialog.value = false
+  resetForm()
+}
+
+function buildUpdatePayloadFromModel(model: VideoPlaygroundModel, overrides: Partial<VideoPlaygroundModelPayload> = {}): VideoPlaygroundModelPayload {
+  return {
+    display_name: model.display_name,
+    model: model.model,
+    provider_name: model.provider_name,
+    upstream_base_url: model.upstream_base_url,
+    upstream_api_key: '',
+    price_quota: model.price_quota,
+    billing_mode: model.billing_mode,
+    refund_enabled: model.refund_enabled,
+    timeout_seconds: model.timeout_seconds,
+    enabled: model.enabled,
+    sort_order: model.sort_order,
+    studio_model_id: model.studio_model_id || '',
+    model_kind: model.model_kind || 't2v',
+    input_schema_json: model.input_schema_json || '{}',
+    payload_mapping_json: model.payload_mapping_json || '{}',
+    ...overrides,
+  }
+}
+
+async function toggleModelEnabled(model: VideoPlaygroundModel) {
+  togglingId.value = model.id
+  try {
+    await adminAPI.videoPlayground.updateModel(model.id, buildUpdatePayloadFromModel(model, { enabled: !model.enabled }))
+    await loadModels()
+    appStore.showSuccess(model.enabled ? t('admin.videoPlayground.disabledToast') : t('admin.videoPlayground.enabledToast'))
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.saveFailed')))
+  } finally {
+    togglingId.value = null
+  }
 }
 
 async function saveModel() {
@@ -333,11 +459,11 @@ async function saveModel() {
     } else {
       await adminAPI.videoPlayground.createModel(payload)
     }
-    resetForm()
+    finishDialog()
     await loadModels()
-    appStore.showToast('success', t('common.saved'))
+    appStore.showSuccess(t('common.saved'))
   } catch (err) {
-    appStore.showToast('error', extractApiErrorMessage(err, t('admin.videoPlayground.saveFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.saveFailed')))
   } finally {
     saving.value = false
   }
@@ -357,16 +483,25 @@ function parseJSONObject(raw: string, label: string) {
   }
 }
 
-async function deleteModel(model: VideoPlaygroundModel) {
-  if (!window.confirm(t('admin.videoPlayground.deleteConfirm', { name: model.display_name }))) {
-    return
-  }
+function requestDeleteModel(model: VideoPlaygroundModel) {
+  deletingModel.value = model
+  showDeleteDialog.value = true
+}
+
+function closeDeleteDialog() {
+  showDeleteDialog.value = false
+  deletingModel.value = null
+}
+
+async function confirmDeleteModel() {
+  if (!deletingModel.value) return
   try {
-    await adminAPI.videoPlayground.deleteModel(model.id)
+    await adminAPI.videoPlayground.deleteModel(deletingModel.value.id)
+    closeDeleteDialog()
     await loadModels()
-    appStore.showToast('success', t('common.deleted'))
+    appStore.showSuccess(t('common.deleted'))
   } catch (err) {
-    appStore.showToast('error', extractApiErrorMessage(err, t('admin.videoPlayground.deleteFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.deleteFailed')))
   }
 }
 
