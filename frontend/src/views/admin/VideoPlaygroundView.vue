@@ -73,6 +73,40 @@
               <input v-model.trim="form.model" class="input" required />
             </label>
             <label class="block">
+              <span class="input-label">{{ t('admin.videoPlayground.fields.studioTemplate') }}</span>
+              <select v-model="form.studio_model_id" class="input" @change="applyStudioTemplate">
+                <option value="">{{ t('admin.videoPlayground.templates.baseModel') }}</option>
+                <option v-for="template in seedanceTemplates" :key="template.id" :value="template.id">
+                  {{ template.name }}
+                </option>
+              </select>
+            </label>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="block">
+                <span class="input-label">{{ t('admin.videoPlayground.fields.modelKind') }}</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <label
+                    v-for="kind in modelKindOptions"
+                    :key="kind"
+                    class="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition"
+                    :class="form.model_kind === kind ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-200' : 'border-gray-200 text-gray-700 hover:border-primary-300 dark:border-dark-600 dark:text-gray-200'"
+                  >
+                    <input
+                      type="checkbox"
+                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      :checked="form.model_kind === kind"
+                      @change="selectModelKind(kind)"
+                    />
+                    <span>{{ t(`admin.videoPlayground.modelKinds.${kind}`) }}</span>
+                  </label>
+                </div>
+              </div>
+              <label class="block">
+                <span class="input-label">{{ t('admin.videoPlayground.fields.sortOrder') }}</span>
+                <input v-model.number="form.sort_order" class="input" type="number" />
+              </label>
+            </div>
+            <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.providerName') }}</span>
               <input v-model.trim="form.provider_name" class="input" required />
             </label>
@@ -82,7 +116,7 @@
             </label>
             <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.upstreamAPIKey') }}</span>
-              <input v-model.trim="form.upstream_api_key" class="input" type="password" autocomplete="off" placeholder="sk-..." />
+              <input v-model.trim="form.upstream_api_key" class="input" type="password" autocomplete="off" :placeholder="upstreamKeyPlaceholder" />
             </label>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
@@ -101,9 +135,15 @@
                   <option value="balance_prepaid">{{ t('admin.videoPlayground.billingModes.balance_prepaid') }}</option>
                 </select>
               </label>
+            </div>
+            <div class="space-y-3">
               <label class="block">
-                <span class="input-label">{{ t('admin.videoPlayground.fields.sortOrder') }}</span>
-                <input v-model.number="form.sort_order" class="input" type="number" />
+                <span class="input-label">{{ t('admin.videoPlayground.fields.inputSchemaJSON') }}</span>
+                <textarea v-model.trim="form.input_schema_json" class="input font-mono text-xs" rows="4" />
+              </label>
+              <label class="block">
+                <span class="input-label">{{ t('admin.videoPlayground.fields.payloadMappingJSON') }}</span>
+                <textarea v-model.trim="form.payload_mapping_json" class="input font-mono text-xs" rows="3" />
               </label>
             </div>
             <div class="flex flex-wrap gap-4">
@@ -145,6 +185,25 @@ const models = ref<VideoPlaygroundModel[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
+const editingUpstreamKeyMask = ref('')
+const modelKindOptions = ['t2v', 'i2v', 'reference_video', 'extend'] as const
+
+const seedanceTemplates = [
+  { id: 'seedance-lite-t2v', name: 'Seedance Lite T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21'], default: '16:9' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' } } }, mapping: {} },
+  { id: 'seedance-pro-t2v', name: 'Seedance Pro T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21'], default: '16:9' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' } } }, mapping: {} },
+  { id: 'seedance-pro-t2v-fast', name: 'Seedance Pro Fast T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], default: '16:9' }, duration: { default: 5, minValue: 2, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' } } }, mapping: {} },
+  { id: 'seedance-v1.5-pro-t2v', name: 'Seedance v1.5 Pro T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '3:4', '4:3', '21:9'], default: '16:9' }, duration: { default: 5, minValue: 4, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '720p' } } }, mapping: {} },
+  { id: 'seedance-v1.5-pro-t2v-fast', name: 'Seedance v1.5 Pro Fast T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '3:4', '4:3', '21:9'], default: '16:9' }, duration: { default: 5, minValue: 4, maxValue: 12, step: 1 }, resolution: { enum: ['720p', '1080p'], default: '720p' } } }, mapping: {} },
+  { id: 'seedance-v2.0-t2v', name: 'Seedance 2.0 T2V', kind: 't2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '4:3', '3:4'], default: '16:9' }, duration: { enum: [5, 10, 15], default: 5 }, quality: { enum: ['high', 'basic'], default: 'basic' } } }, mapping: {} },
+  { id: 'seedance-lite-i2v', name: 'Seedance Lite I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' }, camera_fixed: { type: 'boolean', default: false } } }, mapping: { image_field: 'image_url', last_image_field: 'last_image', max_images: 2 } },
+  { id: 'seedance-pro-i2v', name: 'Seedance Pro I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' }, camera_fixed: { type: 'boolean', default: false } } }, mapping: { image_field: 'image_url', max_images: 1 } },
+  { id: 'seedance-pro-i2v-fast', name: 'Seedance Pro Fast I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '480p' }, camera_fixed: { type: 'boolean', default: false } } }, mapping: { image_field: 'image_url', max_images: 1 } },
+  { id: 'seedance-v1.5-pro-i2v', name: 'Seedance v1.5 Pro I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '3:4', '4:3', '21:9'], default: '16:9' }, duration: { default: 5, minValue: 4, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p', '1080p'], default: '720p' }, generate_audio: { type: 'boolean', default: true }, camera_fixed: { type: 'boolean', default: false } } }, mapping: { image_field: 'image_url', last_image_field: 'last_image', max_images: 2 } },
+  { id: 'seedance-v1.5-pro-i2v-fast', name: 'Seedance v1.5 Pro Fast I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '1:1', '3:4', '4:3', '21:9'], default: '16:9' }, duration: { default: 5, minValue: 4, maxValue: 12, step: 1 }, resolution: { enum: ['720p', '1080p'], default: '720p' }, generate_audio: { type: 'boolean', default: true }, camera_fixed: { type: 'boolean', default: false } } }, mapping: { image_field: 'image_url', last_image_field: 'last_image', max_images: 2 } },
+  { id: 'seedance-v2.0-i2v', name: 'Seedance 2.0 I2V', kind: 'i2v', schema: { inputs: { prompt: { type: 'string' }, aspect_ratio: { enum: ['16:9', '9:16', '4:3', '3:4'], default: '16:9' }, duration: { enum: [5, 10, 15], default: 5 }, quality: { enum: ['high', 'basic'], default: 'basic' } } }, mapping: { image_field: 'images_list', max_images: 5 } },
+  { id: 'seedance-lite-reference-video', name: 'Seedance Lite Reference Video', kind: 'reference_video', schema: { inputs: { prompt: { type: 'string' }, duration: { default: 5, minValue: 3, maxValue: 12, step: 1 }, resolution: { enum: ['480p', '720p'], default: '480p' } } }, mapping: { image_field: 'images_list', max_images: 4 } },
+  { id: 'seedance-v2.0-extend', name: 'Seedance 2.0 Extend', kind: 'extend', schema: { inputs: { request_id: { type: 'string' }, prompt: { type: 'string' }, duration: { enum: [5, 10, 15], default: 5 }, quality: { enum: ['high', 'basic'], default: 'basic' } } }, mapping: { requires_source_task: true } },
+] as const
 
 const defaultForm = (): VideoPlaygroundModelPayload => ({
   display_name: '',
@@ -158,9 +217,20 @@ const defaultForm = (): VideoPlaygroundModelPayload => ({
   timeout_seconds: 1800,
   enabled: true,
   sort_order: 0,
+  studio_model_id: '',
+  model_kind: 't2v',
+  input_schema_json: '{}',
+  payload_mapping_json: '{}',
 })
 
 const form = reactive<VideoPlaygroundModelPayload>(defaultForm())
+
+const upstreamKeyPlaceholder = computed(() => {
+  if (editingId.value && editingUpstreamKeyMask.value) {
+    return t('admin.videoPlayground.keyConfigured', { mask: editingUpstreamKeyMask.value })
+  }
+  return 'sk-...'
+})
 
 const columns = computed<Column[]>(() => [
   { key: 'display_name', label: t('admin.videoPlayground.columns.name') },
@@ -191,28 +261,59 @@ function editModel(model: VideoPlaygroundModel) {
     model: model.model,
     provider_name: model.provider_name,
     upstream_base_url: model.upstream_base_url,
-    upstream_api_key: model.upstream_api_key || '',
+    upstream_api_key: '',
     price_quota: model.price_quota,
     billing_mode: model.billing_mode,
     refund_enabled: model.refund_enabled,
     timeout_seconds: model.timeout_seconds,
     enabled: model.enabled,
     sort_order: model.sort_order,
+    studio_model_id: model.studio_model_id || '',
+    model_kind: model.model_kind || 't2v',
+    input_schema_json: model.input_schema_json || '{}',
+    payload_mapping_json: model.payload_mapping_json || '{}',
   })
+  editingUpstreamKeyMask.value = model.upstream_api_key_mask || ''
+}
+
+function applyStudioTemplate() {
+  const template = seedanceTemplates.find((item) => item.id === form.studio_model_id)
+  if (!template) {
+    form.model_kind = 't2v'
+    form.input_schema_json = '{}'
+    form.payload_mapping_json = '{}'
+    return
+  }
+  form.model_kind = template.kind
+  form.input_schema_json = JSON.stringify(template.schema)
+  form.payload_mapping_json = JSON.stringify(template.mapping)
+  if (!form.display_name) form.display_name = template.name
+  if (!form.model) form.model = template.id
+}
+
+function selectModelKind(kind: typeof modelKindOptions[number]) {
+  form.model_kind = kind
 }
 
 function resetForm() {
   editingId.value = null
+  editingUpstreamKeyMask.value = ''
   Object.assign(form, defaultForm())
 }
 
 async function saveModel() {
   saving.value = true
   try {
+    parseJSONObject(form.input_schema_json, t('admin.videoPlayground.fields.inputSchemaJSON'))
+    parseJSONObject(form.payload_mapping_json, t('admin.videoPlayground.fields.payloadMappingJSON'))
+    const payload = { ...form }
+    if (editingId.value && !payload.upstream_api_key.trim()) {
+      payload.upstream_api_key = ''
+    }
     if (editingId.value) {
-      await adminAPI.videoPlayground.updateModel(editingId.value, { ...form })
+      await adminAPI.videoPlayground.updateModel(editingId.value, payload)
     } else {
-      await adminAPI.videoPlayground.createModel({ ...form })
+      await adminAPI.videoPlayground.createModel(payload)
     }
     resetForm()
     await loadModels()
@@ -221,6 +322,20 @@ async function saveModel() {
     appStore.showToast('error', extractApiErrorMessage(err, t('admin.videoPlayground.saveFailed')))
   } finally {
     saving.value = false
+  }
+}
+
+function parseJSONObject(raw: string, label: string) {
+  try {
+    const parsed = JSON.parse(raw || '{}')
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+      throw new Error(t('admin.videoPlayground.jsonMustBeObject', { field: label }))
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes(label)) {
+      throw err
+    }
+    throw new Error(t('admin.videoPlayground.invalidJSON', { field: label }))
   }
 }
 

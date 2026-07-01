@@ -1502,11 +1502,24 @@ export default {
       saveFailed: '保存视频模型失败',
       deleteFailed: '删除视频模型失败',
       deleteConfirm: '确定删除视频模型“{name}”？',
+      keyConfigured: '已配置：{mask}，留空则不变',
+      invalidJSON: '{field} 不是有效 JSON',
+      jsonMustBeObject: '{field} 必须是 JSON 对象',
       billingModes: {
         balance_prepaid: '按次预扣余额'
       },
+      templates: {
+        baseModel: '基础模型'
+      },
+      modelKinds: {
+        t2v: '文生视频',
+        i2v: '图生视频',
+        reference_video: '参考图视频',
+        extend: '视频延长'
+      },
       columns: {
         name: '模型',
+        apiMode: 'API 模式',
         provider: '供应商',
         upstream: '上游域名',
         price: '单次价格',
@@ -1517,6 +1530,8 @@ export default {
       fields: {
         displayName: '显示名',
         model: '模型 ID',
+        studioTemplate: '即梦能力模板',
+        modelKind: '模型类型',
         providerName: '供应商',
         upstreamBaseURL: '上游域名',
         upstreamAPIKey: '上游 API Key',
@@ -1525,7 +1540,9 @@ export default {
         refundEnabled: '视频生成失败时自动退款',
         timeoutSeconds: '超时秒数',
         sortOrder: '排序',
-        enabled: '启用模型'
+        enabled: '启用模型',
+        inputSchemaJSON: '输入 Schema JSON',
+        payloadMappingJSON: 'Payload 映射 JSON'
       }
     },
     imagePlayground: {
@@ -1540,15 +1557,18 @@ export default {
       sizeRequired: '至少选择一个支持尺寸',
       columns: {
         name: '模型',
+        apiMode: 'API 模式',
         provider: '供应商',
         upstream: '上游域名',
         prices: '档位价格',
         sizes: '尺寸',
+        sortOrder: '排序',
         enabled: '启用'
       },
       fields: {
         displayName: '显示名',
         model: '模型 ID',
+        apiMode: 'API 模式',
         providerName: '供应商',
         upstreamBaseURL: '上游域名',
         upstreamAPIKey: '上游 API Key',
@@ -1559,6 +1579,10 @@ export default {
         timeoutSeconds: '超时秒数',
         sortOrder: '排序',
         enabled: '启用模型'
+      },
+      apiModes: {
+        images: 'Images API',
+        responses: 'Responses API'
       }
     },
     // Dashboard

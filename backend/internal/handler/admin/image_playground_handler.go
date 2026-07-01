@@ -24,6 +24,7 @@ type ImagePlaygroundHandler struct {
 type imagePlaygroundModelRequest struct {
 	DisplayName     string   `json:"display_name"`
 	Model           string   `json:"model"`
+	APIMode         string   `json:"api_mode"`
 	ProviderName    string   `json:"provider_name"`
 	UpstreamBaseURL string   `json:"upstream_base_url"`
 	UpstreamAPIKey  string   `json:"upstream_api_key"`

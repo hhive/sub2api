@@ -1,11 +1,13 @@
 import { apiClient } from '../client'
 
 export type ImageSizeTier = '1k' | '2k' | '4k'
+export type ImageAPIMode = 'images' | 'responses'
 
 export interface ImagePlaygroundModel {
   id: number
   display_name: string
   model: string
+  api_mode: ImageAPIMode
   provider_name: string
   upstream_base_url: string
   upstream_api_key: string

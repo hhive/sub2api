@@ -24,6 +24,9 @@
             <template #cell-provider_name="{ row }">
               <span class="badge badge-gray">{{ row.provider_name }}</span>
             </template>
+            <template #cell-api_mode="{ row }">
+              <span class="badge badge-gray">{{ apiModeLabel(row.api_mode) }}</span>
+            </template>
             <template #cell-prices="{ row }">
               <div class="space-y-1 font-mono text-xs">
                 <div>1k {{ row.price_1k }}</div>
@@ -35,6 +38,9 @@
               <div class="flex flex-wrap gap-1">
                 <span v-for="size in row.supported_sizes" :key="size" class="badge badge-gray">{{ size }}</span>
               </div>
+            </template>
+            <template #cell-sort_order="{ row }">
+              <span class="font-mono text-xs text-gray-600 dark:text-gray-300">{{ row.sort_order }}</span>
             </template>
             <template #cell-enabled="{ row }">
               <span :class="row.enabled ? 'badge badge-success' : 'badge badge-gray'">
@@ -72,6 +78,13 @@
             <label class="block">
               <span class="input-label">{{ t('admin.imagePlayground.fields.model') }}</span>
               <input v-model.trim="form.model" class="input" required />
+            </label>
+            <label class="block">
+              <span class="input-label">{{ t('admin.imagePlayground.fields.apiMode') }}</span>
+              <select v-model="form.api_mode" class="input" required>
+                <option value="images">{{ t('admin.imagePlayground.apiModes.images') }}</option>
+                <option value="responses">{{ t('admin.imagePlayground.apiModes.responses') }}</option>
+              </select>
             </label>
             <label class="block">
               <span class="input-label">{{ t('admin.imagePlayground.fields.providerName') }}</span>
@@ -157,6 +170,7 @@ const editingKeyMask = ref('')
 const defaultForm = (): ImagePlaygroundModelPayload => ({
   display_name: '',
   model: '',
+  api_mode: 'images',
   provider_name: '',
   upstream_base_url: '',
   upstream_api_key: '',
@@ -173,10 +187,12 @@ const form = reactive<ImagePlaygroundModelPayload>(defaultForm())
 
 const columns = computed<Column[]>(() => [
   { key: 'display_name', label: t('admin.imagePlayground.columns.name') },
+  { key: 'api_mode', label: t('admin.imagePlayground.columns.apiMode') },
   { key: 'provider_name', label: t('admin.imagePlayground.columns.provider') },
   { key: 'upstream_base_url', label: t('admin.imagePlayground.columns.upstream') },
   { key: 'prices', label: t('admin.imagePlayground.columns.prices') },
   { key: 'supported_sizes', label: t('admin.imagePlayground.columns.sizes') },
+  { key: 'sort_order', label: t('admin.imagePlayground.columns.sortOrder') },
   { key: 'enabled', label: t('admin.imagePlayground.columns.enabled') },
   { key: 'actions', label: t('common.actions') },
 ])
@@ -198,6 +214,7 @@ function editModel(model: ImagePlaygroundModel) {
   Object.assign(form, {
     display_name: model.display_name,
     model: model.model,
+    api_mode: model.api_mode || 'images',
     provider_name: model.provider_name,
     upstream_base_url: model.upstream_base_url,
     upstream_api_key: editingKeyMask.value,
@@ -209,6 +226,12 @@ function editModel(model: ImagePlaygroundModel) {
     enabled: model.enabled,
     sort_order: model.sort_order,
   })
+}
+
+function apiModeLabel(mode: string) {
+  return mode === 'responses'
+    ? t('admin.imagePlayground.apiModes.responses')
+    : t('admin.imagePlayground.apiModes.images')
 }
 
 function resetForm() {

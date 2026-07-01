@@ -7,15 +7,20 @@ export interface VideoPlaygroundModel {
   provider_name: string
   upstream_base_url: string
   upstream_api_key: string
+  upstream_api_key_mask?: string
   price_quota: number
   billing_mode: 'balance_prepaid'
   refund_enabled: boolean
   timeout_seconds: number
   enabled: boolean
   sort_order: number
+  studio_model_id: string
+  model_kind: 't2v' | 'i2v' | 'reference_video' | 'extend'
+  input_schema_json: string
+  payload_mapping_json: string
 }
 
-export type VideoPlaygroundModelPayload = Omit<VideoPlaygroundModel, 'id'>
+export type VideoPlaygroundModelPayload = Omit<VideoPlaygroundModel, 'id' | 'upstream_api_key_mask'>
 
 export async function listModels(): Promise<VideoPlaygroundModel[]> {
   const { data } = await apiClient.get<VideoPlaygroundModel[]>('/admin/video-playground/models')

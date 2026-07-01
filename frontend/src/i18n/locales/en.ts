@@ -1498,11 +1498,24 @@ export default {
       saveFailed: 'Failed to save video model',
       deleteFailed: 'Failed to delete video model',
       deleteConfirm: 'Delete video model "{name}"?',
+      keyConfigured: 'Configured: {mask}. Leave blank to keep unchanged',
+      invalidJSON: '{field} is not valid JSON',
+      jsonMustBeObject: '{field} must be a JSON object',
       billingModes: {
         balance_prepaid: 'Prepaid balance per call'
       },
+      templates: {
+        baseModel: 'Base model'
+      },
+      modelKinds: {
+        t2v: 'Text to video',
+        i2v: 'Image to video',
+        reference_video: 'Reference image video',
+        extend: 'Video extension'
+      },
       columns: {
         name: 'Model',
+        apiMode: 'API mode',
         provider: 'Provider',
         upstream: 'Upstream',
         price: 'Price',
@@ -1513,6 +1526,8 @@ export default {
       fields: {
         displayName: 'Display name',
         model: 'Model ID',
+        studioTemplate: 'Seedance capability template',
+        modelKind: 'Model type',
         providerName: 'Provider',
         upstreamBaseURL: 'Upstream domain',
         upstreamAPIKey: 'Upstream API Key',
@@ -1521,7 +1536,9 @@ export default {
         refundEnabled: 'Refund failed generations automatically',
         timeoutSeconds: 'Timeout seconds',
         sortOrder: 'Sort order',
-        enabled: 'Enable model'
+        enabled: 'Enable model',
+        inputSchemaJSON: 'Input Schema JSON',
+        payloadMappingJSON: 'Payload Mapping JSON'
       }
     },
     imagePlayground: {
@@ -1536,15 +1553,18 @@ export default {
       sizeRequired: 'Select at least one supported size',
       columns: {
         name: 'Model',
+        apiMode: 'API mode',
         provider: 'Provider',
         upstream: 'Upstream',
         prices: 'Tier prices',
         sizes: 'Sizes',
+        sortOrder: 'Sort order',
         enabled: 'Enabled'
       },
       fields: {
         displayName: 'Display name',
         model: 'Model ID',
+        apiMode: 'API mode',
         providerName: 'Provider',
         upstreamBaseURL: 'Upstream domain',
         upstreamAPIKey: 'Upstream API Key',
@@ -1555,6 +1575,10 @@ export default {
         timeoutSeconds: 'Timeout seconds',
         sortOrder: 'Sort order',
         enabled: 'Enable model'
+      },
+      apiModes: {
+        images: 'Images API',
+        responses: 'Responses API'
       }
     },
     // Dashboard

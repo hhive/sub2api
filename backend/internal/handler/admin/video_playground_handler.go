@@ -33,6 +33,10 @@ type videoPlaygroundModelRequest struct {
 	TimeoutSeconds  int     `json:"timeout_seconds"`
 	Enabled         bool    `json:"enabled"`
 	SortOrder       int     `json:"sort_order"`
+	StudioModelID   string  `json:"studio_model_id"`
+	ModelKind       string  `json:"model_kind"`
+	InputSchemaJSON string  `json:"input_schema_json"`
+	PayloadMapJSON  string  `json:"payload_mapping_json"`
 }
 
 func NewVideoPlaygroundHandler(settingService *service.SettingService) *VideoPlaygroundHandler {
