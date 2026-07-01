@@ -17,6 +17,7 @@ export interface ImagePlaygroundModel {
   price_4k: number
   supported_sizes: ImageSizeTier[]
   timeout_seconds: number
+  fallback_to_responses_enabled: boolean
   enabled: boolean
   sort_order: number
 }

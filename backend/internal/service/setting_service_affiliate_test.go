@@ -135,7 +135,24 @@ func TestGetAffiliateTieredRebateConfig(t *testing.T) {
 				Tier2MinPaidInvitees:   AffiliateTier2MinPaidInviteesDefault,
 				Tier3MinPaidInvitees:   AffiliateTier3MinPaidInviteesDefault,
 				Tier2MultiplierPercent: AffiliateTier2MultiplierPercentDefault,
-				Tier3MultiplierPercent: 200,
+				Tier3MultiplierPercent: 250,
+			},
+		},
+		{
+			name: "multipliers capped at 500",
+			values: map[string]string{
+				SettingKeyAffiliateTieredRebateEnabled:    "true",
+				SettingKeyAffiliateTier2MinPaidInvitees:   "5",
+				SettingKeyAffiliateTier3MinPaidInvitees:   "20",
+				SettingKeyAffiliateTier2MultiplierPercent: "600",
+				SettingKeyAffiliateTier3MultiplierPercent: "700",
+			},
+			want: AffiliateTieredRebateConfig{
+				Enabled:                true,
+				Tier2MinPaidInvitees:   5,
+				Tier3MinPaidInvitees:   20,
+				Tier2MultiplierPercent: 500,
+				Tier3MultiplierPercent: 500,
 			},
 		},
 	}

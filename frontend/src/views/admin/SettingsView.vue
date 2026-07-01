@@ -6171,7 +6171,7 @@
                         type="number"
                         step="0.01"
                         min="0"
-                        max="200"
+                        max="500"
                         class="input pr-8"
                         placeholder="120"
                       />
@@ -6191,7 +6191,7 @@
                         type="number"
                         step="0.01"
                         min="0"
-                        max="200"
+                        max="500"
                         class="input pr-8"
                         placeholder="150"
                       />
@@ -9706,11 +9706,11 @@ async function saveSettings() {
       affiliate_tier2_min_paid_invitees: affiliateTier2MinPaidInvitees,
       affiliate_tier3_min_paid_invitees: affiliateTier3MinPaidInvitees,
       affiliate_tier2_multiplier_percent: Math.min(
-        200,
+        500,
         Math.max(0, Number.isFinite(affiliateTier2MultiplierPercent) ? affiliateTier2MultiplierPercent : 120),
       ),
       affiliate_tier3_multiplier_percent: Math.min(
-        200,
+        500,
         Math.max(0, Number.isFinite(affiliateTier3MultiplierPercent) ? affiliateTier3MultiplierPercent : 150),
       ),
       affiliate_rebate_freeze_hours: Math.max(0, Math.min(720, Number(form.affiliate_rebate_freeze_hours) || 0)),

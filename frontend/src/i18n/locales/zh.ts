@@ -1580,7 +1580,8 @@ export default {
         supportedSizes: '支持尺寸',
         timeoutSeconds: '超时秒数',
         sortOrder: '排序',
-        enabled: '启用模型'
+        enabled: '启用模型',
+        fallbackToResponses: '生成失败时使用 Responses API 配置兜底重试一次'
       },
       apiModes: {
         images: 'Images API',

@@ -4188,8 +4188,8 @@ func clampMultiplierPercentOrDefault(value, fallback float64) float64 {
 	if value < 0 {
 		return 0
 	}
-	if value > 200 {
-		return 200
+	if value > 500 {
+		return 500
 	}
 	return value
 }

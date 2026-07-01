@@ -150,6 +150,10 @@
               <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               {{ t('admin.imagePlayground.fields.enabled') }}
             </label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input v-model="form.fallback_to_responses_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {{ t('admin.imagePlayground.fields.fallbackToResponses') }}
+            </label>
             <button class="btn btn-primary w-full" type="submit" :disabled="saving">
               {{ saving ? t('common.saving') : t('common.save') }}
             </button>
@@ -195,6 +199,7 @@ const defaultForm = (): ImagePlaygroundModelPayload => ({
   price_4k: 4,
   supported_sizes: ['1k', '2k', '4k'],
   timeout_seconds: 600,
+  fallback_to_responses_enabled: true,
   enabled: true,
   sort_order: 0,
 })
@@ -240,6 +245,7 @@ function editModel(model: ImagePlaygroundModel) {
     price_4k: model.price_4k,
     supported_sizes: model.supported_sizes?.length ? [...model.supported_sizes] : [...sizeOptions],
     timeout_seconds: model.timeout_seconds,
+    fallback_to_responses_enabled: model.fallback_to_responses_enabled ?? true,
     enabled: model.enabled,
     sort_order: model.sort_order,
   })

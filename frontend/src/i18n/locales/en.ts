@@ -1576,7 +1576,8 @@ export default {
         supportedSizes: 'Supported sizes',
         timeoutSeconds: 'Timeout seconds',
         sortOrder: 'Sort order',
-        enabled: 'Enable model'
+        enabled: 'Enable model',
+        fallbackToResponses: 'Retry once with Responses API config when generation fails'
       },
       apiModes: {
         images: 'Images API',

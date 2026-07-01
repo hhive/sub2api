@@ -33,6 +33,7 @@ type imagePlaygroundModelRequest struct {
 	Price4K         float64  `json:"price_4k"`
 	SupportedSizes  []string `json:"supported_sizes"`
 	TimeoutSeconds  int      `json:"timeout_seconds"`
+	FallbackToResponses bool  `json:"fallback_to_responses_enabled"`
 	Enabled         bool     `json:"enabled"`
 	SortOrder       int      `json:"sort_order"`
 }
