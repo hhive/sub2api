@@ -19,6 +19,12 @@ const (
 )
 
 const (
+	AnnouncementSiteMain  = "main"
+	AnnouncementSiteImage = "image"
+	AnnouncementSiteVideo = "video"
+)
+
+const (
 	AnnouncementConditionTypeSubscription = "subscription"
 	AnnouncementConditionTypeBalance      = "balance"
 )
@@ -201,6 +207,7 @@ func (c AnnouncementCondition) validate() error {
 
 type Announcement struct {
 	ID         int64
+	Site       string
 	Title      string
 	Content    string
 	Status     string

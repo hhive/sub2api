@@ -226,6 +226,8 @@ export interface PublicSettings {
   api_base_url: string
   contact_info: string
   doc_url: string
+  image_playground_doc_url: string
+  video_playground_doc_url: string
   redeem_purchase_url: string
   purchase_subscription_enabled: boolean
   purchase_subscription_url: string
@@ -320,6 +322,7 @@ export interface UpdateSubscriptionRequest {
 
 export type AnnouncementStatus = 'draft' | 'active' | 'archived'
 export type AnnouncementNotifyMode = 'silent' | 'popup'
+export type AnnouncementSite = 'main' | 'image' | 'video'
 
 export type AnnouncementConditionType = 'subscription' | 'balance'
 
@@ -342,6 +345,7 @@ export interface AnnouncementTargeting {
 
 export interface Announcement {
   id: number
+  site: AnnouncementSite
   title: string
   content: string
   status: AnnouncementStatus
@@ -357,6 +361,7 @@ export interface Announcement {
 
 export interface UserAnnouncement {
   id: number
+  site: AnnouncementSite
   title: string
   content: string
   notify_mode: AnnouncementNotifyMode
@@ -368,6 +373,7 @@ export interface UserAnnouncement {
 }
 
 export interface CreateAnnouncementRequest {
+  site?: AnnouncementSite
   title: string
   content: string
   status?: AnnouncementStatus
@@ -378,6 +384,7 @@ export interface CreateAnnouncementRequest {
 }
 
 export interface UpdateAnnouncementRequest {
+  site?: AnnouncementSite
   title?: string
   content?: string
   status?: AnnouncementStatus

@@ -21,6 +21,12 @@ const (
 )
 
 const (
+	AnnouncementSiteMain  = domain.AnnouncementSiteMain
+	AnnouncementSiteImage = domain.AnnouncementSiteImage
+	AnnouncementSiteVideo = domain.AnnouncementSiteVideo
+)
+
+const (
 	AnnouncementConditionTypeSubscription = domain.AnnouncementConditionTypeSubscription
 	AnnouncementConditionTypeBalance      = domain.AnnouncementConditionTypeBalance
 )
@@ -52,6 +58,7 @@ var (
 		"ANNOUNCEMENT_TIME_RANGE_INVALID",
 		"starts_at must be before ends_at",
 	)
+	ErrAnnouncementInvalidSite = infraerrors.BadRequest("ANNOUNCEMENT_SITE_INVALID", "announcement site is invalid")
 )
 
 type AnnouncementTargeting = domain.AnnouncementTargeting
@@ -65,6 +72,7 @@ type Announcement = domain.Announcement
 type AnnouncementListFilters struct {
 	Status string
 	Search string
+	Site   string
 }
 
 type AnnouncementRepository interface {
@@ -74,7 +82,7 @@ type AnnouncementRepository interface {
 	Delete(ctx context.Context, id int64) error
 
 	List(ctx context.Context, params pagination.PaginationParams, filters AnnouncementListFilters) ([]Announcement, *pagination.PaginationResult, error)
-	ListActive(ctx context.Context, now time.Time) ([]Announcement, error)
+	ListActive(ctx context.Context, now time.Time, site string) ([]Announcement, error)
 }
 
 type AnnouncementReadRepository interface {

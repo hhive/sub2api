@@ -34,8 +34,9 @@ func (h *AnnouncementHandler) List(c *gin.Context) {
 	}
 
 	unreadOnly := parseBoolQuery(c.Query("unread_only"))
+	site := strings.TrimSpace(c.Query("site"))
 
-	items, err := h.announcementService.ListForUser(c.Request.Context(), subject.UserID, unreadOnly)
+	items, err := h.announcementService.ListForUserBySite(c.Request.Context(), subject.UserID, site, unreadOnly)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -63,7 +64,8 @@ func (h *AnnouncementHandler) MarkRead(c *gin.Context) {
 		return
 	}
 
-	if err := h.announcementService.MarkRead(c.Request.Context(), subject.UserID, announcementID); err != nil {
+	site := strings.TrimSpace(c.Query("site"))
+	if err := h.announcementService.MarkReadForSite(c.Request.Context(), subject.UserID, announcementID, site); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

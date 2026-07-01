@@ -25,6 +25,8 @@ type Announcement struct {
 	Content string `json:"content,omitempty"`
 	// 状态: draft, active, archived
 	Status string `json:"status,omitempty"`
+	// 站点: main, image, video
+	Site string `json:"site,omitempty"`
 	// 通知模式: silent(仅铃铛), popup(弹窗提醒)
 	NotifyMode string `json:"notify_mode,omitempty"`
 	// 展示条件（JSON 规则）
@@ -74,7 +76,7 @@ func (*Announcement) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case announcement.FieldID, announcement.FieldCreatedBy, announcement.FieldUpdatedBy:
 			values[i] = new(sql.NullInt64)
-		case announcement.FieldTitle, announcement.FieldContent, announcement.FieldStatus, announcement.FieldNotifyMode:
+		case announcement.FieldTitle, announcement.FieldContent, announcement.FieldStatus, announcement.FieldSite, announcement.FieldNotifyMode:
 			values[i] = new(sql.NullString)
 		case announcement.FieldStartsAt, announcement.FieldEndsAt, announcement.FieldCreatedAt, announcement.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -116,6 +118,12 @@ func (_m *Announcement) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = value.String
+			}
+		case announcement.FieldSite:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field site", values[i])
+			} else if value.Valid {
+				_m.Site = value.String
 			}
 		case announcement.FieldNotifyMode:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -220,6 +228,9 @@ func (_m *Announcement) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(_m.Status)
+	builder.WriteString(", ")
+	builder.WriteString("site=")
+	builder.WriteString(_m.Site)
 	builder.WriteString(", ")
 	builder.WriteString("notify_mode=")
 	builder.WriteString(_m.NotifyMode)

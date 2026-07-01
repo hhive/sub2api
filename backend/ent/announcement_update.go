@@ -72,6 +72,20 @@ func (_u *AnnouncementUpdate) SetNillableStatus(v *string) *AnnouncementUpdate {
 	return _u
 }
 
+// SetSite sets the "site" field.
+func (_u *AnnouncementUpdate) SetSite(v string) *AnnouncementUpdate {
+	_u.mutation.SetSite(v)
+	return _u
+}
+
+// SetNillableSite sets the "site" field if the given value is not nil.
+func (_u *AnnouncementUpdate) SetNillableSite(v *string) *AnnouncementUpdate {
+	if v != nil {
+		_u.SetSite(*v)
+	}
+	return _u
+}
+
 // SetNotifyMode sets the "notify_mode" field.
 func (_u *AnnouncementUpdate) SetNotifyMode(v string) *AnnouncementUpdate {
 	_u.mutation.SetNotifyMode(v)
@@ -300,6 +314,11 @@ func (_u *AnnouncementUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Announcement.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Site(); ok {
+		if err := announcement.SiteValidator(v); err != nil {
+			return &ValidationError{Name: "site", err: fmt.Errorf(`ent: validator failed for field "Announcement.site": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.NotifyMode(); ok {
 		if err := announcement.NotifyModeValidator(v); err != nil {
 			return &ValidationError{Name: "notify_mode", err: fmt.Errorf(`ent: validator failed for field "Announcement.notify_mode": %w`, err)}
@@ -328,6 +347,9 @@ func (_u *AnnouncementUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(announcement.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Site(); ok {
+		_spec.SetField(announcement.FieldSite, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.NotifyMode(); ok {
 		_spec.SetField(announcement.FieldNotifyMode, field.TypeString, value)
@@ -474,6 +496,20 @@ func (_u *AnnouncementUpdateOne) SetStatus(v string) *AnnouncementUpdateOne {
 func (_u *AnnouncementUpdateOne) SetNillableStatus(v *string) *AnnouncementUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetSite sets the "site" field.
+func (_u *AnnouncementUpdateOne) SetSite(v string) *AnnouncementUpdateOne {
+	_u.mutation.SetSite(v)
+	return _u
+}
+
+// SetNillableSite sets the "site" field if the given value is not nil.
+func (_u *AnnouncementUpdateOne) SetNillableSite(v *string) *AnnouncementUpdateOne {
+	if v != nil {
+		_u.SetSite(*v)
 	}
 	return _u
 }
@@ -719,6 +755,11 @@ func (_u *AnnouncementUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Announcement.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Site(); ok {
+		if err := announcement.SiteValidator(v); err != nil {
+			return &ValidationError{Name: "site", err: fmt.Errorf(`ent: validator failed for field "Announcement.site": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.NotifyMode(); ok {
 		if err := announcement.NotifyModeValidator(v); err != nil {
 			return &ValidationError{Name: "notify_mode", err: fmt.Errorf(`ent: validator failed for field "Announcement.notify_mode": %w`, err)}
@@ -764,6 +805,9 @@ func (_u *AnnouncementUpdateOne) sqlSave(ctx context.Context) (_node *Announceme
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(announcement.FieldStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Site(); ok {
+		_spec.SetField(announcement.FieldSite, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.NotifyMode(); ok {
 		_spec.SetField(announcement.FieldNotifyMode, field.TypeString, value)

@@ -33,6 +33,7 @@ func NewAnnouncementService(
 }
 
 type CreateAnnouncementInput struct {
+	Site       string
 	Title      string
 	Content    string
 	Status     string
@@ -44,6 +45,7 @@ type CreateAnnouncementInput struct {
 }
 
 type UpdateAnnouncementInput struct {
+	Site       *string
 	Title      *string
 	Content    *string
 	Status     *string
@@ -109,7 +111,13 @@ func (s *AnnouncementService) Create(ctx context.Context, input *CreateAnnouncem
 		}
 	}
 
+	site := normalizeAnnouncementSite(input.Site)
+	if !isValidAnnouncementSite(site) {
+		return nil, ErrAnnouncementInvalidSite
+	}
+
 	a := &Announcement{
+		Site:       site,
 		Title:      title,
 		Content:    content,
 		Status:     status,
@@ -159,6 +167,14 @@ func (s *AnnouncementService) Update(ctx context.Context, id int64, input *Updat
 			return nil, ErrAnnouncementInvalidStatus
 		}
 		a.Status = status
+	}
+
+	if input.Site != nil {
+		site := normalizeAnnouncementSite(*input.Site)
+		if !isValidAnnouncementSite(site) {
+			return nil, ErrAnnouncementInvalidSite
+		}
+		a.Site = site
 	}
 
 	if input.NotifyMode != nil {
@@ -216,6 +232,15 @@ func (s *AnnouncementService) List(ctx context.Context, params pagination.Pagina
 }
 
 func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unreadOnly bool) ([]UserAnnouncement, error) {
+	return s.ListForUserBySite(ctx, userID, AnnouncementSiteMain, unreadOnly)
+}
+
+func (s *AnnouncementService) ListForUserBySite(ctx context.Context, userID int64, site string, unreadOnly bool) ([]UserAnnouncement, error) {
+	site = normalizeAnnouncementSite(site)
+	if !isValidAnnouncementSite(site) {
+		return nil, ErrAnnouncementInvalidSite
+	}
+
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
@@ -231,7 +256,7 @@ func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unr
 	}
 
 	now := time.Now()
-	anns, err := s.announcementRepo.ListActive(ctx, now)
+	anns, err := s.announcementRepo.ListActive(ctx, now, site)
 	if err != nil {
 		return nil, fmt.Errorf("list active announcements: %w", err)
 	}
@@ -290,6 +315,10 @@ func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unr
 }
 
 func (s *AnnouncementService) MarkRead(ctx context.Context, userID, announcementID int64) error {
+	return s.MarkReadForSite(ctx, userID, announcementID, "")
+}
+
+func (s *AnnouncementService) MarkReadForSite(ctx context.Context, userID, announcementID int64, site string) error {
 	// 安全：仅允许标记当前用户“可见”的公告
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -299,6 +328,13 @@ func (s *AnnouncementService) MarkRead(ctx context.Context, userID, announcement
 	a, err := s.announcementRepo.GetByID(ctx, announcementID)
 	if err != nil {
 		return err
+	}
+	site = normalizeAnnouncementSite(site)
+	if !isValidAnnouncementSite(site) {
+		return ErrAnnouncementInvalidSite
+	}
+	if normalizeAnnouncementSite(a.Site) != site {
+		return ErrAnnouncementNotFound
 	}
 
 	now := time.Now()
@@ -399,6 +435,23 @@ func isValidAnnouncementStatus(status string) bool {
 func isValidAnnouncementNotifyMode(mode string) bool {
 	switch mode {
 	case AnnouncementNotifyModeSilent, AnnouncementNotifyModePopup:
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeAnnouncementSite(site string) string {
+	site = strings.TrimSpace(strings.ToLower(site))
+	if site == "" {
+		return AnnouncementSiteMain
+	}
+	return site
+}
+
+func isValidAnnouncementSite(site string) bool {
+	switch normalizeAnnouncementSite(site) {
+	case AnnouncementSiteMain, AnnouncementSiteImage, AnnouncementSiteVideo:
 		return true
 	default:
 		return false

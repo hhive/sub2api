@@ -70,6 +70,11 @@ func Status(v string) predicate.Announcement {
 	return predicate.Announcement(sql.FieldEQ(FieldStatus, v))
 }
 
+// Site applies equality check predicate on the "site" field. It's identical to SiteEQ.
+func Site(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldEQ(FieldSite, v))
+}
+
 // NotifyMode applies equality check predicate on the "notify_mode" field. It's identical to NotifyModeEQ.
 func NotifyMode(v string) predicate.Announcement {
 	return predicate.Announcement(sql.FieldEQ(FieldNotifyMode, v))
@@ -298,6 +303,71 @@ func StatusEqualFold(v string) predicate.Announcement {
 // StatusContainsFold applies the ContainsFold predicate on the "status" field.
 func StatusContainsFold(v string) predicate.Announcement {
 	return predicate.Announcement(sql.FieldContainsFold(FieldStatus, v))
+}
+
+// SiteEQ applies the EQ predicate on the "site" field.
+func SiteEQ(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldEQ(FieldSite, v))
+}
+
+// SiteNEQ applies the NEQ predicate on the "site" field.
+func SiteNEQ(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldNEQ(FieldSite, v))
+}
+
+// SiteIn applies the In predicate on the "site" field.
+func SiteIn(vs ...string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldIn(FieldSite, vs...))
+}
+
+// SiteNotIn applies the NotIn predicate on the "site" field.
+func SiteNotIn(vs ...string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldNotIn(FieldSite, vs...))
+}
+
+// SiteGT applies the GT predicate on the "site" field.
+func SiteGT(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldGT(FieldSite, v))
+}
+
+// SiteGTE applies the GTE predicate on the "site" field.
+func SiteGTE(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldGTE(FieldSite, v))
+}
+
+// SiteLT applies the LT predicate on the "site" field.
+func SiteLT(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldLT(FieldSite, v))
+}
+
+// SiteLTE applies the LTE predicate on the "site" field.
+func SiteLTE(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldLTE(FieldSite, v))
+}
+
+// SiteContains applies the Contains predicate on the "site" field.
+func SiteContains(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldContains(FieldSite, v))
+}
+
+// SiteHasPrefix applies the HasPrefix predicate on the "site" field.
+func SiteHasPrefix(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldHasPrefix(FieldSite, v))
+}
+
+// SiteHasSuffix applies the HasSuffix predicate on the "site" field.
+func SiteHasSuffix(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldHasSuffix(FieldSite, v))
+}
+
+// SiteEqualFold applies the EqualFold predicate on the "site" field.
+func SiteEqualFold(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldEqualFold(FieldSite, v))
+}
+
+// SiteContainsFold applies the ContainsFold predicate on the "site" field.
+func SiteContainsFold(v string) predicate.Announcement {
+	return predicate.Announcement(sql.FieldContainsFold(FieldSite, v))
 }
 
 // NotifyModeEQ applies the EQ predicate on the "notify_mode" field.

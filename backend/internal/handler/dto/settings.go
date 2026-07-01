@@ -140,6 +140,8 @@ type SystemSettings struct {
 	APIBaseURL                              string           `json:"api_base_url"`
 	ContactInfo                             string           `json:"contact_info"`
 	DocURL                                  string           `json:"doc_url"`
+	ImagePlaygroundDocURL                   string           `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL                   string           `json:"video_playground_doc_url"`
 	RedeemPurchaseURL                       string           `json:"redeem_purchase_url"`
 	HomeContent                             string           `json:"home_content"`
 	HideCcsImportButton                     bool             `json:"hide_ccs_import_button"`
@@ -342,6 +344,8 @@ type PublicSettings struct {
 	APIBaseURL                       string                   `json:"api_base_url"`
 	ContactInfo                      string                   `json:"contact_info"`
 	DocURL                           string                   `json:"doc_url"`
+	ImagePlaygroundDocURL            string                   `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL            string                   `json:"video_playground_doc_url"`
 	RedeemPurchaseURL                string                   `json:"redeem_purchase_url"`
 	HomeContent                      string                   `json:"home_content"`
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`

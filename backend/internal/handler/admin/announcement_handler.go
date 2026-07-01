@@ -27,6 +27,7 @@ func NewAnnouncementHandler(announcementService *service.AnnouncementService) *A
 }
 
 type CreateAnnouncementRequest struct {
+	Site       string                        `json:"site" binding:"omitempty,oneof=main image video"`
 	Title      string                        `json:"title" binding:"required"`
 	Content    string                        `json:"content" binding:"required"`
 	Status     string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
@@ -37,6 +38,7 @@ type CreateAnnouncementRequest struct {
 }
 
 type UpdateAnnouncementRequest struct {
+	Site       *string                        `json:"site" binding:"omitempty,oneof=main image video"`
 	Title      *string                        `json:"title"`
 	Content    *string                        `json:"content"`
 	Status     *string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
@@ -51,6 +53,7 @@ type UpdateAnnouncementRequest struct {
 func (h *AnnouncementHandler) List(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
 	status := strings.TrimSpace(c.Query("status"))
+	site := strings.TrimSpace(c.Query("site"))
 	search := strings.TrimSpace(c.Query("search"))
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
@@ -68,7 +71,7 @@ func (h *AnnouncementHandler) List(c *gin.Context) {
 	items, paginationResult, err := h.announcementService.List(
 		c.Request.Context(),
 		params,
-		service.AnnouncementListFilters{Status: status, Search: search},
+		service.AnnouncementListFilters{Status: status, Site: site, Search: search},
 	)
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -116,6 +119,7 @@ func (h *AnnouncementHandler) Create(c *gin.Context) {
 	}
 
 	input := &service.CreateAnnouncementInput{
+		Site:       req.Site,
 		Title:      req.Title,
 		Content:    req.Content,
 		Status:     req.Status,
@@ -164,6 +168,7 @@ func (h *AnnouncementHandler) Update(c *gin.Context) {
 	}
 
 	input := &service.UpdateAnnouncementInput{
+		Site:       req.Site,
 		Title:      req.Title,
 		Content:    req.Content,
 		Status:     req.Status,

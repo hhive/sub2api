@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"strings"
+
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -13,6 +15,7 @@ func RegisterUserRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
+	apiKeyAuth middleware.APIKeyAuthMiddleware,
 	settingService *service.SettingService,
 ) {
 	authenticated := v1.Group("")
@@ -102,13 +105,6 @@ func RegisterUserRoutes(
 			usage.POST("/dashboard/api-keys-usage", h.Usage.DashboardAPIKeysUsage)
 		}
 
-		// 公告（用户可见）
-		announcements := authenticated.Group("/announcements")
-		{
-			announcements.GET("", h.Announcement.List)
-			announcements.POST("/:id/read", h.Announcement.MarkRead)
-		}
-
 		// 卡密兑换
 		redeem := authenticated.Group("/redeem")
 		{
@@ -131,5 +127,27 @@ func RegisterUserRoutes(
 			monitors.GET("", h.ChannelMonitor.List)
 			monitors.GET("/:id/status", h.ChannelMonitor.GetStatus)
 		}
+	}
+
+	announcements := v1.Group("/announcements")
+	announcements.Use(announcementAuth(jwtAuth, apiKeyAuth))
+	announcements.Use(middleware.BackendModeUserGuard(settingService))
+	{
+		announcements.GET("", h.Announcement.List)
+		announcements.POST("/:id/read", h.Announcement.MarkRead)
+	}
+}
+
+func announcementAuth(jwtAuth middleware.JWTAuthMiddleware, apiKeyAuth middleware.APIKeyAuthMiddleware) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimSpace(c.GetHeader("Authorization"))
+		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
+			token = strings.TrimSpace(token[len("bearer "):])
+		}
+		if strings.HasPrefix(strings.ToLower(token), "sk-") {
+			gin.HandlerFunc(apiKeyAuth)(c)
+			return
+		}
+		gin.HandlerFunc(jwtAuth)(c)
 	}
 }

@@ -4962,8 +4962,10 @@ export default {
       searchAnnouncements: '搜索公告...',
       status: '状态',
       allStatus: '全部状态',
+      allSites: '全部站点',
       columns: {
         title: '标题',
+        site: '站点',
         status: '状态',
         notifyMode: '通知方式',
         targeting: '展示条件',
@@ -4980,7 +4982,13 @@ export default {
         silent: '静默',
         popup: '弹窗'
       },
+      siteLabels: {
+        main: 'Sub2API',
+        image: '图片站',
+        video: '视频站'
+      },
       form: {
+        site: '投放站点',
         title: '标题',
         content: '内容（支持 Markdown）',
         status: '状态',
@@ -6091,6 +6099,8 @@ export default {
           description: '控制用户侧边栏是否展示独立视频生成入口。',
           enabled: '显示视频生成入口',
           enabledHint: '关闭后用户侧边栏隐藏视频生成入口。',
+          imageDocUrl: '图片站文档链接',
+          videoDocUrl: '视频站文档链接',
           baseUrl: '视频生成基础 URL',
           menuLabel: '菜单名称',
           exchangeSecret: '交换密钥',

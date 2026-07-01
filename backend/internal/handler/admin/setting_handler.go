@@ -244,6 +244,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		APIBaseURL:                              settings.APIBaseURL,
 		ContactInfo:                             settings.ContactInfo,
 		DocURL:                                  settings.DocURL,
+		ImagePlaygroundDocURL:                   settings.ImagePlaygroundDocURL,
+		VideoPlaygroundDocURL:                   settings.VideoPlaygroundDocURL,
 		RedeemPurchaseURL:                       settings.RedeemPurchaseURL,
 		HomeContent:                             settings.HomeContent,
 		HideCcsImportButton:                     settings.HideCcsImportButton,
@@ -572,6 +574,8 @@ type UpdateSettingsRequest struct {
 	APIBaseURL                    string                `json:"api_base_url"`
 	ContactInfo                   string                `json:"contact_info"`
 	DocURL                        string                `json:"doc_url"`
+	ImagePlaygroundDocURL         string                `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL         string                `json:"video_playground_doc_url"`
 	RedeemPurchaseURL             string                `json:"redeem_purchase_url"`
 	HomeContent                   string                `json:"home_content"`
 	HideCcsImportButton           bool                  `json:"hide_ccs_import_button"`
@@ -1929,6 +1933,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                             req.APIBaseURL,
 		ContactInfo:                            req.ContactInfo,
 		DocURL:                                 req.DocURL,
+		ImagePlaygroundDocURL:                  req.ImagePlaygroundDocURL,
+		VideoPlaygroundDocURL:                  req.VideoPlaygroundDocURL,
 		RedeemPurchaseURL:                      strings.TrimSpace(req.RedeemPurchaseURL),
 		HomeContent:                            req.HomeContent,
 		HideCcsImportButton:                    req.HideCcsImportButton,
@@ -2448,6 +2454,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                             updatedSettings.APIBaseURL,
 		ContactInfo:                            updatedSettings.ContactInfo,
 		DocURL:                                 updatedSettings.DocURL,
+		ImagePlaygroundDocURL:                  updatedSettings.ImagePlaygroundDocURL,
+		VideoPlaygroundDocURL:                  updatedSettings.VideoPlaygroundDocURL,
 		RedeemPurchaseURL:                      updatedSettings.RedeemPurchaseURL,
 		HomeContent:                            updatedSettings.HomeContent,
 		HideCcsImportButton:                    updatedSettings.HideCcsImportButton,
@@ -2868,6 +2876,12 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.DocURL != after.DocURL {
 		changed = append(changed, "doc_url")
+	}
+	if before.ImagePlaygroundDocURL != after.ImagePlaygroundDocURL {
+		changed = append(changed, "image_playground_doc_url")
+	}
+	if before.VideoPlaygroundDocURL != after.VideoPlaygroundDocURL {
+		changed = append(changed, "video_playground_doc_url")
 	}
 	if before.RedeemPurchaseURL != after.RedeemPurchaseURL {
 		changed = append(changed, "redeem_purchase_url")

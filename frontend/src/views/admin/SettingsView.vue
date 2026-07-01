@@ -6452,6 +6452,31 @@
               <Toggle v-model="form.video_playground_enabled" />
             </div>
 
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="input-label">
+                  {{ t('admin.settings.features.videoPlayground.imageDocUrl') }}
+                </label>
+                <input
+                  v-model="form.image_playground_doc_url"
+                  type="url"
+                  class="input font-mono text-sm"
+                  placeholder="https://example.com/image-docs"
+                />
+              </div>
+              <div>
+                <label class="input-label">
+                  {{ t('admin.settings.features.videoPlayground.videoDocUrl') }}
+                </label>
+                <input
+                  v-model="form.video_playground_doc_url"
+                  type="url"
+                  class="input font-mono text-sm"
+                  placeholder="https://example.com/video-docs"
+                />
+              </div>
+            </div>
+
             <div v-if="form.video_playground_enabled" class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="input-label">
@@ -8403,6 +8428,8 @@ const form = reactive<SettingsForm>({
   api_base_url: "",
   contact_info: "",
   doc_url: "",
+  image_playground_doc_url: "",
+  video_playground_doc_url: "",
   redeem_purchase_url: "https://pay.ldxp.cn/shop/xiaoni-ai",
   purchase_subscription_enabled: false,
   purchase_subscription_url: "",
@@ -9610,6 +9637,8 @@ async function saveSettings() {
     // Optional URL fields: auto-clear invalid values so they don't cause backend 400 errors
     if (!isValidHttpUrl(form.frontend_url)) form.frontend_url = "";
     if (!isValidHttpUrl(form.doc_url)) form.doc_url = "";
+    if (!isValidHttpUrl(form.image_playground_doc_url)) form.image_playground_doc_url = "";
+    if (!isValidHttpUrl(form.video_playground_doc_url)) form.video_playground_doc_url = "";
     if (!isValidHttpUrl(form.redeem_purchase_url)) {
       form.redeem_purchase_url = "https://pay.ldxp.cn/shop/xiaoni-ai";
     }
@@ -9726,6 +9755,8 @@ async function saveSettings() {
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
       doc_url: form.doc_url,
+      image_playground_doc_url: form.image_playground_doc_url,
+      video_playground_doc_url: form.video_playground_doc_url,
       redeem_purchase_url: form.redeem_purchase_url,
       purchase_subscription_enabled: form.purchase_subscription_enabled,
       purchase_subscription_url: form.purchase_subscription_url,

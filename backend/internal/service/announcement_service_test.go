@@ -38,7 +38,7 @@ func (*announcementRepoStub) List(context.Context, pagination.PaginationParams, 
 	return nil, nil, nil
 }
 
-func (*announcementRepoStub) ListActive(context.Context, time.Time) ([]Announcement, error) {
+func (*announcementRepoStub) ListActive(context.Context, time.Time, string) ([]Announcement, error) {
 	return nil, nil
 }
 

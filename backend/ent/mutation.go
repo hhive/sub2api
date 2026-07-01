@@ -5573,6 +5573,7 @@ type AnnouncementMutation struct {
 	title         *string
 	content       *string
 	status        *string
+	site          *string
 	notify_mode   *string
 	targeting     *domain.AnnouncementTargeting
 	starts_at     *time.Time
@@ -5796,6 +5797,42 @@ func (m *AnnouncementMutation) OldStatus(ctx context.Context) (v string, err err
 // ResetStatus resets all changes to the "status" field.
 func (m *AnnouncementMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetSite sets the "site" field.
+func (m *AnnouncementMutation) SetSite(s string) {
+	m.site = &s
+}
+
+// Site returns the value of the "site" field in the mutation.
+func (m *AnnouncementMutation) Site() (r string, exists bool) {
+	v := m.site
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSite returns the old "site" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldSite(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSite is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSite requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSite: %w", err)
+	}
+	return oldValue.Site, nil
+}
+
+// ResetSite resets all changes to the "site" field.
+func (m *AnnouncementMutation) ResetSite() {
+	m.site = nil
 }
 
 // SetNotifyMode sets the "notify_mode" field.
@@ -6281,7 +6318,7 @@ func (m *AnnouncementMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AnnouncementMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.title != nil {
 		fields = append(fields, announcement.FieldTitle)
 	}
@@ -6290,6 +6327,9 @@ func (m *AnnouncementMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, announcement.FieldStatus)
+	}
+	if m.site != nil {
+		fields = append(fields, announcement.FieldSite)
 	}
 	if m.notify_mode != nil {
 		fields = append(fields, announcement.FieldNotifyMode)
@@ -6329,6 +6369,8 @@ func (m *AnnouncementMutation) Field(name string) (ent.Value, bool) {
 		return m.Content()
 	case announcement.FieldStatus:
 		return m.Status()
+	case announcement.FieldSite:
+		return m.Site()
 	case announcement.FieldNotifyMode:
 		return m.NotifyMode()
 	case announcement.FieldTargeting:
@@ -6360,6 +6402,8 @@ func (m *AnnouncementMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldContent(ctx)
 	case announcement.FieldStatus:
 		return m.OldStatus(ctx)
+	case announcement.FieldSite:
+		return m.OldSite(ctx)
 	case announcement.FieldNotifyMode:
 		return m.OldNotifyMode(ctx)
 	case announcement.FieldTargeting:
@@ -6405,6 +6449,13 @@ func (m *AnnouncementMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case announcement.FieldSite:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSite(v)
 		return nil
 	case announcement.FieldNotifyMode:
 		v, ok := value.(string)
@@ -6579,6 +6630,9 @@ func (m *AnnouncementMutation) ResetField(name string) error {
 		return nil
 	case announcement.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case announcement.FieldSite:
+		m.ResetSite()
 		return nil
 	case announcement.FieldNotifyMode:
 		m.ResetNotifyMode()

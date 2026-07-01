@@ -4809,8 +4809,10 @@ export default {
       searchAnnouncements: 'Search announcements...',
       status: 'Status',
       allStatus: 'All Status',
+      allSites: 'All Sites',
       columns: {
         title: 'Title',
+        site: 'Site',
         status: 'Status',
         notifyMode: 'Notify Mode',
         targeting: 'Targeting',
@@ -4827,7 +4829,13 @@ export default {
         silent: 'Silent',
         popup: 'Popup'
       },
+      siteLabels: {
+        main: 'Sub2API',
+        image: 'Image Site',
+        video: 'Video Site'
+      },
       form: {
+        site: 'Target Site',
         title: 'Title',
         content: 'Content (Markdown supported)',
         status: 'Status',
@@ -5931,6 +5939,8 @@ export default {
           description: 'Control whether the user sidebar shows the standalone video generation entry.',
           enabled: 'Show Video Generation Entry',
           enabledHint: 'When off, the video generation sidebar entry is hidden.',
+          imageDocUrl: 'Image Site Documentation URL',
+          videoDocUrl: 'Video Site Documentation URL',
           baseUrl: 'Video Generation Base URL',
           menuLabel: 'Menu Label',
           exchangeSecret: 'Exchange Secret',

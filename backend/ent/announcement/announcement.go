@@ -20,6 +20,8 @@ const (
 	FieldContent = "content"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldSite holds the string denoting the site field in the database.
+	FieldSite = "site"
 	// FieldNotifyMode holds the string denoting the notify_mode field in the database.
 	FieldNotifyMode = "notify_mode"
 	// FieldTargeting holds the string denoting the targeting field in the database.
@@ -55,6 +57,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldContent,
 	FieldStatus,
+	FieldSite,
 	FieldNotifyMode,
 	FieldTargeting,
 	FieldStartsAt,
@@ -84,6 +87,10 @@ var (
 	DefaultStatus string
 	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	StatusValidator func(string) error
+	// DefaultSite holds the default value on creation for the "site" field.
+	DefaultSite string
+	// SiteValidator is a validator for the "site" field. It is called by the builders before save.
+	SiteValidator func(string) error
 	// DefaultNotifyMode holds the default value on creation for the "notify_mode" field.
 	DefaultNotifyMode string
 	// NotifyModeValidator is a validator for the "notify_mode" field. It is called by the builders before save.
@@ -117,6 +124,11 @@ func ByContent(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// BySite orders the results by the site field.
+func BySite(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSite, opts...).ToFunc()
 }
 
 // ByNotifyMode orders the results by the notify_mode field.

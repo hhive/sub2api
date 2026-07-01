@@ -15,6 +15,7 @@ export async function list(
   page: number = 1,
   pageSize: number = 20,
   filters?: {
+    site?: string
     status?: string
     search?: string
     sort_by?: string

@@ -140,6 +140,8 @@ type SystemSettings struct {
 	APIBaseURL                    string
 	ContactInfo                   string
 	DocURL                        string
+	ImagePlaygroundDocURL         string
+	VideoPlaygroundDocURL         string
 	RedeemPurchaseURL             string
 	HomeContent                   string
 	HideCcsImportButton           bool
@@ -317,6 +319,8 @@ type PublicSettings struct {
 	APIBaseURL                       string
 	ContactInfo                      string
 	DocURL                           string
+	ImagePlaygroundDocURL            string
+	VideoPlaygroundDocURL            string
 	RedeemPurchaseURL                string
 	HomeContent                      string
 	HideCcsImportButton              bool

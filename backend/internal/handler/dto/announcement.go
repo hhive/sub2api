@@ -8,6 +8,7 @@ import (
 
 type Announcement struct {
 	ID         int64  `json:"id"`
+	Site       string `json:"site"`
 	Title      string `json:"title"`
 	Content    string `json:"content"`
 	Status     string `json:"status"`
@@ -27,6 +28,7 @@ type Announcement struct {
 
 type UserAnnouncement struct {
 	ID         int64  `json:"id"`
+	Site       string `json:"site"`
 	Title      string `json:"title"`
 	Content    string `json:"content"`
 	NotifyMode string `json:"notify_mode"`
@@ -46,6 +48,7 @@ func AnnouncementFromService(a *service.Announcement) *Announcement {
 	}
 	return &Announcement{
 		ID:         a.ID,
+		Site:       a.Site,
 		Title:      a.Title,
 		Content:    a.Content,
 		Status:     a.Status,
@@ -66,6 +69,7 @@ func UserAnnouncementFromService(a *service.UserAnnouncement) *UserAnnouncement 
 	}
 	return &UserAnnouncement{
 		ID:         a.Announcement.ID,
+		Site:       a.Announcement.Site,
 		Title:      a.Announcement.Title,
 		Content:    a.Announcement.Content,
 		NotifyMode: a.Announcement.NotifyMode,

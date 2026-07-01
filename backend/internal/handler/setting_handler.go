@@ -71,6 +71,8 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		APIBaseURL:                       settings.APIBaseURL,
 		ContactInfo:                      settings.ContactInfo,
 		DocURL:                           settings.DocURL,
+		ImagePlaygroundDocURL:            settings.ImagePlaygroundDocURL,
+		VideoPlaygroundDocURL:            settings.VideoPlaygroundDocURL,
 		RedeemPurchaseURL:                settings.RedeemPurchaseURL,
 		HomeContent:                      settings.HomeContent,
 		HideCcsImportButton:              settings.HideCcsImportButton,

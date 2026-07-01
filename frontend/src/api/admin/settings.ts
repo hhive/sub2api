@@ -449,6 +449,8 @@ export interface SystemSettings {
   api_base_url: string;
   contact_info: string;
   doc_url: string;
+  image_playground_doc_url: string;
+  video_playground_doc_url: string;
   redeem_purchase_url: string;
   purchase_subscription_enabled: boolean;
   purchase_subscription_url: string;
@@ -748,6 +750,8 @@ export interface UpdateSettingsRequest {
   api_base_url?: string;
   contact_info?: string;
   doc_url?: string;
+  image_playground_doc_url?: string;
+  video_playground_doc_url?: string;
   redeem_purchase_url?: string;
   purchase_subscription_enabled?: boolean;
   purchase_subscription_url?: string;

@@ -50,6 +50,20 @@ func (_c *AnnouncementCreate) SetNillableStatus(v *string) *AnnouncementCreate {
 	return _c
 }
 
+// SetSite sets the "site" field.
+func (_c *AnnouncementCreate) SetSite(v string) *AnnouncementCreate {
+	_c.mutation.SetSite(v)
+	return _c
+}
+
+// SetNillableSite sets the "site" field if the given value is not nil.
+func (_c *AnnouncementCreate) SetNillableSite(v *string) *AnnouncementCreate {
+	if v != nil {
+		_c.SetSite(*v)
+	}
+	return _c
+}
+
 // SetNotifyMode sets the "notify_mode" field.
 func (_c *AnnouncementCreate) SetNotifyMode(v string) *AnnouncementCreate {
 	_c.mutation.SetNotifyMode(v)
@@ -216,6 +230,10 @@ func (_c *AnnouncementCreate) defaults() {
 		v := announcement.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.Site(); !ok {
+		v := announcement.DefaultSite
+		_c.mutation.SetSite(v)
+	}
 	if _, ok := _c.mutation.NotifyMode(); !ok {
 		v := announcement.DefaultNotifyMode
 		_c.mutation.SetNotifyMode(v)
@@ -254,6 +272,14 @@ func (_c *AnnouncementCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := announcement.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Announcement.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Site(); !ok {
+		return &ValidationError{Name: "site", err: errors.New(`ent: missing required field "Announcement.site"`)}
+	}
+	if v, ok := _c.mutation.Site(); ok {
+		if err := announcement.SiteValidator(v); err != nil {
+			return &ValidationError{Name: "site", err: fmt.Errorf(`ent: validator failed for field "Announcement.site": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.NotifyMode(); !ok {
@@ -308,6 +334,10 @@ func (_c *AnnouncementCreate) createSpec() (*Announcement, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(announcement.FieldStatus, field.TypeString, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Site(); ok {
+		_spec.SetField(announcement.FieldSite, field.TypeString, value)
+		_node.Site = value
 	}
 	if value, ok := _c.mutation.NotifyMode(); ok {
 		_spec.SetField(announcement.FieldNotifyMode, field.TypeString, value)
@@ -442,6 +472,18 @@ func (u *AnnouncementUpsert) SetStatus(v string) *AnnouncementUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *AnnouncementUpsert) UpdateStatus() *AnnouncementUpsert {
 	u.SetExcluded(announcement.FieldStatus)
+	return u
+}
+
+// SetSite sets the "site" field.
+func (u *AnnouncementUpsert) SetSite(v string) *AnnouncementUpsert {
+	u.Set(announcement.FieldSite, v)
+	return u
+}
+
+// UpdateSite sets the "site" field to the value that was provided on create.
+func (u *AnnouncementUpsert) UpdateSite() *AnnouncementUpsert {
+	u.SetExcluded(announcement.FieldSite)
 	return u
 }
 
@@ -655,6 +697,20 @@ func (u *AnnouncementUpsertOne) SetStatus(v string) *AnnouncementUpsertOne {
 func (u *AnnouncementUpsertOne) UpdateStatus() *AnnouncementUpsertOne {
 	return u.Update(func(s *AnnouncementUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetSite sets the "site" field.
+func (u *AnnouncementUpsertOne) SetSite(v string) *AnnouncementUpsertOne {
+	return u.Update(func(s *AnnouncementUpsert) {
+		s.SetSite(v)
+	})
+}
+
+// UpdateSite sets the "site" field to the value that was provided on create.
+func (u *AnnouncementUpsertOne) UpdateSite() *AnnouncementUpsertOne {
+	return u.Update(func(s *AnnouncementUpsert) {
+		s.UpdateSite()
 	})
 }
 
@@ -1055,6 +1111,20 @@ func (u *AnnouncementUpsertBulk) SetStatus(v string) *AnnouncementUpsertBulk {
 func (u *AnnouncementUpsertBulk) UpdateStatus() *AnnouncementUpsertBulk {
 	return u.Update(func(s *AnnouncementUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetSite sets the "site" field.
+func (u *AnnouncementUpsertBulk) SetSite(v string) *AnnouncementUpsertBulk {
+	return u.Update(func(s *AnnouncementUpsert) {
+		s.SetSite(v)
+	})
+}
+
+// UpdateSite sets the "site" field to the value that was provided on create.
+func (u *AnnouncementUpsertBulk) UpdateSite() *AnnouncementUpsertBulk {
+	return u.Update(func(s *AnnouncementUpsert) {
+		s.UpdateSite()
 	})
 }
 

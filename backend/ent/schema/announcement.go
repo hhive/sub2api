@@ -41,6 +41,10 @@ func (Announcement) Fields() []ent.Field {
 			MaxLen(20).
 			Default(domain.AnnouncementStatusDraft).
 			Comment("状态: draft, active, archived"),
+		field.String("site").
+			MaxLen(20).
+			Default(domain.AnnouncementSiteMain).
+			Comment("站点: main, image, video"),
 		field.String("notify_mode").
 			MaxLen(20).
 			Default(domain.AnnouncementNotifyModeSilent).
@@ -87,6 +91,7 @@ func (Announcement) Edges() []ent.Edge {
 func (Announcement) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("status"),
+		index.Fields("site"),
 		index.Fields("created_at"),
 		index.Fields("starts_at"),
 		index.Fields("ends_at"),

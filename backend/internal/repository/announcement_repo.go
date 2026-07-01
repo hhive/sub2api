@@ -27,6 +27,7 @@ func (r *announcementRepository) Create(ctx context.Context, a *service.Announce
 		SetTitle(a.Title).
 		SetContent(a.Content).
 		SetStatus(a.Status).
+		SetSite(a.Site).
 		SetNotifyMode(a.NotifyMode).
 		SetTargeting(a.Targeting)
 
@@ -68,6 +69,7 @@ func (r *announcementRepository) Update(ctx context.Context, a *service.Announce
 		SetTitle(a.Title).
 		SetContent(a.Content).
 		SetStatus(a.Status).
+		SetSite(a.Site).
 		SetNotifyMode(a.NotifyMode).
 		SetTargeting(a.Targeting)
 
@@ -116,6 +118,9 @@ func (r *announcementRepository) List(
 
 	if filters.Status != "" {
 		q = q.Where(announcement.StatusEQ(filters.Status))
+	}
+	if filters.Site != "" {
+		q = q.Where(announcement.SiteEQ(filters.Site))
 	}
 	if filters.Search != "" {
 		q = q.Where(
@@ -197,10 +202,11 @@ func announcementListOrders(params pagination.PaginationParams) []func(*entsql.S
 	}
 }
 
-func (r *announcementRepository) ListActive(ctx context.Context, now time.Time) ([]service.Announcement, error) {
+func (r *announcementRepository) ListActive(ctx context.Context, now time.Time, site string) ([]service.Announcement, error) {
 	q := r.client.Announcement.Query().
 		Where(
 			announcement.StatusEQ(service.AnnouncementStatusActive),
+			announcement.SiteEQ(site),
 			announcement.Or(announcement.StartsAtIsNil(), announcement.StartsAtLTE(now)),
 			announcement.Or(announcement.EndsAtIsNil(), announcement.EndsAtGT(now)),
 		).
@@ -229,6 +235,7 @@ func announcementEntityToService(m *dbent.Announcement) *service.Announcement {
 	}
 	return &service.Announcement{
 		ID:         m.ID,
+		Site:       m.Site,
 		Title:      m.Title,
 		Content:    m.Content,
 		Status:     m.Status,

@@ -19,6 +19,12 @@
             class="w-40"
             @change="handleStatusChange"
           />
+          <Select
+            v-model="filters.site"
+            :options="siteFilterOptions"
+            class="w-44"
+            @change="handleSiteChange"
+          />
 
           <!-- Right: Action buttons -->
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
@@ -73,6 +79,12 @@
               ]"
             >
               {{ statusLabel(value) }}
+            </span>
+          </template>
+
+          <template #cell-site="{ value }">
+            <span class="badge badge-gray">
+              {{ siteLabel(value) }}
             </span>
           </template>
 
@@ -181,9 +193,16 @@
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
+            <label class="input-label">{{ t('admin.announcements.form.site') }}</label>
+            <Select v-model="form.site" :options="siteOptions" />
+          </div>
+          <div>
             <label class="input-label">{{ t('admin.announcements.form.status') }}</label>
             <Select v-model="form.status" :options="statusOptions" />
           </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label class="input-label">{{ t('admin.announcements.form.notifyMode') }}</label>
             <Select v-model="form.notify_mode" :options="notifyModeOptions" />
@@ -274,6 +293,7 @@ const loading = ref(false)
 
 const filters = reactive({
   status: '',
+  site: '',
 })
 const searchQuery = ref('')
 
@@ -302,6 +322,19 @@ const statusOptions = computed(() => [
   { value: 'archived', label: t('admin.announcements.statusLabels.archived') }
 ])
 
+const siteFilterOptions = computed(() => [
+  { value: '', label: t('admin.announcements.allSites') },
+  { value: 'main', label: t('admin.announcements.siteLabels.main') },
+  { value: 'image', label: t('admin.announcements.siteLabels.image') },
+  { value: 'video', label: t('admin.announcements.siteLabels.video') }
+])
+
+const siteOptions = computed(() => [
+  { value: 'main', label: t('admin.announcements.siteLabels.main') },
+  { value: 'image', label: t('admin.announcements.siteLabels.image') },
+  { value: 'video', label: t('admin.announcements.siteLabels.video') }
+])
+
 const notifyModeOptions = computed(() => [
   { value: 'silent', label: t('admin.announcements.notifyModeLabels.silent') },
   { value: 'popup', label: t('admin.announcements.notifyModeLabels.popup') }
@@ -309,6 +342,7 @@ const notifyModeOptions = computed(() => [
 
 const columns = computed<Column[]>(() => [
   { key: 'title', label: t('admin.announcements.columns.title'), sortable: true },
+  { key: 'site', label: t('admin.announcements.columns.site') },
   { key: 'status', label: t('admin.announcements.columns.status'), sortable: true },
   { key: 'notify_mode', label: t('admin.announcements.columns.notifyMode'), sortable: true },
   { key: 'targeting', label: t('admin.announcements.columns.targeting') },
@@ -322,6 +356,12 @@ const statusLabel = (status: string) => {
   if (status === 'active') return t('admin.announcements.statusLabels.active')
   if (status === 'archived') return t('admin.announcements.statusLabels.archived')
   return status
+}
+
+const siteLabel = (site: string) => {
+  if (site === 'image') return t('admin.announcements.siteLabels.image')
+  if (site === 'video') return t('admin.announcements.siteLabels.video')
+  return t('admin.announcements.siteLabels.main')
 }
 
 const targetingSummary = (targeting: AnnouncementTargeting) => {
@@ -342,6 +382,7 @@ async function loadAnnouncements() {
   try {
     loading.value = true
     const res = await adminAPI.announcements.list(pagination.page, pagination.page_size, {
+      site: filters.site || undefined,
       status: filters.status || undefined,
       search: searchQuery.value || undefined,
       sort_by: sortState.sort_by,
@@ -390,6 +431,11 @@ function handleStatusChange() {
   loadAnnouncements()
 }
 
+function handleSiteChange() {
+  pagination.page = 1
+  loadAnnouncements()
+}
+
 function handleSort(key: string, order: 'asc' | 'desc') {
   sortState.sort_by = key
   sortState.sort_order = order
@@ -414,6 +460,7 @@ const editingAnnouncement = ref<Announcement | null>(null)
 const isEditing = computed(() => !!editingAnnouncement.value)
 
 const form = reactive({
+  site: 'main',
   title: '',
   content: '',
   status: 'draft',
@@ -437,6 +484,7 @@ async function loadSubscriptionGroups() {
 
 function resetForm() {
   form.title = ''
+  form.site = 'main'
   form.content = ''
   form.status = 'draft'
   form.notify_mode = 'silent'
@@ -447,6 +495,7 @@ function resetForm() {
 
 function fillFormFromAnnouncement(a: Announcement) {
   form.title = a.title
+  form.site = a.site || 'main'
   form.content = a.content
   form.status = a.status
   form.notify_mode = a.notify_mode || 'silent'
@@ -481,6 +530,7 @@ function buildCreatePayload() {
 
   return {
     title: form.title,
+    site: form.site as any,
     content: form.content,
     status: form.status as any,
     notify_mode: form.notify_mode as any,
@@ -494,6 +544,7 @@ function buildUpdatePayload(original: Announcement) {
   const payload: any = {}
 
   if (form.title !== original.title) payload.title = form.title
+  if (form.site !== (original.site || 'main')) payload.site = form.site
   if (form.content !== original.content) payload.content = form.content
   if (form.status !== original.status) payload.status = form.status
   if (form.notify_mode !== (original.notify_mode || 'silent')) payload.notify_mode = form.notify_mode

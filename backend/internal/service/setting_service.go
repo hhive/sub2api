@@ -814,6 +814,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAPIBaseURL,
 		SettingKeyContactInfo,
 		SettingKeyDocURL,
+		SettingKeyImagePlaygroundDocURL,
+		SettingKeyVideoPlaygroundDocURL,
 		SettingKeyRedeemPurchaseURL,
 		SettingKeyHomeContent,
 		SettingKeyHideCcsImportButton,
@@ -959,6 +961,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		ImagePlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyImagePlaygroundDocURL]),
+		VideoPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyVideoPlaygroundDocURL]),
 		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
@@ -1505,6 +1509,8 @@ type PublicSettingsInjectionPayload struct {
 	APIBaseURL                       string                   `json:"api_base_url"`
 	ContactInfo                      string                   `json:"contact_info"`
 	DocURL                           string                   `json:"doc_url"`
+	ImagePlaygroundDocURL            string                   `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL            string                   `json:"video_playground_doc_url"`
 	RedeemPurchaseURL                string                   `json:"redeem_purchase_url"`
 	HomeContent                      string                   `json:"home_content"`
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`
@@ -1593,6 +1599,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		APIBaseURL:                       settings.APIBaseURL,
 		ContactInfo:                      settings.ContactInfo,
 		DocURL:                           settings.DocURL,
+		ImagePlaygroundDocURL:            strings.TrimSpace(settings.ImagePlaygroundDocURL),
+		VideoPlaygroundDocURL:            strings.TrimSpace(settings.VideoPlaygroundDocURL),
 		RedeemPurchaseURL:                settings.RedeemPurchaseURL,
 		HomeContent:                      settings.HomeContent,
 		HideCcsImportButton:              settings.HideCcsImportButton,
@@ -2207,6 +2215,8 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo
 	updates[SettingKeyDocURL] = settings.DocURL
+	updates[SettingKeyImagePlaygroundDocURL] = strings.TrimSpace(settings.ImagePlaygroundDocURL)
+	updates[SettingKeyVideoPlaygroundDocURL] = strings.TrimSpace(settings.VideoPlaygroundDocURL)
 	updates[SettingKeyRedeemPurchaseURL] = strings.TrimSpace(settings.RedeemPurchaseURL)
 	updates[SettingKeyHomeContent] = settings.HomeContent
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
@@ -3261,6 +3271,8 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeySiteName:                                  "Sub2API",
 		SettingKeySiteLogo:                                  "",
 		SettingKeyAPIBaseURL:                                "http://127.0.0.1:8080",
+		SettingKeyImagePlaygroundDocURL:                     "",
+		SettingKeyVideoPlaygroundDocURL:                     "",
 		SettingKeyPurchaseSubscriptionEnabled:               "false",
 		SettingKeyPurchaseSubscriptionURL:                   "",
 		SettingKeyRedeemPurchaseURL:                         defaultRedeemPurchaseURL,
@@ -3503,6 +3515,8 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		ImagePlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyImagePlaygroundDocURL]),
+		VideoPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyVideoPlaygroundDocURL]),
 		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
