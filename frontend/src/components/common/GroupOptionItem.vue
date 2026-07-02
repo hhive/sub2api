@@ -46,16 +46,25 @@
 
     <!-- Right: rate pill + checkmark (vertically centered to first row) -->
     <div class="flex shrink-0 items-center gap-2 pt-0.5">
-      <!-- Rate pill (platform color) -->
-      <span v-if="rateMultiplier !== undefined" :class="['inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold', ratePillClass]">
-        <template v-if="hasCustomRate">
-          <span class="mr-1 line-through opacity-50">{{ rateMultiplier }}x</span>
-          <span class="font-bold">{{ userRateMultiplier }}x</span>
-        </template>
-        <template v-else>
-          {{ rateMultiplier }}x {{ t('admin.groups.rateLabel') }}
-        </template>
-      </span>
+      <div class="flex shrink-0 flex-col items-end gap-1">
+        <!-- Rate pill (platform color) -->
+        <span v-if="rateMultiplier !== undefined" :class="['inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold', ratePillClass]">
+          <template v-if="hasCustomRate">
+            <span class="mr-1 line-through opacity-50">{{ rateMultiplier }}x</span>
+            <span class="font-bold">{{ userRateMultiplier }}x</span>
+          </template>
+          <template v-else>
+            {{ rateMultiplier }}x {{ t('admin.groups.rateLabel') }}
+          </template>
+        </span>
+        <span
+          v-if="hasPeakRate"
+          class="inline-flex items-center whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+          :title="peakRateTitle"
+        >
+          {{ peakRateText }}
+        </span>
+      </div>
       <!-- Checkmark -->
       <svg
         v-if="showCheckmark && selected"
@@ -76,6 +85,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GroupBadge from './GroupBadge.vue'
 import type { SubscriptionType, GroupPlatform, UserSupportedModel } from '@/types'
+import { useAppStore } from '@/stores/app'
+import { formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
 
 const { t } = useI18n()
 
@@ -85,6 +96,10 @@ interface Props {
   subscriptionType?: SubscriptionType
   rateMultiplier?: number
   userRateMultiplier?: number | null
+  peakRateEnabled?: boolean
+  peakStart?: string
+  peakEnd?: string
+  peakRateMultiplier?: number
   description?: string | null
   supportedModels?: UserSupportedModel[]
   noModelsLabel?: string
@@ -98,7 +113,8 @@ const props = withDefaults(defineProps<Props>(), {
   showCheckmark: true,
   userRateMultiplier: null,
   supportedModels: () => [],
-  noModelsLabel: ''
+  noModelsLabel: '',
+  peakRateEnabled: false
 })
 
 // Whether user has a custom rate different from default
@@ -114,6 +130,28 @@ const hasCustomRate = computed(() => {
 const visibleModels = computed(() => props.supportedModels.slice(0, 3))
 const hiddenModelCount = computed(() => Math.max(props.supportedModels.length - visibleModels.value.length, 0))
 const modelTitle = computed(() => props.supportedModels.map((m) => m.name).join(', '))
+
+const appStore = useAppStore()
+
+const hasPeakRate = computed(() => {
+  return Boolean(props.peakRateEnabled && props.peakStart && props.peakEnd)
+})
+
+const peakRateText = computed(() => {
+  return formatPeakRateWindow(
+    {
+      peak_rate_enabled: props.peakRateEnabled,
+      peak_start: props.peakStart,
+      peak_end: props.peakEnd,
+      peak_rate_multiplier: props.peakRateMultiplier
+    },
+    serverTimezoneLabel(appStore.cachedPublicSettings?.server_utc_offset)
+  )
+})
+
+const peakRateTitle = computed(() => {
+  return t('common.peakRateTooltip', { window: peakRateText.value })
+})
 
 // Rate pill color matches platform badge color
 const ratePillClass = computed(() => {
