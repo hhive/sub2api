@@ -127,6 +127,8 @@ func registerImagePlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) 
 	imagePlayground := admin.Group("/image-playground")
 	{
 		imagePlayground.GET("/models", h.Admin.ImagePlayground.ListModels)
+		imagePlayground.GET("/model-probe-runs", h.Admin.ImagePlayground.ListProbeRuns)
+		imagePlayground.POST("/model-probe-runs/run", h.Admin.ImagePlayground.RunProbe)
 		imagePlayground.POST("/models", h.Admin.ImagePlayground.CreateModel)
 		imagePlayground.PATCH("/models/:id", h.Admin.ImagePlayground.UpdateModel)
 		imagePlayground.DELETE("/models/:id", h.Admin.ImagePlayground.DeleteModel)

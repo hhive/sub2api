@@ -1598,6 +1598,7 @@ export default {
         prices: '档位价格',
         sizes: '尺寸',
         sortOrder: '排序',
+        health: '健康状态',
         enabled: '启用'
       },
       fields: {
@@ -1619,6 +1620,48 @@ export default {
       apiModes: {
         images: 'Images API',
         responses: 'Responses API'
+      },
+      health: {
+        cooldownUntil: '冷却至',
+        failures: '失败',
+        cooldowns: '冷却',
+        halfOpenAttempts: '半开',
+        lastError: '最后错误：',
+        status: {
+          available: '可用',
+          temporaryUnavailable: '冷却中',
+          halfOpen: '半开探测',
+          disabled: '已禁用'
+        }
+      },
+      probeRuns: {
+        button: '探测记录',
+        runButton: '主动探测',
+        title: '探测记录',
+        description: '按时间倒序展示图片站最近的模型探测 attempt 记录。',
+        loadFailed: '加载探测记录失败',
+        runSuccess: '主动探测已开始',
+        runFailed: '主动探测失败',
+        previous: '上一页',
+        next: '下一页',
+        pageInfo: '第 {page} 页，共 {total} 条',
+        columns: {
+          createdAt: '时间',
+          model: '模型',
+          apiMode: 'API 模式',
+          upstream: '上游域名',
+          attempt: '轮次',
+          status: '状态',
+          httpStatus: 'HTTP',
+          elapsed: '耗时',
+          responseBytes: '响应大小',
+          imageCount: '图片数',
+          error: '错误'
+        },
+        status: {
+          success: '成功',
+          failed: '失败'
+        }
       }
     },
     // Dashboard

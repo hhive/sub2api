@@ -22,20 +22,20 @@ type ImagePlaygroundHandler struct {
 }
 
 type imagePlaygroundModelRequest struct {
-	DisplayName     string   `json:"display_name"`
-	Model           string   `json:"model"`
-	APIMode         string   `json:"api_mode"`
-	ProviderName    string   `json:"provider_name"`
-	UpstreamBaseURL string   `json:"upstream_base_url"`
-	UpstreamAPIKey  string   `json:"upstream_api_key"`
-	Price1K         float64  `json:"price_1k"`
-	Price2K         float64  `json:"price_2k"`
-	Price4K         float64  `json:"price_4k"`
-	SupportedSizes  []string `json:"supported_sizes"`
-	TimeoutSeconds  int      `json:"timeout_seconds"`
-	FallbackToResponses bool  `json:"fallback_to_responses_enabled"`
-	Enabled         bool     `json:"enabled"`
-	SortOrder       int      `json:"sort_order"`
+	DisplayName         string   `json:"display_name"`
+	Model               string   `json:"model"`
+	APIMode             string   `json:"api_mode"`
+	ProviderName        string   `json:"provider_name"`
+	UpstreamBaseURL     string   `json:"upstream_base_url"`
+	UpstreamAPIKey      string   `json:"upstream_api_key"`
+	Price1K             float64  `json:"price_1k"`
+	Price2K             float64  `json:"price_2k"`
+	Price4K             float64  `json:"price_4k"`
+	SupportedSizes      []string `json:"supported_sizes"`
+	TimeoutSeconds      int      `json:"timeout_seconds"`
+	FallbackToResponses bool     `json:"fallback_to_responses_enabled"`
+	Enabled             bool     `json:"enabled"`
+	SortOrder           int      `json:"sort_order"`
 }
 
 func NewImagePlaygroundHandler(settingService *service.SettingService) *ImagePlaygroundHandler {
@@ -47,6 +47,19 @@ func NewImagePlaygroundHandler(settingService *service.SettingService) *ImagePla
 
 func (h *ImagePlaygroundHandler) ListModels(c *gin.Context) {
 	h.proxy(c, http.MethodGet, "/api/admin/models", nil)
+}
+
+func (h *ImagePlaygroundHandler) ListProbeRuns(c *gin.Context) {
+	query := c.Request.URL.RawQuery
+	path := "/api/admin/model-probe-runs"
+	if query != "" {
+		path += "?" + query
+	}
+	h.proxy(c, http.MethodGet, path, nil)
+}
+
+func (h *ImagePlaygroundHandler) RunProbe(c *gin.Context) {
+	h.proxy(c, http.MethodPost, "/api/admin/model-probe-runs/run", map[string]bool{"ok": true})
 }
 
 func (h *ImagePlaygroundHandler) CreateModel(c *gin.Context) {

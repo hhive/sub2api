@@ -11,6 +11,13 @@
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
             {{ t('common.refresh') }}
           </button>
+          <button class="btn btn-secondary" type="button" @click="openProbeRunsDialog">
+            {{ t('admin.imagePlayground.probeRuns.button') }}
+          </button>
+          <button class="btn btn-secondary" type="button" :disabled="runningProbe" @click="runModelProbe">
+            <Icon name="refresh" size="md" :class="runningProbe ? 'animate-spin' : ''" class="mr-2" />
+            {{ t('admin.imagePlayground.probeRuns.runButton') }}
+          </button>
           <button class="btn btn-primary" type="button" @click="openCreateDialog">
             {{ t('admin.imagePlayground.createModel') }}
           </button>
@@ -45,6 +52,30 @@
           </template>
           <template #cell-sort_order="{ row }">
             <span class="font-mono text-xs text-gray-600 dark:text-gray-300">{{ row.sort_order }}</span>
+          </template>
+          <template #cell-health="{ row }">
+            <div class="min-w-[220px] space-y-1 text-xs text-gray-600 dark:text-gray-300">
+              <div class="flex flex-wrap items-center gap-2">
+                <span :class="healthBadgeClass(row.health_status)">
+                  {{ healthStatusLabel(row.health_status) }}
+                </span>
+                <span v-if="row.cooldown_until" class="whitespace-nowrap">
+                  {{ t('admin.imagePlayground.health.cooldownUntil') }} {{ formatDateTime(row.cooldown_until) }}
+                </span>
+              </div>
+              <div class="flex flex-wrap gap-x-3 gap-y-1 font-mono">
+                <span>{{ t('admin.imagePlayground.health.failures') }} {{ row.consecutive_failures ?? 0 }}</span>
+                <span>{{ t('admin.imagePlayground.health.cooldowns') }} {{ row.cooldown_count ?? 0 }}</span>
+                <span>{{ t('admin.imagePlayground.health.halfOpenAttempts') }} {{ row.half_open_attempts ?? 0 }}</span>
+              </div>
+              <div
+                v-if="row.last_health_error"
+                class="max-w-[260px] truncate text-red-600 dark:text-red-300"
+                :title="row.last_health_error"
+              >
+                {{ t('admin.imagePlayground.health.lastError') }} {{ row.last_health_error }}
+              </div>
+            </div>
           </template>
           <template #cell-enabled="{ row }">
             <button
@@ -196,6 +227,76 @@
         </template>
       </BaseDialog>
 
+      <BaseDialog
+        :show="showProbeRunsDialog"
+        :title="t('admin.imagePlayground.probeRuns.title')"
+        width="wide"
+        @close="closeProbeRunsDialog"
+      >
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.imagePlayground.probeRuns.description') }}
+            </p>
+            <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading" @click="loadProbeRuns(probeRunsPage)">
+              <Icon name="refresh" size="md" :class="probeRunsLoading ? 'animate-spin' : ''" class="mr-2" />
+              {{ t('common.refresh') }}
+            </button>
+          </div>
+
+          <DataTable :columns="probeRunColumns" :data="probeRuns" :loading="probeRunsLoading">
+            <template #cell-created_at="{ value }">
+              <span class="whitespace-nowrap text-sm text-gray-600 dark:text-dark-300">{{ formatDateTime(value) }}</span>
+            </template>
+            <template #cell-model="{ row }">
+              <div>
+                <div class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ row.model_config_id }}</div>
+                <div class="font-medium text-gray-900 dark:text-white">{{ row.model || '-' }}</div>
+              </div>
+            </template>
+            <template #cell-api_mode="{ row }">
+              <span class="badge badge-gray">{{ apiModeLabel(row.api_mode) }}</span>
+            </template>
+            <template #cell-upstream_base_url="{ value }">
+              <span class="inline-block max-w-[220px] truncate" :title="value || '-'">{{ value || '-' }}</span>
+            </template>
+            <template #cell-status="{ row }">
+              <span :class="row.status === 'success' ? 'badge badge-success' : 'badge badge-danger'">
+                {{ probeStatusLabel(row.status) }}
+              </span>
+            </template>
+            <template #cell-http_status_code="{ value }">
+              <span class="font-mono text-xs">{{ value || '-' }}</span>
+            </template>
+            <template #cell-elapsed_ms="{ value }">
+              <span class="font-mono text-xs">{{ formatDurationMs(value) }}</span>
+            </template>
+            <template #cell-response_bytes="{ value }">
+              <span class="font-mono text-xs">{{ formatBytes(value || 0) }}</span>
+            </template>
+            <template #cell-error_message="{ value }">
+              <span class="inline-block max-w-[260px] truncate text-sm text-gray-600 dark:text-gray-300" :title="value || ''">
+                {{ value || '-' }}
+              </span>
+            </template>
+          </DataTable>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.imagePlayground.probeRuns.pageInfo', { page: probeRunsPage, total: probeRunsTotal }) }}
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading || probeRunsPage <= 1" @click="loadProbeRuns(probeRunsPage - 1)">
+                {{ t('admin.imagePlayground.probeRuns.previous') }}
+              </button>
+              <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading || !hasNextProbeRunsPage" @click="loadProbeRuns(probeRunsPage + 1)">
+                {{ t('admin.imagePlayground.probeRuns.next') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </BaseDialog>
+
       <ConfirmDialog
         :show="showDeleteDialog"
         :title="t('admin.imagePlayground.deleteTitle')"
@@ -215,7 +316,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImageSizeTier } from '@/api/admin'
+import type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImagePlaygroundProbeRun, ImageSizeTier } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -223,13 +324,17 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { extractApiErrorMessage } from '@/utils/apiError'
+import { formatBytes, formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 const sizeOptions: ImageSizeTier[] = ['1k', '2k', '4k']
 
 const models = ref<ImagePlaygroundModel[]>([])
+const probeRuns = ref<ImagePlaygroundProbeRun[]>([])
 const loading = ref(false)
+const probeRunsLoading = ref(false)
+const runningProbe = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const editingId = ref<number | null>(null)
@@ -238,7 +343,11 @@ const reusedKeyMask = ref('')
 const upstreamKeyVisible = ref(false)
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showProbeRunsDialog = ref(false)
 const deletingModel = ref<ImagePlaygroundModel | null>(null)
+const probeRunsPage = ref(1)
+const probeRunsPageSize = 20
+const probeRunsTotal = ref(0)
 
 const defaultForm = (): ImagePlaygroundModelPayload => ({
   display_name: '',
@@ -281,9 +390,26 @@ const columns = computed<Column[]>(() => [
   { key: 'prices', label: t('admin.imagePlayground.columns.prices') },
   { key: 'supported_sizes', label: t('admin.imagePlayground.columns.sizes') },
   { key: 'sort_order', label: t('admin.imagePlayground.columns.sortOrder') },
+  { key: 'health', label: t('admin.imagePlayground.columns.health') },
   { key: 'enabled', label: t('admin.imagePlayground.columns.enabled') },
   { key: 'actions', label: t('common.actions') },
 ])
+
+const probeRunColumns = computed<Column[]>(() => [
+  { key: 'created_at', label: t('admin.imagePlayground.probeRuns.columns.createdAt') },
+  { key: 'model', label: t('admin.imagePlayground.probeRuns.columns.model') },
+  { key: 'api_mode', label: t('admin.imagePlayground.probeRuns.columns.apiMode') },
+  { key: 'upstream_base_url', label: t('admin.imagePlayground.probeRuns.columns.upstream') },
+  { key: 'attempt', label: t('admin.imagePlayground.probeRuns.columns.attempt') },
+  { key: 'status', label: t('admin.imagePlayground.probeRuns.columns.status') },
+  { key: 'http_status_code', label: t('admin.imagePlayground.probeRuns.columns.httpStatus') },
+  { key: 'elapsed_ms', label: t('admin.imagePlayground.probeRuns.columns.elapsed') },
+  { key: 'response_bytes', label: t('admin.imagePlayground.probeRuns.columns.responseBytes') },
+  { key: 'image_count', label: t('admin.imagePlayground.probeRuns.columns.imageCount') },
+  { key: 'error_message', label: t('admin.imagePlayground.probeRuns.columns.error') },
+])
+
+const hasNextProbeRunsPage = computed(() => probeRunsPage.value * probeRunsPageSize < probeRunsTotal.value)
 
 async function loadModels() {
   loading.value = true
@@ -293,6 +419,20 @@ async function loadModels() {
     appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.loadFailed')))
   } finally {
     loading.value = false
+  }
+}
+
+async function loadProbeRuns(page = 1) {
+  probeRunsLoading.value = true
+  try {
+    const result = await adminAPI.imagePlayground.listProbeRuns({ page, page_size: probeRunsPageSize })
+    probeRuns.value = result.items || []
+    probeRunsPage.value = result.page || page
+    probeRunsTotal.value = result.total || 0
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.loadFailed')))
+  } finally {
+    probeRunsLoading.value = false
   }
 }
 
@@ -313,6 +453,31 @@ function assignFormFromModel(model: ImagePlaygroundModel, options: { copyKey: bo
     enabled: model.enabled,
     sort_order: model.sort_order,
   })
+}
+
+function openProbeRunsDialog() {
+  showProbeRunsDialog.value = true
+  void loadProbeRuns(1)
+}
+
+function closeProbeRunsDialog() {
+  showProbeRunsDialog.value = false
+}
+
+async function runModelProbe() {
+  runningProbe.value = true
+  try {
+    await adminAPI.imagePlayground.runProbe()
+    appStore.showSuccess(t('admin.imagePlayground.probeRuns.runSuccess'))
+    await loadModels()
+    if (showProbeRunsDialog.value) {
+      await loadProbeRuns(1)
+    }
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.runFailed')))
+  } finally {
+    runningProbe.value = false
+  }
 }
 
 function openCreateDialog() {
@@ -348,6 +513,32 @@ function apiModeLabel(mode: string) {
   return mode === 'responses'
     ? t('admin.imagePlayground.apiModes.responses')
     : t('admin.imagePlayground.apiModes.images')
+}
+
+function probeStatusLabel(status: string) {
+  return status === 'success'
+    ? t('admin.imagePlayground.probeRuns.status.success')
+    : t('admin.imagePlayground.probeRuns.status.failed')
+}
+
+function healthStatusLabel(status: string) {
+  const normalized = status || 'available'
+  if (normalized === 'temporary_unavailable') return t('admin.imagePlayground.health.status.temporaryUnavailable')
+  if (normalized === 'half_open') return t('admin.imagePlayground.health.status.halfOpen')
+  if (normalized === 'disabled') return t('admin.imagePlayground.health.status.disabled')
+  return t('admin.imagePlayground.health.status.available')
+}
+
+function healthBadgeClass(status: string) {
+  if (status === 'temporary_unavailable' || status === 'half_open') return 'badge badge-warning'
+  if (status === 'disabled') return 'badge badge-danger'
+  return 'badge badge-success'
+}
+
+function formatDurationMs(value: number) {
+  if (!value || value < 0) return '-'
+  if (value < 1000) return `${value}ms`
+  return `${(value / 1000).toFixed(2)}s`
 }
 
 function resetForm() {

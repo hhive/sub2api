@@ -118,4 +118,11 @@ export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
 export type { VideoPlaygroundModel, VideoPlaygroundModelPayload } from './videoPlayground'
-export type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImageSizeTier } from './imagePlayground'
+export type {
+  ImagePlaygroundHealthStatus,
+  ImagePlaygroundModel,
+  ImagePlaygroundModelPayload,
+  ImagePlaygroundProbeRun,
+  ImagePlaygroundProbeRunPage,
+  ImageSizeTier
+} from './imagePlayground'

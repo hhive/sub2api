@@ -2,6 +2,7 @@ import { apiClient } from '../client'
 
 export type ImageSizeTier = '1k' | '2k' | '4k'
 export type ImageAPIMode = 'images' | 'responses'
+export type ImagePlaygroundHealthStatus = 'available' | 'temporary_unavailable' | 'half_open' | 'disabled'
 
 export interface ImagePlaygroundModel {
   id: number
@@ -18,14 +19,64 @@ export interface ImagePlaygroundModel {
   supported_sizes: ImageSizeTier[]
   timeout_seconds: number
   fallback_to_responses_enabled: boolean
+  health_status: ImagePlaygroundHealthStatus | string
+  consecutive_failures: number
+  half_open_attempts: number
+  cooldown_count: number
+  cooldown_until?: string | null
+  last_health_error: string
   enabled: boolean
   sort_order: number
 }
 
-export type ImagePlaygroundModelPayload = Omit<ImagePlaygroundModel, 'id' | 'upstream_api_key_mask'>
+export interface ImagePlaygroundProbeRun {
+  id: number
+  run_id: string
+  model_config_id: number
+  model: string
+  api_mode: ImageAPIMode | string
+  upstream_base_url: string
+  attempt: number
+  status: string
+  http_status_code: number
+  error_message: string
+  elapsed_ms: number
+  response_bytes: number
+  image_count: number
+  created_at: string
+}
+
+export interface ImagePlaygroundProbeRunPage {
+  items: ImagePlaygroundProbeRun[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export type ImagePlaygroundModelPayload = Omit<
+  ImagePlaygroundModel,
+  | 'id'
+  | 'upstream_api_key_mask'
+  | 'health_status'
+  | 'consecutive_failures'
+  | 'half_open_attempts'
+  | 'cooldown_count'
+  | 'cooldown_until'
+  | 'last_health_error'
+>
 
 export async function listModels(): Promise<ImagePlaygroundModel[]> {
   const { data } = await apiClient.get<ImagePlaygroundModel[]>('/admin/image-playground/models')
+  return data
+}
+
+export async function listProbeRuns(params: { page?: number; page_size?: number } = {}): Promise<ImagePlaygroundProbeRunPage> {
+  const { data } = await apiClient.get<ImagePlaygroundProbeRunPage>('/admin/image-playground/model-probe-runs', { params })
+  return data
+}
+
+export async function runProbe(): Promise<{ ok: boolean; running?: boolean }> {
+  const { data } = await apiClient.post<{ ok: boolean; running?: boolean }>('/admin/image-playground/model-probe-runs/run')
   return data
 }
 
@@ -46,6 +97,8 @@ export async function deleteModel(id: number): Promise<{ ok: boolean }> {
 
 const imagePlaygroundAPI = {
   listModels,
+  listProbeRuns,
+  runProbe,
   createModel,
   updateModel,
   deleteModel,

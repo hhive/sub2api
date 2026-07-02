@@ -1594,6 +1594,7 @@ export default {
         prices: 'Tier prices',
         sizes: 'Sizes',
         sortOrder: 'Sort order',
+        health: 'Health',
         enabled: 'Enabled'
       },
       fields: {
@@ -1615,6 +1616,48 @@ export default {
       apiModes: {
         images: 'Images API',
         responses: 'Responses API'
+      },
+      health: {
+        cooldownUntil: 'Cooldown until',
+        failures: 'Failures',
+        cooldowns: 'Cooldowns',
+        halfOpenAttempts: 'Half-open',
+        lastError: 'Last error:',
+        status: {
+          available: 'Available',
+          temporaryUnavailable: 'Cooling down',
+          halfOpen: 'Half-open probe',
+          disabled: 'Disabled'
+        }
+      },
+      probeRuns: {
+        button: 'Probe records',
+        runButton: 'Run probe',
+        title: 'Probe records',
+        description: 'Latest image-site model probe attempts in reverse chronological order.',
+        loadFailed: 'Failed to load probe records',
+        runSuccess: 'Probe started',
+        runFailed: 'Failed to run probe',
+        previous: 'Previous',
+        next: 'Next',
+        pageInfo: 'Page {page}, {total} records',
+        columns: {
+          createdAt: 'Time',
+          model: 'Model',
+          apiMode: 'API mode',
+          upstream: 'Upstream',
+          attempt: 'Attempt',
+          status: 'Status',
+          httpStatus: 'HTTP',
+          elapsed: 'Elapsed',
+          responseBytes: 'Response size',
+          imageCount: 'Images',
+          error: 'Error'
+        },
+        status: {
+          success: 'Success',
+          failed: 'Failed'
+        }
       }
     },
     // Dashboard
