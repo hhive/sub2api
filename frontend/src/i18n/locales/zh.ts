@@ -1636,7 +1636,8 @@ export default {
       },
       apiModes: {
         images: 'Images API',
-        responses: 'Responses API'
+        responses: 'Responses API',
+        geminiGenerateContent: 'Gemini GenerateContent API'
       },
       health: {
         cooldownUntil: '冷却至',

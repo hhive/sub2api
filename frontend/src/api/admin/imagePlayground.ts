@@ -1,7 +1,7 @@
 import { apiClient } from '../client'
 
 export type ImageSizeTier = '1k' | '2k' | '4k'
-export type ImageAPIMode = 'images' | 'responses'
+export type ImageAPIMode = 'images' | 'responses' | 'gemini_generate_content'
 export type ImagePlaygroundHealthStatus = 'available' | 'temporary_unavailable' | 'half_open' | 'disabled'
 
 export interface ImagePlaygroundModel {

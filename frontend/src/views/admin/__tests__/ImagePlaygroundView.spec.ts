@@ -68,6 +68,7 @@ vi.mock('vue-i18n', async () => {
     'admin.imagePlayground.columns.enabled': '启用',
     'admin.imagePlayground.apiModes.images': 'Images API',
     'admin.imagePlayground.apiModes.responses': 'Responses API',
+    'admin.imagePlayground.apiModes.geminiGenerateContent': 'Gemini GenerateContent API',
     'admin.imagePlayground.health.cooldownUntil': '冷却至',
     'admin.imagePlayground.health.failures': '失败',
     'admin.imagePlayground.health.cooldowns': '冷却',

@@ -136,6 +136,7 @@
               <select v-model="form.api_mode" class="input" required>
                 <option value="images">{{ t('admin.imagePlayground.apiModes.images') }}</option>
                 <option value="responses">{{ t('admin.imagePlayground.apiModes.responses') }}</option>
+                <option value="gemini_generate_content">{{ t('admin.imagePlayground.apiModes.geminiGenerateContent') }}</option>
               </select>
             </label>
             <label class="block">
@@ -510,9 +511,9 @@ function handleReuseSelect(event: Event) {
 }
 
 function apiModeLabel(mode: string) {
-  return mode === 'responses'
-    ? t('admin.imagePlayground.apiModes.responses')
-    : t('admin.imagePlayground.apiModes.images')
+  if (mode === 'responses') return t('admin.imagePlayground.apiModes.responses')
+  if (mode === 'gemini_generate_content') return t('admin.imagePlayground.apiModes.geminiGenerateContent')
+  return t('admin.imagePlayground.apiModes.images')
 }
 
 function probeStatusLabel(status: string) {
