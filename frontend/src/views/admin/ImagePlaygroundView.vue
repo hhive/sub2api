@@ -11,6 +11,9 @@
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
             {{ t('common.refresh') }}
           </button>
+          <button class="btn btn-secondary" type="button" @click="openCallRecordsDialog">
+            {{ t('admin.imagePlayground.callRecords.button') }}
+          </button>
           <button class="btn btn-secondary" type="button" @click="openProbeRunsDialog">
             {{ t('admin.imagePlayground.probeRuns.button') }}
           </button>
@@ -229,6 +232,82 @@
       </BaseDialog>
 
       <BaseDialog
+        :show="showCallRecordsDialog"
+        :title="t('admin.imagePlayground.callRecords.title')"
+        width="wide"
+        @close="closeCallRecordsDialog"
+      >
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.imagePlayground.callRecords.description') }}
+            </p>
+            <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading" @click="loadCallRecords(callRecordsPage)">
+              <Icon name="refresh" size="md" :class="callRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
+              {{ t('common.refresh') }}
+            </button>
+          </div>
+
+          <DataTable :columns="callRecordColumns" :data="callRecords" :loading="callRecordsLoading">
+            <template #cell-created_at="{ value }">
+              <span class="whitespace-nowrap text-sm text-gray-600 dark:text-dark-300">{{ formatDateTime(value) }}</span>
+            </template>
+            <template #cell-id="{ row }">
+              <div>
+                <div class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ row.model_config_id }}</div>
+                <div class="font-mono text-xs text-gray-900 dark:text-white">{{ row.id }}</div>
+              </div>
+            </template>
+            <template #cell-user="{ row }">
+              <div class="font-mono text-xs">
+                <div>用户ID {{ row.user_id || '-' }}</div>
+                <div>API Key {{ row.api_key_suffix || '-' }}</div>
+              </div>
+            </template>
+            <template #cell-model="{ row }">
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">{{ row.model || '-' }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">{{ apiModeLabel(row.api_mode) }} · {{ row.size_tier || '-' }}</div>
+              </div>
+            </template>
+            <template #cell-upstream_base_url="{ value }">
+              <span class="inline-block max-w-[220px] truncate" :title="value || '-'">{{ value || '-' }}</span>
+            </template>
+            <template #cell-status="{ row }">
+              <span :class="row.status === 'succeeded' || row.status === 'completed' ? 'badge badge-success' : row.status === 'failed' ? 'badge badge-danger' : 'badge badge-gray'">
+                {{ row.status || '-' }}
+              </span>
+            </template>
+            <template #cell-upstream_status_code="{ value }">
+              <span class="font-mono text-xs">{{ value || '-' }}</span>
+            </template>
+            <template #cell-response_bytes="{ value }">
+              <span class="font-mono text-xs">{{ formatBytes(value || 0) }}</span>
+            </template>
+            <template #cell-error_message="{ row }">
+              <span class="inline-block max-w-[260px] truncate text-sm text-gray-600 dark:text-gray-300" :title="row.error_message || row.error_code || ''">
+                {{ row.error_message || row.error_code || '-' }}
+              </span>
+            </template>
+          </DataTable>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.imagePlayground.callRecords.pageInfo', { page: callRecordsPage, total: callRecordsTotal }) }}
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || callRecordsPage <= 1" @click="loadCallRecords(callRecordsPage - 1)">
+                {{ t('admin.imagePlayground.callRecords.previous') }}
+              </button>
+              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || !hasNextCallRecordsPage" @click="loadCallRecords(callRecordsPage + 1)">
+                {{ t('admin.imagePlayground.callRecords.next') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
         :show="showProbeRunsDialog"
         :title="t('admin.imagePlayground.probeRuns.title')"
         width="wide"
@@ -317,7 +396,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImagePlaygroundProbeRun, ImageSizeTier } from '@/api/admin'
+import type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImagePlaygroundProbeRun, ImagePlaygroundUpstreamRequest, ImageSizeTier } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -333,8 +412,10 @@ const sizeOptions: ImageSizeTier[] = ['1k', '2k', '4k']
 
 const models = ref<ImagePlaygroundModel[]>([])
 const probeRuns = ref<ImagePlaygroundProbeRun[]>([])
+const callRecords = ref<ImagePlaygroundUpstreamRequest[]>([])
 const loading = ref(false)
 const probeRunsLoading = ref(false)
+const callRecordsLoading = ref(false)
 const runningProbe = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
@@ -345,10 +426,14 @@ const upstreamKeyVisible = ref(false)
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showProbeRunsDialog = ref(false)
+const showCallRecordsDialog = ref(false)
 const deletingModel = ref<ImagePlaygroundModel | null>(null)
 const probeRunsPage = ref(1)
 const probeRunsPageSize = 20
 const probeRunsTotal = ref(0)
+const callRecordsPage = ref(1)
+const callRecordsPageSize = 20
+const callRecordsTotal = ref(0)
 
 const defaultForm = (): ImagePlaygroundModelPayload => ({
   display_name: '',
@@ -411,6 +496,20 @@ const probeRunColumns = computed<Column[]>(() => [
 ])
 
 const hasNextProbeRunsPage = computed(() => probeRunsPage.value * probeRunsPageSize < probeRunsTotal.value)
+const hasNextCallRecordsPage = computed(() => callRecordsPage.value * callRecordsPageSize < callRecordsTotal.value)
+
+const callRecordColumns = computed<Column[]>(() => [
+  { key: 'created_at', label: t('admin.imagePlayground.callRecords.columns.createdAt') },
+  { key: 'id', label: t('admin.imagePlayground.callRecords.columns.task') },
+  { key: 'user', label: t('admin.imagePlayground.callRecords.columns.user') },
+  { key: 'model', label: t('admin.imagePlayground.callRecords.columns.model') },
+  { key: 'upstream_base_url', label: t('admin.imagePlayground.callRecords.columns.upstream') },
+  { key: 'status', label: t('admin.imagePlayground.callRecords.columns.status') },
+  { key: 'upstream_status_code', label: t('admin.imagePlayground.callRecords.columns.httpStatus') },
+  { key: 'response_bytes', label: t('admin.imagePlayground.callRecords.columns.responseBytes') },
+  { key: 'image_count', label: t('admin.imagePlayground.callRecords.columns.imageCount') },
+  { key: 'error_message', label: t('admin.imagePlayground.callRecords.columns.error') },
+])
 
 async function loadModels() {
   loading.value = true
@@ -434,6 +533,20 @@ async function loadProbeRuns(page = 1) {
     appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.loadFailed')))
   } finally {
     probeRunsLoading.value = false
+  }
+}
+
+async function loadCallRecords(page = 1) {
+  callRecordsLoading.value = true
+  try {
+    const result = await adminAPI.imagePlayground.listUpstreamRequests({ page, page_size: callRecordsPageSize })
+    callRecords.value = result.items || []
+    callRecordsPage.value = result.page || page
+    callRecordsTotal.value = result.total || 0
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.callRecords.loadFailed')))
+  } finally {
+    callRecordsLoading.value = false
   }
 }
 
@@ -463,6 +576,15 @@ function openProbeRunsDialog() {
 
 function closeProbeRunsDialog() {
   showProbeRunsDialog.value = false
+}
+
+function openCallRecordsDialog() {
+  showCallRecordsDialog.value = true
+  void loadCallRecords(1)
+}
+
+function closeCallRecordsDialog() {
+  showCallRecordsDialog.value = false
 }
 
 async function runModelProbe() {

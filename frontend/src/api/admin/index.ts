@@ -117,12 +117,14 @@ export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from 
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
-export type { VideoPlaygroundModel, VideoPlaygroundModelPayload } from './videoPlayground'
+export type { VideoPlaygroundModel, VideoPlaygroundModelPayload, VideoPlaygroundUpstreamRequest, VideoPlaygroundUpstreamRequestPage } from './videoPlayground'
 export type {
   ImagePlaygroundHealthStatus,
   ImagePlaygroundModel,
   ImagePlaygroundModelPayload,
   ImagePlaygroundProbeRun,
   ImagePlaygroundProbeRunPage,
+  ImagePlaygroundUpstreamRequest,
+  ImagePlaygroundUpstreamRequestPage,
   ImageSizeTier
 } from './imagePlayground'

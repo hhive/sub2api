@@ -58,6 +58,15 @@ func (h *ImagePlaygroundHandler) ListProbeRuns(c *gin.Context) {
 	h.proxy(c, http.MethodGet, path, nil)
 }
 
+func (h *ImagePlaygroundHandler) ListUpstreamRequests(c *gin.Context) {
+	query := c.Request.URL.RawQuery
+	path := "/api/admin/upstream-requests"
+	if query != "" {
+		path += "?" + query
+	}
+	h.proxy(c, http.MethodGet, path, nil)
+}
+
 func (h *ImagePlaygroundHandler) RunProbe(c *gin.Context) {
 	h.proxy(c, http.MethodPost, "/api/admin/model-probe-runs/run", map[string]bool{"ok": true})
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,15 @@ func NewVideoPlaygroundHandler(settingService *service.SettingService) *VideoPla
 
 func (h *VideoPlaygroundHandler) ListModels(c *gin.Context) {
 	h.proxy(c, http.MethodGet, "/api/admin/models", nil)
+}
+
+func (h *VideoPlaygroundHandler) ListUpstreamRequests(c *gin.Context) {
+	query := c.Request.URL.RawQuery
+	path := "/api/admin/upstream-requests"
+	if query != "" {
+		path += "?" + query
+	}
+	h.proxy(c, http.MethodGet, path, nil)
 }
 
 func (h *VideoPlaygroundHandler) CreateModel(c *gin.Context) {
@@ -147,6 +157,12 @@ func (h *VideoPlaygroundHandler) proxy(c *gin.Context, method, path string, payl
 }
 
 func (h *VideoPlaygroundHandler) videoPlaygroundAdminTarget(c *gin.Context) (string, error) {
+	if baseURL := strings.TrimSpace(os.Getenv("VIDEO_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
+		return strings.TrimRight(baseURL, "/"), nil
+	}
+	if baseURL := strings.TrimSpace(os.Getenv("VIDEO_PLAYGROUND_GO_BASE_URL")); baseURL != "" {
+		return strings.TrimRight(baseURL, "/"), nil
+	}
 	baseURL := "http://127.0.0.1:3303"
 	settings, err := h.settingService.GetAllSettings(c.Request.Context())
 	if err == nil && strings.TrimSpace(settings.VideoPlaygroundBaseURL) != "" {

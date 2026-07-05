@@ -53,6 +53,35 @@ export interface ImagePlaygroundProbeRunPage {
   page_size: number
 }
 
+export interface ImagePlaygroundUpstreamRequest {
+  id: string
+  user_id: number
+  api_key_id: number
+  api_key_suffix: string
+  model_config_id: number
+  model: string
+  api_mode: ImageAPIMode | string
+  provider_name: string
+  upstream_base_url: string
+  size_tier: string
+  status: string
+  upstream_status_code: number
+  response_bytes: number
+  image_count: number
+  error_code: string
+  error_message: string
+  created_at: string
+  updated_at: string
+  completed_at?: string | null
+}
+
+export interface ImagePlaygroundUpstreamRequestPage {
+  items: ImagePlaygroundUpstreamRequest[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export type ImagePlaygroundModelPayload = Omit<
   ImagePlaygroundModel,
   | 'id'
@@ -72,6 +101,11 @@ export async function listModels(): Promise<ImagePlaygroundModel[]> {
 
 export async function listProbeRuns(params: { page?: number; page_size?: number } = {}): Promise<ImagePlaygroundProbeRunPage> {
   const { data } = await apiClient.get<ImagePlaygroundProbeRunPage>('/admin/image-playground/model-probe-runs', { params })
+  return data
+}
+
+export async function listUpstreamRequests(params: { page?: number; page_size?: number } = {}): Promise<ImagePlaygroundUpstreamRequestPage> {
+  const { data } = await apiClient.get<ImagePlaygroundUpstreamRequestPage>('/admin/image-playground/upstream-requests', { params })
   return data
 }
 
@@ -98,6 +132,7 @@ export async function deleteModel(id: number): Promise<{ ok: boolean }> {
 const imagePlaygroundAPI = {
   listModels,
   listProbeRuns,
+  listUpstreamRequests,
   runProbe,
   createModel,
   updateModel,

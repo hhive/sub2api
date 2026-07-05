@@ -1541,6 +1541,26 @@ export default {
       saveFailed: 'Failed to save video model',
       deleteFailed: 'Failed to delete video model',
       deleteConfirm: 'Delete video model "{name}"?',
+      callRecords: {
+        button: 'Call records',
+        title: 'Call records',
+        description: 'Latest video-site upstream calls in reverse chronological order.',
+        loadFailed: 'Failed to load call records',
+        previous: 'Previous',
+        next: 'Next',
+        pageInfo: 'Page {page}, {total} records',
+        columns: {
+          createdAt: 'Time',
+          task: 'Task',
+          user: 'User',
+          model: 'Model',
+          endpoint: 'Endpoint',
+          httpStatus: 'HTTP',
+          elapsed: 'Elapsed',
+          responseBytes: 'Response size',
+          error: 'Error'
+        }
+      },
       keyConfigured: 'Configured: {mask}. Leave blank to keep unchanged',
       keyNotCopied: 'Original key is configured ({mask}); reused models do not copy secrets',
       invalidJSON: '{field} is not valid JSON',
@@ -1602,6 +1622,27 @@ export default {
       saveFailed: 'Failed to save image model',
       deleteFailed: 'Failed to delete image model',
       deleteConfirm: 'Delete image model "{name}"?',
+      callRecords: {
+        button: 'Call records',
+        title: 'Call records',
+        description: 'Latest image-site upstream calls in reverse chronological order.',
+        loadFailed: 'Failed to load call records',
+        previous: 'Previous',
+        next: 'Next',
+        pageInfo: 'Page {page}, {total} records',
+        columns: {
+          createdAt: 'Time',
+          task: 'Task',
+          user: 'User / API key',
+          model: 'Model',
+          upstream: 'Upstream',
+          status: 'Status',
+          httpStatus: 'HTTP',
+          responseBytes: 'Response size',
+          imageCount: 'Images',
+          error: 'Error'
+        }
+      },
       sizeRequired: 'Select at least one supported size',
       columns: {
         name: 'Model',

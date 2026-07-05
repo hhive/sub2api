@@ -54,6 +54,36 @@ func TestImagePlaygroundHandlerListProbeRunsProxiesQuery(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"run_id":"run-1"`)
 }
 
+func TestImagePlaygroundHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var gotPath, gotQuery string
+	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+
+	handler := NewImagePlaygroundHandler(nil)
+	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.RawQuery
+		require.Equal(t, http.MethodGet, r.Method)
+		body := []byte(`{"items":[{"id":"task-1","model":"gpt-image-2"}],"total":1,"page":3,"page_size":20}`)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	router := gin.New()
+	router.GET("/upstream-requests", handler.ListUpstreamRequests)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/upstream-requests?page=3&page_size=20", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "/api/admin/upstream-requests", gotPath)
+	require.Equal(t, "page=3&page_size=20", gotQuery)
+	require.Contains(t, rec.Body.String(), `"task-1"`)
+}
+
 func TestImagePlaygroundHandlerRunProbeProxiesPost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath string

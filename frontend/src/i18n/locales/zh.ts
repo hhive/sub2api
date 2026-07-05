@@ -1545,6 +1545,26 @@ export default {
       saveFailed: '保存视频模型失败',
       deleteFailed: '删除视频模型失败',
       deleteConfirm: '确定删除视频模型“{name}”？',
+      callRecords: {
+        button: '调用记录',
+        title: '调用记录',
+        description: '按时间倒序展示视频站最近请求上游的记录。',
+        loadFailed: '加载调用记录失败',
+        previous: '上一页',
+        next: '下一页',
+        pageInfo: '第 {page} 页，共 {total} 条',
+        columns: {
+          createdAt: '时间',
+          task: '任务',
+          user: '用户',
+          model: '模型',
+          endpoint: '端点',
+          httpStatus: 'HTTP',
+          elapsed: '耗时',
+          responseBytes: '响应大小',
+          error: '错误'
+        }
+      },
       keyConfigured: '已配置：{mask}，留空则不变',
       keyNotCopied: '原配置已设置 Key（{mask}），复用时不会复制密钥',
       invalidJSON: '{field} 不是有效 JSON',
@@ -1606,6 +1626,27 @@ export default {
       saveFailed: '保存图片模型失败',
       deleteFailed: '删除图片模型失败',
       deleteConfirm: '确定删除图片模型“{name}”？',
+      callRecords: {
+        button: '调用记录',
+        title: '调用记录',
+        description: '按时间倒序展示图片站最近请求上游的记录。',
+        loadFailed: '加载调用记录失败',
+        previous: '上一页',
+        next: '下一页',
+        pageInfo: '第 {page} 页，共 {total} 条',
+        columns: {
+          createdAt: '时间',
+          task: '任务',
+          user: '用户 / API Key',
+          model: '模型',
+          upstream: '上游域名',
+          status: '状态',
+          httpStatus: 'HTTP',
+          responseBytes: '响应大小',
+          imageCount: '图片数',
+          error: '错误'
+        }
+      },
       sizeRequired: '至少选择一个支持尺寸',
       columns: {
         name: '模型',

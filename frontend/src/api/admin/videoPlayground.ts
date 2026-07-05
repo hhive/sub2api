@@ -22,8 +22,39 @@ export interface VideoPlaygroundModel {
 
 export type VideoPlaygroundModelPayload = Omit<VideoPlaygroundModel, 'id' | 'upstream_api_key_mask'>
 
+export interface VideoPlaygroundUpstreamRequest {
+  id: number
+  task_id: string
+  user_id: number
+  api_key_suffix: string
+  model_config_id: number
+  model: string
+  provider_name: string
+  upstream_base_url: string
+  method: string
+  endpoint: string
+  content_type: string
+  http_status_code: number
+  error_message: string
+  elapsed_ms: number
+  response_bytes: number
+  created_at: string
+}
+
+export interface VideoPlaygroundUpstreamRequestPage {
+  items: VideoPlaygroundUpstreamRequest[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export async function listModels(): Promise<VideoPlaygroundModel[]> {
   const { data } = await apiClient.get<VideoPlaygroundModel[]>('/admin/video-playground/models')
+  return data
+}
+
+export async function listUpstreamRequests(params: { page?: number; page_size?: number } = {}): Promise<VideoPlaygroundUpstreamRequestPage> {
+  const { data } = await apiClient.get<VideoPlaygroundUpstreamRequestPage>('/admin/video-playground/upstream-requests', { params })
   return data
 }
 
@@ -44,6 +75,7 @@ export async function deleteModel(id: number): Promise<{ ok: boolean }> {
 
 const videoPlaygroundAPI = {
   listModels,
+  listUpstreamRequests,
   createModel,
   updateModel,
   deleteModel,
