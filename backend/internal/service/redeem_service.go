@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	entgroup "github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
@@ -458,6 +460,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	}
 
 	// 执行兑换逻辑（兑换码已被锁定，此时可安全操作）
+	subscriptionRebateValidityDays := 0
 	switch redeemCode.Type {
 	case RedeemTypeBalance:
 		amount := redeemCode.Value
@@ -498,6 +501,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			if validityDays == 0 {
 				validityDays = 30
 			}
+			subscriptionRebateValidityDays = validityDays
 			_, _, err := s.subscriptionService.AssignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
 				UserID:       userID,
 				GroupID:      *redeemCode.GroupID,
@@ -527,7 +531,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		s.tryAccrueAffiliateRebateForRedeem(ctx, userID, redeemCode.Value)
 	}
 	if redeemCode.Type == RedeemTypeSubscription {
-		s.tryAccrueAffiliateSubscriptionRebateForRedeem(ctx, userID, redeemCode)
+		s.tryAccrueAffiliateSubscriptionRebateForRedeem(ctx, userID, redeemCode, subscriptionRebateValidityDays)
 	}
 
 	// 重新获取更新后的兑换码
@@ -676,7 +680,7 @@ func (s *RedeemService) tryAccrueAffiliateRebateForRedeem(ctx context.Context, u
 	}
 }
 
-func (s *RedeemService) tryAccrueAffiliateSubscriptionRebateForRedeem(ctx context.Context, userID int64, redeemCode *RedeemCode) {
+func (s *RedeemService) tryAccrueAffiliateSubscriptionRebateForRedeem(ctx context.Context, userID int64, redeemCode *RedeemCode, validityDays int) {
 	if ctx.Value(ctxKeySkipRedeemAffiliate{}) != nil {
 		return
 	}
@@ -686,7 +690,15 @@ func (s *RedeemService) tryAccrueAffiliateSubscriptionRebateForRedeem(ctx contex
 	if !s.affiliateService.IsEnabled(ctx) {
 		return
 	}
-	baseAmount := redeemCode.Value
+	baseAmount, ok, err := s.subscriptionRedeemRebateBaseAmount(ctx, redeemCode, validityDays)
+	if err != nil {
+		logger.LegacyPrintf("service.redeem", "[Redeem] resolve affiliate subscription rebate base failed for user %d code %d: %v", userID, redeemCode.ID, err)
+		return
+	}
+	if !ok {
+		logger.LegacyPrintf("service.redeem", "[Redeem] affiliate subscription rebate skipped for user %d code %d: no positive subscription quota", userID, redeemCode.ID)
+		return
+	}
 	if baseAmount <= 0 {
 		return
 	}
@@ -698,6 +710,53 @@ func (s *RedeemService) tryAccrueAffiliateSubscriptionRebateForRedeem(ctx contex
 	if rebate > 0 {
 		logger.LegacyPrintf("service.redeem", "[Redeem] affiliate subscription rebate accrued %.8f for inviter of user %d", rebate, userID)
 	}
+}
+
+func (s *RedeemService) subscriptionRedeemRebateBaseAmount(ctx context.Context, redeemCode *RedeemCode, validityDays int) (float64, bool, error) {
+	if s == nil || s.entClient == nil || redeemCode == nil || redeemCode.GroupID == nil || *redeemCode.GroupID <= 0 || validityDays <= 0 {
+		return 0, false, nil
+	}
+	group, err := s.entClient.Group.Query().
+		Where(entgroup.IDEQ(*redeemCode.GroupID)).
+		Only(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("query subscription group quota: %w", err)
+	}
+	baseAmount, ok := subscriptionQuotaTotalForValidityDays(validityDays, group.DailyLimitUsd, group.WeeklyLimitUsd, group.MonthlyLimitUsd)
+	return baseAmount, ok, nil
+}
+
+func subscriptionQuotaTotalForValidityDays(validityDays int, dailyLimitUSD, weeklyLimitUSD, monthlyLimitUSD *float64) (float64, bool) {
+	if validityDays <= 0 {
+		return 0, false
+	}
+	var totals []float64
+	if dailyLimitUSD != nil && *dailyLimitUSD > 0 {
+		totals = append(totals, *dailyLimitUSD*float64(validityDays))
+	}
+	if weeklyLimitUSD != nil && *weeklyLimitUSD > 0 {
+		totals = append(totals, *weeklyLimitUSD*float64(ceilDiv(validityDays, 7)))
+	}
+	if monthlyLimitUSD != nil && *monthlyLimitUSD > 0 {
+		totals = append(totals, *monthlyLimitUSD*float64(ceilDiv(validityDays, 30)))
+	}
+	if len(totals) == 0 {
+		return 0, false
+	}
+	minTotal := math.Inf(1)
+	for _, total := range totals {
+		if total < minTotal {
+			minTotal = total
+		}
+	}
+	return roundTo(minTotal, 8), true
+}
+
+func ceilDiv(n, d int) int {
+	if n <= 0 || d <= 0 {
+		return 0
+	}
+	return (n + d - 1) / d
 }
 
 // GetByID 根据ID获取兑换码

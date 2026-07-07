@@ -76,3 +76,150 @@ func TestRedeemServiceCreateBalanceCreditPermanentWhenValidityZero(t *testing.T)
 	require.Equal(t, 12.5, repo.created[0].Amount)
 	require.Nil(t, repo.created[0].ExpiresAt)
 }
+
+func TestSubscriptionQuotaTotalForValidityDays(t *testing.T) {
+	daily := 5.0
+	weekly := 60.0
+	monthly := 200.0
+
+	got, ok := subscriptionQuotaTotalForValidityDays(30, &daily, &weekly, &monthly)
+	require.True(t, ok)
+	require.Equal(t, 150.0, got)
+
+	got, ok = subscriptionQuotaTotalForValidityDays(30, nil, &weekly, &monthly)
+	require.True(t, ok)
+	require.Equal(t, 200.0, got)
+
+	got, ok = subscriptionQuotaTotalForValidityDays(8, nil, &weekly, nil)
+	require.True(t, ok)
+	require.Equal(t, 120.0, got)
+
+	got, ok = subscriptionQuotaTotalForValidityDays(31, nil, nil, &monthly)
+	require.True(t, ok)
+	require.Equal(t, 400.0, got)
+
+	got, ok = subscriptionQuotaTotalForValidityDays(30, nil, nil, nil)
+	require.False(t, ok)
+	require.Zero(t, got)
+}
+
+func TestRedeemServiceSubscriptionRedeemRebateBaseAmountUsesGroupQuota(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	group := client.Group.Create().
+		SetName("月订阅Lite").
+		SetPlatform("openai").
+		SetSubscriptionType(SubscriptionTypeSubscription).
+		SetWeeklyLimitUsd(60).
+		SetMonthlyLimitUsd(200).
+		SaveX(ctx)
+
+	svc := &RedeemService{entClient: client}
+	baseAmount, ok, err := svc.subscriptionRedeemRebateBaseAmount(ctx, &RedeemCode{
+		ID:      972,
+		Type:    RedeemTypeSubscription,
+		Value:   10,
+		GroupID: &group.ID,
+	}, 30)
+
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, 200.0, baseAmount)
+}
+
+func TestRedeemServiceSubscriptionRedeemRebateUsesGroupQuotaBaseAmount(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	group := client.Group.Create().
+		SetName("月订阅Lite").
+		SetPlatform("openai").
+		SetSubscriptionType(SubscriptionTypeSubscription).
+		SetWeeklyLimitUsd(60).
+		SetMonthlyLimitUsd(200).
+		SaveX(ctx)
+
+	inviterID := int64(89)
+	inviteeID := int64(989)
+	rate := 10.0
+	affiliateRepo := &affiliateDetailRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			inviteeID: {UserID: inviteeID, InviterID: &inviterID, CreatedAt: time.Now()},
+			inviterID: {UserID: inviterID, AffRebateRatePercent: &rate},
+		},
+	}
+	svc := &RedeemService{
+		entClient: client,
+		affiliateService: &AffiliateService{repo: affiliateRepo, settingService: affiliateSettingsService(map[string]string{
+			SettingKeyAffiliateEnabled:                      "true",
+			SettingKeyAffiliateSubscriptionRebateMultiplier: "80",
+			SettingKeyAffiliateRebateDurationDays:           "0",
+			SettingKeyAffiliateRebatePerInviteeCap:          "0",
+			SettingKeyAffiliateTieredRebateEnabled:          "false",
+			SettingKeyAffiliateRebateFreezeHours:            "0",
+			SettingKeyAffiliateRebateRate:                   "10",
+			SettingKeyAffiliateTier2MinPaidInvitees:         "10",
+			SettingKeyAffiliateTier3MinPaidInvitees:         "30",
+			SettingKeyAffiliateTier2MultiplierPercent:       "250",
+			SettingKeyAffiliateTier3MultiplierPercent:       "500",
+		})},
+	}
+
+	svc.tryAccrueAffiliateSubscriptionRebateForRedeem(ctx, inviteeID, &RedeemCode{
+		ID:      972,
+		Type:    RedeemTypeSubscription,
+		Value:   10,
+		GroupID: &group.ID,
+	}, 30)
+
+	require.Len(t, affiliateRepo.accrueCalls, 1)
+	require.Equal(t, affiliateAccrueCall{
+		inviterID:     inviterID,
+		inviteeUserID: inviteeID,
+		amount:        16,
+		freezeHours:   0,
+		sourceOrderID: nil,
+	}, affiliateRepo.accrueCalls[0])
+}
+
+func TestRedeemServiceSubscriptionRedeemRebateSkipsNonPositiveValidityDays(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	group := client.Group.Create().
+		SetName("月订阅Lite").
+		SetPlatform("openai").
+		SetSubscriptionType(SubscriptionTypeSubscription).
+		SetWeeklyLimitUsd(60).
+		SetMonthlyLimitUsd(200).
+		SaveX(ctx)
+
+	inviterID := int64(89)
+	inviteeID := int64(989)
+	rate := 10.0
+	affiliateRepo := &affiliateDetailRepoStub{
+		summaries: map[int64]*AffiliateSummary{
+			inviteeID: {UserID: inviteeID, InviterID: &inviterID, CreatedAt: time.Now()},
+			inviterID: {UserID: inviterID, AffRebateRatePercent: &rate},
+		},
+	}
+	svc := &RedeemService{
+		entClient: client,
+		affiliateService: &AffiliateService{repo: affiliateRepo, settingService: affiliateSettingsService(map[string]string{
+			SettingKeyAffiliateEnabled: "true",
+		})},
+	}
+
+	svc.tryAccrueAffiliateSubscriptionRebateForRedeem(ctx, inviteeID, &RedeemCode{
+		ID:      972,
+		Type:    RedeemTypeSubscription,
+		Value:   10,
+		GroupID: &group.ID,
+	}, 0)
+	svc.tryAccrueAffiliateSubscriptionRebateForRedeem(ctx, inviteeID, &RedeemCode{
+		ID:      973,
+		Type:    RedeemTypeSubscription,
+		Value:   10,
+		GroupID: &group.ID,
+	}, -7)
+
+	require.Empty(t, affiliateRepo.accrueCalls)
+}
