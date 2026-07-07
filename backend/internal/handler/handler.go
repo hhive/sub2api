@@ -63,6 +63,7 @@ type Handlers struct {
 	AvailableChannel *AvailableChannelHandler
 	Onyx             *OnyxHandler
 	ImagePlayground  *ImagePlaygroundTaskHandler
+	BatchImage       *BatchImageHandler
 }
 
 // BuildInfo contains build-time information

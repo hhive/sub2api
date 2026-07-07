@@ -127,6 +127,7 @@ func ProvideHandlers(
 	availableChannelHandler *AvailableChannelHandler,
 	onyxHandler *OnyxHandler,
 	imagePlaygroundHandler *ImagePlaygroundTaskHandler,
+	batchImageHandler *BatchImageHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 ) *Handlers {
@@ -150,6 +151,7 @@ func ProvideHandlers(
 		AvailableChannel: availableChannelHandler,
 		Onyx:             onyxHandler,
 		ImagePlayground:  imagePlaygroundHandler,
+		BatchImage:       batchImageHandler,
 	}
 }
 
@@ -176,6 +178,7 @@ var ProviderSet = wire.NewSet(
 	NewOnyxHandler,
 	NewImagePlaygroundOpenAIImagesTaskExecutor,
 	NewImagePlaygroundTaskHandler,
+	NewBatchImageHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,
