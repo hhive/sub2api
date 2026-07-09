@@ -78,6 +78,23 @@ func TestSettingService_GetPublicSettings_ExposesTablePreferences(t *testing.T) 
 	require.Equal(t, []int{20, 50, 100}, settings.TablePageSizeOptions)
 }
 
+func TestSettingService_GetPublicSettings_FiltersVictoryMenuItems(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyVictoryMenuItems: `[
+				{"id":"enabled","label":"小逆Offer","url":"https://offer.xiaoni-ai.top","carry_api_key":true,"enabled":true,"sort_order":0},
+				{"id":"disabled","label":"Hidden","url":"https://hidden.example.com","carry_api_key":false,"enabled":false,"sort_order":1}
+			]`,
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+
+	require.NoError(t, err)
+	require.JSONEq(t, `[{"id":"enabled","label":"小逆Offer","url":"https://offer.xiaoni-ai.top","carry_api_key":true,"sort_order":0}]`, settings.VictoryMenuItems)
+}
+
 func TestSettingService_GetPublicSettings_DefaultsRedeemPurchaseURL(t *testing.T) {
 	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, &config.Config{})
 

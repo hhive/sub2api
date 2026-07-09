@@ -330,6 +330,7 @@ const (
 	defaultWeChatConnectScopes         = "snsapi_login"
 	defaultWeChatConnectFrontend       = "/auth/wechat/callback"
 	defaultRedeemPurchaseURL           = "https://pay.ldxp.cn/shop/xiaoni-ai"
+	defaultVictoryMenuItemsValue       = `[{"id":"xiaoni-offer","label":"小逆Offer","url":"https://offer.xiaoni-ai.top","carry_api_key":false,"enabled":true,"sort_order":0}]`
 	defaultGitHubOAuthAuthorize        = "https://github.com/login/oauth/authorize"
 	defaultGitHubOAuthToken            = "https://github.com/login/oauth/access_token"
 	defaultGitHubOAuthUserInfo         = "https://api.github.com/user"
@@ -825,6 +826,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyTableDefaultPageSize,
 		SettingKeyTablePageSizeOptions,
 		SettingKeyCustomMenuItems,
+		SettingKeyVictoryMenuItems,
 		SettingKeyCustomEndpoints,
 		SettingKeyOnyxEnabled,
 		SettingKeyOnyxMenuLabel,
@@ -918,6 +920,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		settings[SettingKeyTableDefaultPageSize],
 		settings[SettingKeyTablePageSizeOptions],
 	)
+	victoryMenuItemsRaw := s.getStringOrDefault(settings, SettingKeyVictoryMenuItems, defaultVictoryMenuItemsValue)
 	lobeHubAllowedEmailsRaw, ok := settings[SettingKeyLobeHubAllowedEmails]
 	if !ok {
 		lobeHubAllowedEmailsRaw = defaultLobeHubAllowedEmailsValue
@@ -972,6 +975,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		TableDefaultPageSize:             tableDefaultPageSize,
 		TablePageSizeOptions:             tablePageSizeOptions,
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
+		VictoryMenuItems:                 string(filterEnabledVictoryMenuItems(victoryMenuItemsRaw)),
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
 		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "聊天台"),
@@ -1520,6 +1524,7 @@ type PublicSettingsInjectionPayload struct {
 	TableDefaultPageSize             int                      `json:"table_default_page_size"`
 	TablePageSizeOptions             []int                    `json:"table_page_size_options"`
 	CustomMenuItems                  json.RawMessage          `json:"custom_menu_items"`
+	VictoryMenuItems                 json.RawMessage          `json:"victory_menu_items"`
 	CustomEndpoints                  json.RawMessage          `json:"custom_endpoints"`
 	OnyxEnabled                      bool                     `json:"onyx_enabled"`
 	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
@@ -1613,6 +1618,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		TableDefaultPageSize:             settings.TableDefaultPageSize,
 		TablePageSizeOptions:             settings.TablePageSizeOptions,
 		CustomMenuItems:                  filterUserVisibleMenuItems(settings.CustomMenuItems),
+		VictoryMenuItems:                 filterEnabledVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                  safeRawJSONArray(settings.CustomEndpoints),
 		OnyxEnabled:                      settings.OnyxEnabled,
 		OnyxMenuLabel:                    settings.OnyxMenuLabel,
@@ -1840,6 +1846,54 @@ func filterUserVisibleMenuItems(raw string) json.RawMessage {
 		return json.RawMessage("[]")
 	}
 	return result
+}
+
+func filterEnabledVictoryMenuItems(raw string) json.RawMessage {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return json.RawMessage("[]")
+	}
+	var items []struct {
+		ID          string `json:"id"`
+		Label       string `json:"label"`
+		URL         string `json:"url"`
+		CarryAPIKey bool   `json:"carry_api_key"`
+		Enabled     bool   `json:"enabled"`
+		SortOrder   int    `json:"sort_order"`
+	}
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return json.RawMessage("[]")
+	}
+	filtered := make([]struct {
+		ID          string `json:"id"`
+		Label       string `json:"label"`
+		URL         string `json:"url"`
+		CarryAPIKey bool   `json:"carry_api_key"`
+		SortOrder   int    `json:"sort_order"`
+	}, 0, len(items))
+	for _, item := range items {
+		if !item.Enabled {
+			continue
+		}
+		filtered = append(filtered, struct {
+			ID          string `json:"id"`
+			Label       string `json:"label"`
+			URL         string `json:"url"`
+			CarryAPIKey bool   `json:"carry_api_key"`
+			SortOrder   int    `json:"sort_order"`
+		}{
+			ID:          item.ID,
+			Label:       item.Label,
+			URL:         item.URL,
+			CarryAPIKey: item.CarryAPIKey,
+			SortOrder:   item.SortOrder,
+		})
+	}
+	data, err := json.Marshal(filtered)
+	if err != nil {
+		return json.RawMessage("[]")
+	}
+	return json.RawMessage(data)
 }
 
 // safeRawJSONArray returns raw as json.RawMessage if it's valid JSON, otherwise "[]".
@@ -2242,6 +2296,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 	updates[SettingKeyTablePageSizeOptions] = string(tablePageSizeOptionsJSON)
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
+	updates[SettingKeyVictoryMenuItems] = settings.VictoryMenuItems
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
 	updates[SettingKeyOnyxEnabled] = strconv.FormatBool(settings.OnyxEnabled)
 	updates[SettingKeyOnyxBaseURL] = strings.TrimSpace(settings.OnyxBaseURL)
@@ -2961,6 +3016,18 @@ func (s *SettingService) GetCustomMenuItemsRaw(ctx context.Context) string {
 	return value
 }
 
+// GetVictoryMenuItemsRaw returns the raw JSON string of victory_menu_items setting.
+func (s *SettingService) GetVictoryMenuItemsRaw(ctx context.Context) string {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyVictoryMenuItems)
+	if err != nil {
+		return defaultVictoryMenuItemsValue
+	}
+	if strings.TrimSpace(value) == "" {
+		return defaultVictoryMenuItemsValue
+	}
+	return value
+}
+
 // IsAffiliateEnabled 检查是否启用邀请返利功能（总开关）
 func (s *SettingService) IsAffiliateEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateEnabled)
@@ -3314,6 +3381,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyTableDefaultPageSize:                      "20",
 		SettingKeyTablePageSizeOptions:                      "[10,20,50,100]",
 		SettingKeyCustomMenuItems:                           "[]",
+		SettingKeyVictoryMenuItems:                          defaultVictoryMenuItemsValue,
 		SettingKeyCustomEndpoints:                           "[]",
 		SettingKeyOnyxEnabled:                               "false",
 		SettingKeyOnyxBaseURL:                               "",
@@ -3586,6 +3654,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		VideoPlaygroundMenuLabel:         s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
 		VideoPlaygroundExchangeSecret:    strings.TrimSpace(settings[SettingKeyVideoPlaygroundExchangeSecret]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
+		VictoryMenuItems:                 s.getStringOrDefault(settings, SettingKeyVictoryMenuItems, defaultVictoryMenuItemsValue),
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
 	}

@@ -487,6 +487,11 @@ export default {
     openFailed: 'Failed to open video generation'
   },
 
+  victoryMenu: {
+    opening: 'Opening Victory menu',
+    openFailed: 'Failed to open Victory menu'
+  },
+
   lobehub: {
     opening: 'Opening New Chat',
     notConfigured: 'New Chat is not configured. Contact an administrator.',
@@ -1703,11 +1708,14 @@ export default {
       probeRuns: {
         button: 'Probe records',
         runButton: 'Run probe',
+        singleRunButton: 'Probe',
         title: 'Probe records',
         description: 'Latest image-site model probe attempts in reverse chronological order.',
         loadFailed: 'Failed to load probe records',
         runSuccess: 'Probe started',
         runFailed: 'Failed to run probe',
+        singleRunSuccess: '{name} probe started',
+        singleRunFailed: 'Failed to run model probe',
         previous: 'Previous',
         next: 'Next',
         pageInfo: 'Page {page}, {total} records',
@@ -6558,6 +6566,21 @@ export default {
         visibilityUser: 'Regular Users',
         visibilityAdmin: 'Administrators',
         add: 'Add Menu Item',
+        remove: 'Remove',
+        moveUp: 'Move Up',
+        moveDown: 'Move Down',
+      },
+      victoryMenu: {
+        title: 'Victory Menu',
+        description: 'Configure child entries under the "Victory" user sidebar menu and choose whether launches include the user API key.',
+        itemLabel: 'Child Item #{n}',
+        name: 'Menu Name',
+        namePlaceholder: 'e.g. XiaoNi Offer',
+        url: 'Target URL',
+        urlPlaceholder: 'https://offer.xiaoni-ai.top',
+        enabled: 'Enabled',
+        carryApiKey: 'Include APIKey',
+        add: 'Add Child Item',
         remove: 'Remove',
         moveUp: 'Move Up',
         moveDown: 'Move Down',

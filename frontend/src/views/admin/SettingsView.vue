@@ -5671,6 +5671,101 @@
               </button>
             </div>
           </div>
+
+          <!-- Victory Menu Items -->
+          <div class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ t("admin.settings.victoryMenu.title") }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.victoryMenu.description") }}
+              </p>
+            </div>
+            <div class="space-y-4 p-6">
+              <div
+                v-for="(item, index) in form.victory_menu_items"
+                :key="item.id || index"
+                class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+              >
+                <div class="mb-3 flex items-center justify-between">
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ t("admin.settings.victoryMenu.itemLabel", { n: index + 1 }) }}
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      v-if="index > 0"
+                      type="button"
+                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      :title="t('admin.settings.victoryMenu.moveUp')"
+                      @click="moveVictoryMenuItem(index, -1)"
+                    >
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      v-if="index < form.victory_menu_items.length - 1"
+                      type="button"
+                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      :title="t('admin.settings.victoryMenu.moveDown')"
+                      @click="moveVictoryMenuItem(index, 1)"
+                    >
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      :title="t('admin.settings.victoryMenu.remove')"
+                      @click="removeVictoryMenuItem(index)"
+                    >
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {{ t("admin.settings.victoryMenu.name") }}
+                    </label>
+                    <input v-model="item.label" type="text" class="input text-sm" :placeholder="t('admin.settings.victoryMenu.namePlaceholder')" />
+                  </div>
+                  <div class="flex items-end gap-4">
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <input v-model="item.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                      {{ t("admin.settings.victoryMenu.enabled") }}
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <input v-model="item.carry_api_key" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                      {{ t("admin.settings.victoryMenu.carryApiKey") }}
+                    </label>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {{ t("admin.settings.victoryMenu.url") }}
+                    </label>
+                    <input v-model="item.url" type="url" class="input font-mono text-sm" :placeholder="t('admin.settings.victoryMenu.urlPlaceholder')" />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                @click="addVictoryMenuItem"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                {{ t("admin.settings.victoryMenu.add") }}
+              </button>
+            </div>
+          </div>
 	        </div>
 	        <!-- /Tab: General -->
 
@@ -8586,6 +8681,23 @@ const form = reactive<SettingsForm>({
     visibility: "user" | "admin";
     sort_order: number;
   }>,
+  victory_menu_items: [
+    {
+      id: "xiaoni-offer",
+      label: "小逆Offer",
+      url: "https://offer.xiaoni-ai.top",
+      carry_api_key: false,
+      enabled: true,
+      sort_order: 0,
+    },
+  ] as Array<{
+    id: string;
+    label: string;
+    url: string;
+    carry_api_key: boolean;
+    enabled: boolean;
+    sort_order: number;
+  }>,
   custom_endpoints: [] as Array<{
     name: string;
     endpoint: string;
@@ -9356,6 +9468,36 @@ function moveMenuItem(index: number, direction: -1 | 1) {
   });
 }
 
+function addVictoryMenuItem() {
+  form.victory_menu_items.push({
+    id: "",
+    label: "",
+    url: "",
+    carry_api_key: false,
+    enabled: true,
+    sort_order: form.victory_menu_items.length,
+  });
+}
+
+function removeVictoryMenuItem(index: number) {
+  form.victory_menu_items.splice(index, 1);
+  form.victory_menu_items.forEach((item, i) => {
+    item.sort_order = i;
+  });
+}
+
+function moveVictoryMenuItem(index: number, direction: -1 | 1) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= form.victory_menu_items.length) return;
+  const items = form.victory_menu_items;
+  const temp = items[index];
+  items[index] = items[targetIndex];
+  items[targetIndex] = temp;
+  items.forEach((item, i) => {
+    item.sort_order = i;
+  });
+}
+
 // Custom endpoint management
 function addEndpoint() {
   form.custom_endpoints.push({ name: "", endpoint: "", description: "" });
@@ -9991,6 +10133,7 @@ async function saveSettings() {
       table_default_page_size: form.table_default_page_size,
       table_page_size_options: form.table_page_size_options,
       custom_menu_items: form.custom_menu_items,
+      victory_menu_items: form.victory_menu_items,
       custom_endpoints: form.custom_endpoints,
       lobehub_allowed_emails: form.lobehub_allowed_emails,
       video_playground_enabled: form.video_playground_enabled,

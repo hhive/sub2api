@@ -92,6 +92,10 @@
           </template>
           <template #cell-actions="{ row }">
             <div class="flex flex-wrap items-center gap-2">
+              <button class="btn btn-sm btn-secondary" :disabled="probingModelIds.has(row.id)" @click="runSingleModelProbe(row)">
+                <Icon name="refresh" size="sm" :class="probingModelIds.has(row.id) ? 'animate-spin' : ''" class="mr-1" />
+                {{ t('admin.imagePlayground.probeRuns.singleRunButton') }}
+              </button>
               <button class="btn btn-sm btn-secondary" @click="openReuseDialog(row)">
                 {{ t('admin.imagePlayground.reuse') }}
               </button>
@@ -417,6 +421,7 @@ const loading = ref(false)
 const probeRunsLoading = ref(false)
 const callRecordsLoading = ref(false)
 const runningProbe = ref(false)
+const probingModelIds = ref<Set<number>>(new Set())
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const editingId = ref<number | null>(null)
@@ -600,6 +605,24 @@ async function runModelProbe() {
     appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.runFailed')))
   } finally {
     runningProbe.value = false
+  }
+}
+
+async function runSingleModelProbe(model: ImagePlaygroundModel) {
+  probingModelIds.value = new Set(probingModelIds.value).add(model.id)
+  try {
+    await adminAPI.imagePlayground.runModelProbe(model.id)
+    appStore.showSuccess(t('admin.imagePlayground.probeRuns.singleRunSuccess', { name: model.display_name || model.model }))
+    await loadModels()
+    if (showProbeRunsDialog.value) {
+      await loadProbeRuns(1)
+    }
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.singleRunFailed')))
+  } finally {
+    const next = new Set(probingModelIds.value)
+    next.delete(model.id)
+    probingModelIds.value = next
   }
 }
 

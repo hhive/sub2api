@@ -114,6 +114,11 @@ export async function runProbe(): Promise<{ ok: boolean; running?: boolean }> {
   return data
 }
 
+export async function runModelProbe(id: number): Promise<{ ok: boolean; running?: boolean }> {
+  const { data } = await apiClient.post<{ ok: boolean; running?: boolean }>(`/admin/image-playground/models/${id}/probe`)
+  return data
+}
+
 export async function createModel(payload: ImagePlaygroundModelPayload): Promise<ImagePlaygroundModel> {
   const { data } = await apiClient.post<ImagePlaygroundModel>('/admin/image-playground/models', payload)
   return data
@@ -134,6 +139,7 @@ const imagePlaygroundAPI = {
   listProbeRuns,
   listUpstreamRequests,
   runProbe,
+  runModelProbe,
   createModel,
   updateModel,
   deleteModel,

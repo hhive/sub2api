@@ -89,6 +89,11 @@ func RegisterUserRoutes(
 			chat.POST("/completions", h.Chat.CreateCompletion)
 		}
 
+		menuLaunch := authenticated.Group("/menu-launch")
+		{
+			menuLaunch.POST("/victory", h.MenuLaunch.Victory)
+		}
+
 		// Usage records
 		usage := authenticated.Group("/usage")
 		{

@@ -37,9 +37,27 @@ func (s *ChatService) SelectDefaultAPIKey(ctx context.Context, userID int64) (*A
 		if err != nil {
 			return nil, err
 		}
+		if !isDefaultChatAPIKeyUsable(loaded) {
+			continue
+		}
 		return loaded, nil
 	}
 	return nil, ErrChatAPIKeyNotFound
+}
+
+func isDefaultChatAPIKeyUsable(key *APIKey) bool {
+	if key == nil || key.Status != StatusAPIKeyActive || key.IsExpired() || key.IsQuotaExhausted() {
+		return false
+	}
+	if key.User == nil || !key.User.IsActive() {
+		return false
+	}
+	if key.GroupID != nil {
+		if key.Group == nil || !key.Group.IsActive() {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *ChatService) ListModels(ctx context.Context, userID int64) ([]ChatModel, error) {

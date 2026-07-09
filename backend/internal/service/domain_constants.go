@@ -293,6 +293,7 @@ const (
 	SettingKeyTableDefaultPageSize          = "table_default_page_size"          // 表格默认每页条数
 	SettingKeyTablePageSizeOptions          = "table_page_size_options"          // 表格可选每页条数（JSON 数组）
 	SettingKeyCustomMenuItems               = "custom_menu_items"                // 自定义菜单项（JSON 数组）
+	SettingKeyVictoryMenuItems              = "victory_menu_items"               // 旗开得胜子菜单项（JSON 数组）
 	SettingKeyCustomEndpoints               = "custom_endpoints"                 // 自定义端点列表（JSON 数组）
 	SettingKeyOnyxEnabled                   = "onyx_enabled"                     // 是否启用 Onyx 菜单集成
 	SettingKeyOnyxBaseURL                   = "onyx_base_url"                    // Onyx 访问地址

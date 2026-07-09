@@ -82,6 +82,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		TableDefaultPageSize:             settings.TableDefaultPageSize,
 		TablePageSizeOptions:             settings.TablePageSizeOptions,
 		CustomMenuItems:                  dto.ParseUserVisibleMenuItems(settings.CustomMenuItems),
+		VictoryMenuItems:                 dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                  dto.ParseCustomEndpoints(settings.CustomEndpoints),
 		OnyxEnabled:                      settings.OnyxEnabled,
 		OnyxMenuLabel:                    settings.OnyxMenuLabel,

@@ -23,3 +23,8 @@ export async function launchLobeHub(): Promise<OnyxLaunchResponse> {
   const { data } = await apiClient.post<OnyxLaunchResponse>('/lobehub/launch')
   return data
 }
+
+export async function launchVictoryMenu(menuId: string): Promise<OnyxLaunchResponse> {
+  const { data } = await apiClient.post<OnyxLaunchResponse>('/menu-launch/victory', { menu_id: menuId })
+  return data
+}

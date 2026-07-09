@@ -128,6 +128,7 @@ func ProvideHandlers(
 	onyxHandler *OnyxHandler,
 	imagePlaygroundHandler *ImagePlaygroundTaskHandler,
 	batchImageHandler *BatchImageHandler,
+	menuLaunchHandler *MenuLaunchHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 ) *Handlers {
@@ -152,6 +153,7 @@ func ProvideHandlers(
 		Onyx:             onyxHandler,
 		ImagePlayground:  imagePlaygroundHandler,
 		BatchImage:       batchImageHandler,
+		MenuLaunch:       menuLaunchHandler,
 	}
 }
 
@@ -179,6 +181,7 @@ var ProviderSet = wire.NewSet(
 	NewImagePlaygroundOpenAIImagesTaskExecutor,
 	NewImagePlaygroundTaskHandler,
 	NewBatchImageHandler,
+	NewMenuLaunchHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

@@ -12,7 +12,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { listProbeRuns, runProbe } from '@/api/admin/imagePlayground'
+import { listProbeRuns, runModelProbe, runProbe } from '@/api/admin/imagePlayground'
 
 describe('admin image playground api', () => {
   beforeEach(() => {
@@ -38,6 +38,15 @@ describe('admin image playground api', () => {
     const result = await runProbe()
 
     expect(post).toHaveBeenCalledWith('/admin/image-playground/model-probe-runs/run')
+    expect(result).toEqual({ ok: true, running: true })
+  })
+
+  it('posts the single model probe endpoint', async () => {
+    post.mockResolvedValue({ data: { ok: true, running: true } })
+
+    const result = await runModelProbe(7)
+
+    expect(post).toHaveBeenCalledWith('/admin/image-playground/models/7/probe')
     expect(result).toEqual({ ok: true, running: true })
   })
 })

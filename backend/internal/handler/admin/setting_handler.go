@@ -254,6 +254,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TableDefaultPageSize:                                   settings.TableDefaultPageSize,
 		TablePageSizeOptions:                                   settings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
+		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
 		OnyxEnabled:                                            settings.OnyxEnabled,
 		OnyxBaseURL:                                            settings.OnyxBaseURL,
@@ -591,40 +592,41 @@ type UpdateSettingsRequest struct {
 	GoogleOAuthFrontendRedirectURL string `json:"google_oauth_frontend_redirect_url"`
 
 	// OEM设置
-	SiteName                      string                `json:"site_name"`
-	SiteLogo                      string                `json:"site_logo"`
-	SiteSubtitle                  string                `json:"site_subtitle"`
-	APIBaseURL                    string                `json:"api_base_url"`
-	ContactInfo                   string                `json:"contact_info"`
-	DocURL                        string                `json:"doc_url"`
-	ImagePlaygroundDocURL         string                `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL         string                `json:"video_playground_doc_url"`
-	RedeemPurchaseURL             string                `json:"redeem_purchase_url"`
-	HomeContent                   string                `json:"home_content"`
-	HideCcsImportButton           bool                  `json:"hide_ccs_import_button"`
-	PurchaseSubscriptionEnabled   *bool                 `json:"purchase_subscription_enabled"`
-	PurchaseSubscriptionURL       *string               `json:"purchase_subscription_url"`
-	TableDefaultPageSize          int                   `json:"table_default_page_size"`
-	TablePageSizeOptions          []int                 `json:"table_page_size_options"`
-	CustomMenuItems               *[]dto.CustomMenuItem `json:"custom_menu_items"`
-	CustomEndpoints               *[]dto.CustomEndpoint `json:"custom_endpoints"`
-	OnyxEnabled                   *bool                 `json:"onyx_enabled"`
-	OnyxBaseURL                   *string               `json:"onyx_base_url"`
-	OnyxMenuLabel                 *string               `json:"onyx_menu_label"`
-	OnyxExchangeSecret            *string               `json:"onyx_exchange_secret"`
-	OnyxLaunchTokenTTLSeconds     *int                  `json:"onyx_launch_token_ttl_seconds"`
-	OnyxDefaultRedirectPath       *string               `json:"onyx_default_redirect_path"`
-	OnyxDefaultTextModel          *string               `json:"onyx_default_text_model"`
-	OnyxDefaultImageModel         *string               `json:"onyx_default_image_model"`
-	LobeHubEnabled                *bool                 `json:"lobehub_enabled"`
-	LobeHubBaseURL                *string               `json:"lobehub_base_url"`
-	LobeHubMenuLabel              *string               `json:"lobehub_menu_label"`
-	LobeHubExchangeSecret         *string               `json:"lobehub_exchange_secret"`
-	LobeHubAllowedEmails          *string               `json:"lobehub_allowed_emails"`
-	VideoPlaygroundEnabled        *bool                 `json:"video_playground_enabled"`
-	VideoPlaygroundBaseURL        *string               `json:"video_playground_base_url"`
-	VideoPlaygroundMenuLabel      *string               `json:"video_playground_menu_label"`
-	VideoPlaygroundExchangeSecret *string               `json:"video_playground_exchange_secret"`
+	SiteName                      string                 `json:"site_name"`
+	SiteLogo                      string                 `json:"site_logo"`
+	SiteSubtitle                  string                 `json:"site_subtitle"`
+	APIBaseURL                    string                 `json:"api_base_url"`
+	ContactInfo                   string                 `json:"contact_info"`
+	DocURL                        string                 `json:"doc_url"`
+	ImagePlaygroundDocURL         string                 `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL         string                 `json:"video_playground_doc_url"`
+	RedeemPurchaseURL             string                 `json:"redeem_purchase_url"`
+	HomeContent                   string                 `json:"home_content"`
+	HideCcsImportButton           bool                   `json:"hide_ccs_import_button"`
+	PurchaseSubscriptionEnabled   *bool                  `json:"purchase_subscription_enabled"`
+	PurchaseSubscriptionURL       *string                `json:"purchase_subscription_url"`
+	TableDefaultPageSize          int                    `json:"table_default_page_size"`
+	TablePageSizeOptions          []int                  `json:"table_page_size_options"`
+	CustomMenuItems               *[]dto.CustomMenuItem  `json:"custom_menu_items"`
+	VictoryMenuItems              *[]dto.VictoryMenuItem `json:"victory_menu_items"`
+	CustomEndpoints               *[]dto.CustomEndpoint  `json:"custom_endpoints"`
+	OnyxEnabled                   *bool                  `json:"onyx_enabled"`
+	OnyxBaseURL                   *string                `json:"onyx_base_url"`
+	OnyxMenuLabel                 *string                `json:"onyx_menu_label"`
+	OnyxExchangeSecret            *string                `json:"onyx_exchange_secret"`
+	OnyxLaunchTokenTTLSeconds     *int                   `json:"onyx_launch_token_ttl_seconds"`
+	OnyxDefaultRedirectPath       *string                `json:"onyx_default_redirect_path"`
+	OnyxDefaultTextModel          *string                `json:"onyx_default_text_model"`
+	OnyxDefaultImageModel         *string                `json:"onyx_default_image_model"`
+	LobeHubEnabled                *bool                  `json:"lobehub_enabled"`
+	LobeHubBaseURL                *string                `json:"lobehub_base_url"`
+	LobeHubMenuLabel              *string                `json:"lobehub_menu_label"`
+	LobeHubExchangeSecret         *string                `json:"lobehub_exchange_secret"`
+	LobeHubAllowedEmails          *string                `json:"lobehub_allowed_emails"`
+	VideoPlaygroundEnabled        *bool                  `json:"video_playground_enabled"`
+	VideoPlaygroundBaseURL        *string                `json:"video_playground_base_url"`
+	VideoPlaygroundMenuLabel      *string                `json:"video_playground_menu_label"`
+	VideoPlaygroundExchangeSecret *string                `json:"video_playground_exchange_secret"`
 
 	// 默认配置
 	DefaultConcurrency                        int                               `json:"default_concurrency"`
@@ -1713,6 +1715,68 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		customMenuJSON = string(menuBytes)
 	}
 
+	victoryMenuJSON := previousSettings.VictoryMenuItems
+	if req.VictoryMenuItems != nil {
+		items := *req.VictoryMenuItems
+		if len(items) > maxCustomMenuItems {
+			response.BadRequest(c, "Too many victory menu items (max 20)")
+			return
+		}
+		for i, item := range items {
+			if strings.TrimSpace(item.Label) == "" {
+				response.BadRequest(c, "Victory menu item label is required")
+				return
+			}
+			if len(item.Label) > maxMenuItemLabelLen {
+				response.BadRequest(c, "Victory menu item label is too long (max 50 characters)")
+				return
+			}
+			urlTrimmed := strings.TrimSpace(item.URL)
+			if urlTrimmed == "" {
+				response.BadRequest(c, "Victory menu item URL is required")
+				return
+			}
+			if len(item.URL) > maxMenuItemURLLen {
+				response.BadRequest(c, "Victory menu item URL is too long (max 2048 characters)")
+				return
+			}
+			if err := config.ValidateAbsoluteHTTPURL(urlTrimmed); err != nil {
+				response.BadRequest(c, "Victory menu item URL must be an absolute http(s) URL")
+				return
+			}
+			items[i].Label = strings.TrimSpace(item.Label)
+			items[i].URL = urlTrimmed
+			if strings.TrimSpace(item.ID) == "" {
+				id, err := generateMenuItemID()
+				if err != nil {
+					response.Error(c, http.StatusInternalServerError, "Failed to generate victory menu item ID")
+					return
+				}
+				items[i].ID = id
+			} else if len(item.ID) > maxMenuItemIDLen {
+				response.BadRequest(c, "Victory menu item ID is too long (max 32 characters)")
+				return
+			} else if !menuItemIDPattern.MatchString(item.ID) {
+				response.BadRequest(c, "Victory menu item ID contains invalid characters (only a-z, A-Z, 0-9, - and _ are allowed)")
+				return
+			}
+		}
+		seen := make(map[string]struct{}, len(items))
+		for _, item := range items {
+			if _, exists := seen[item.ID]; exists {
+				response.BadRequest(c, "Duplicate victory menu item ID: "+item.ID)
+				return
+			}
+			seen[item.ID] = struct{}{}
+		}
+		menuBytes, err := json.Marshal(items)
+		if err != nil {
+			response.BadRequest(c, "Failed to serialize victory menu items")
+			return
+		}
+		victoryMenuJSON = string(menuBytes)
+	}
+
 	// 自定义端点验证
 	const (
 		maxCustomEndpoints        = 10
@@ -1979,6 +2043,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TableDefaultPageSize:                   req.TableDefaultPageSize,
 		TablePageSizeOptions:                   req.TablePageSizeOptions,
 		CustomMenuItems:                        customMenuJSON,
+		VictoryMenuItems:                       victoryMenuJSON,
 		CustomEndpoints:                        customEndpointsJSON,
 		OnyxEnabled:                            onyxEnabled,
 		OnyxBaseURL:                            onyxBaseURL,
@@ -2523,6 +2588,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TableDefaultPageSize:                                   updatedSettings.TableDefaultPageSize,
 		TablePageSizeOptions:                                   updatedSettings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
+		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(updatedSettings.VictoryMenuItems),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
 		DefaultConcurrency:                                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                                         updatedSettings.DefaultBalance,
@@ -3091,6 +3157,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.CustomMenuItems != after.CustomMenuItems {
 		changed = append(changed, "custom_menu_items")
+	}
+	if before.VictoryMenuItems != after.VictoryMenuItems {
+		changed = append(changed, "victory_menu_items")
 	}
 	if before.CustomEndpoints != after.CustomEndpoints {
 		changed = append(changed, "custom_endpoints")

@@ -71,6 +71,15 @@ func (h *ImagePlaygroundHandler) RunProbe(c *gin.Context) {
 	h.proxy(c, http.MethodPost, "/api/admin/model-probe-runs/run", map[string]bool{"ok": true})
 }
 
+func (h *ImagePlaygroundHandler) RunModelProbe(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid model id")
+		return
+	}
+	h.proxy(c, http.MethodPost, fmt.Sprintf("/api/admin/models/%d/probe", id), map[string]bool{"ok": true})
+}
+
 func (h *ImagePlaygroundHandler) CreateModel(c *gin.Context) {
 	var req imagePlaygroundModelRequest
 	if err := bindAllowedImageModelRequest(c, &req); err != nil {

@@ -33,7 +33,7 @@ describe('AppSidebar header styles', () => {
 
 describe('AppSidebar Onyx menu wiring', () => {
   it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
-    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVideoPlayground } from '@/api/onyx'")
+    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu, launchVideoPlayground } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
@@ -45,7 +45,7 @@ describe('AppSidebar Onyx menu wiring', () => {
 
 describe('AppSidebar image playground menu wiring', () => {
   it('adds an authenticated launch action next to the chat menu', () => {
-    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground'")
+    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground' | 'victoryMenu'")
     expect(componentSource).toContain("label: t('nav.imagePlayground')")
     expect(componentSource).toContain("action: 'imagePlayground'")
     expect(componentSource).toContain('handleImagePlaygroundLaunch')
@@ -92,5 +92,19 @@ describe('AppSidebar purchase menu wiring', () => {
     expect(componentSource).toContain("label: t('nav.buySubscription')")
     expect(componentSource).toContain('featureFlag: flagRechargeSubscription')
     expect(componentSource).not.toContain("externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai'")
+  })
+})
+
+describe('AppSidebar victory menu wiring', () => {
+  it('adds Vibe forum and configurable victory child launches to the user menu', () => {
+    expect(componentSource).toContain("label: 'Vibe论坛'")
+    expect(componentSource).toContain("externalUrl: 'https://vibe.xiaoni-ai.top'")
+    expect(componentSource).toContain("label: '旗开得胜'")
+    expect(componentSource).toContain("label: '小逆Offer'")
+    expect(componentSource).toContain("url: 'https://offer.xiaoni-ai.top'")
+    expect(componentSource).toContain('launchVictoryMenu(menuID)')
+    expect(componentSource).toContain("action: item.carry_api_key ? 'victoryMenu' : undefined")
+    expect(componentSource).toContain('target="_blank"')
+    expect(componentSource).toContain('rel="noopener noreferrer"')
   })
 })

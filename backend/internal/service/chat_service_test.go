@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
@@ -38,6 +39,57 @@ func TestChatServiceSelectsFirstActiveGroupedAPIKeyForUser(t *testing.T) {
 	require.Equal(t, "sk-chat", key.Key)
 	require.Equal(t, int64(42), repo.listUserID)
 	require.Equal(t, "sk-chat", repo.loadedKey)
+}
+
+func TestChatServiceSkipsExpiredAndQuotaExhaustedAPIKeys(t *testing.T) {
+	groupID := int64(9)
+	past := time.Now().Add(-time.Hour)
+	repo := &chatAPIKeyRepoStub{
+		list: []APIKey{
+			{ID: 1, UserID: 42, Key: "sk-expired", Status: StatusAPIKeyActive, GroupID: &groupID},
+			{ID: 2, UserID: 42, Key: "sk-quota", Status: StatusAPIKeyActive, GroupID: &groupID},
+			{ID: 3, UserID: 42, Key: "sk-usable", Status: StatusAPIKeyActive, GroupID: &groupID},
+		},
+		byKey: map[string]*APIKey{
+			"sk-expired": {
+				ID:        1,
+				UserID:    42,
+				Key:       "sk-expired",
+				Status:    StatusAPIKeyActive,
+				GroupID:   &groupID,
+				ExpiresAt: &past,
+				User:      &User{ID: 42, Status: StatusActive, Balance: 10},
+				Group:     &Group{ID: groupID, Name: "default", Status: StatusActive},
+			},
+			"sk-quota": {
+				ID:        2,
+				UserID:    42,
+				Key:       "sk-quota",
+				Status:    StatusAPIKeyActive,
+				GroupID:   &groupID,
+				Quota:     1,
+				QuotaUsed: 1,
+				User:      &User{ID: 42, Status: StatusActive, Balance: 10},
+				Group:     &Group{ID: groupID, Name: "default", Status: StatusActive},
+			},
+			"sk-usable": {
+				ID:      3,
+				UserID:  42,
+				Key:     "sk-usable",
+				Status:  StatusAPIKeyActive,
+				GroupID: &groupID,
+				User:    &User{ID: 42, Status: StatusActive, Balance: 10},
+				Group:   &Group{ID: groupID, Name: "default", Status: StatusActive},
+			},
+		},
+	}
+
+	svc := NewChatService(NewAPIKeyService(repo, nil, nil, nil, nil, nil, nil))
+
+	key, err := svc.SelectDefaultAPIKey(context.Background(), 42)
+
+	require.NoError(t, err)
+	require.Equal(t, "sk-usable", key.Key)
 }
 
 func TestChatServiceReturnsNotFoundWhenUserHasNoUsableAPIKey(t *testing.T) {

@@ -111,3 +111,44 @@ func TestImagePlaygroundHandlerRunProbeProxiesPost(t *testing.T) {
 	require.Equal(t, "/api/admin/model-probe-runs/run", gotPath)
 	require.Contains(t, rec.Body.String(), `"running":true`)
 }
+
+func TestImagePlaygroundHandlerRunModelProbeProxiesPost(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var gotPath string
+	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+
+	handler := NewImagePlaygroundHandler(nil)
+	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		gotPath = r.URL.Path
+		require.Equal(t, http.MethodPost, r.Method)
+		body := []byte(`{"ok":true,"running":true}`)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	router := gin.New()
+	router.POST("/models/:id/probe", handler.RunModelProbe)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/models/7/probe", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "/api/admin/models/7/probe", gotPath)
+	require.Contains(t, rec.Body.String(), `"running":true`)
+}
+
+func TestImagePlaygroundHandlerRunModelProbeRejectsInvalidID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewImagePlaygroundHandler(nil)
+	router := gin.New()
+	router.POST("/models/:id/probe", handler.RunModelProbe)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/models/bad/probe", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}

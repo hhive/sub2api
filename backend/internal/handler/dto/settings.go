@@ -18,6 +18,16 @@ type CustomMenuItem struct {
 	SortOrder  int    `json:"sort_order"`
 }
 
+// VictoryMenuItem represents a configurable child entry under the fixed "旗开得胜" menu.
+type VictoryMenuItem struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	URL         string `json:"url"`
+	CarryAPIKey bool   `json:"carry_api_key"`
+	Enabled     bool   `json:"enabled"`
+	SortOrder   int    `json:"sort_order"`
+}
+
 // CustomEndpoint represents an admin-configured API endpoint for quick copy.
 type CustomEndpoint struct {
 	Name        string `json:"name"`
@@ -134,40 +144,41 @@ type SystemSettings struct {
 	GoogleOAuthRedirectURL            string `json:"google_oauth_redirect_url"`
 	GoogleOAuthFrontendRedirectURL    string `json:"google_oauth_frontend_redirect_url"`
 
-	SiteName                                string           `json:"site_name"`
-	SiteLogo                                string           `json:"site_logo"`
-	SiteSubtitle                            string           `json:"site_subtitle"`
-	APIBaseURL                              string           `json:"api_base_url"`
-	ContactInfo                             string           `json:"contact_info"`
-	DocURL                                  string           `json:"doc_url"`
-	ImagePlaygroundDocURL                   string           `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL                   string           `json:"video_playground_doc_url"`
-	RedeemPurchaseURL                       string           `json:"redeem_purchase_url"`
-	HomeContent                             string           `json:"home_content"`
-	HideCcsImportButton                     bool             `json:"hide_ccs_import_button"`
-	PurchaseSubscriptionEnabled             bool             `json:"purchase_subscription_enabled"`
-	PurchaseSubscriptionURL                 string           `json:"purchase_subscription_url"`
-	TableDefaultPageSize                    int              `json:"table_default_page_size"`
-	TablePageSizeOptions                    []int            `json:"table_page_size_options"`
-	CustomMenuItems                         []CustomMenuItem `json:"custom_menu_items"`
-	CustomEndpoints                         []CustomEndpoint `json:"custom_endpoints"`
-	OnyxEnabled                             bool             `json:"onyx_enabled"`
-	OnyxBaseURL                             string           `json:"onyx_base_url"`
-	OnyxMenuLabel                           string           `json:"onyx_menu_label"`
-	OnyxExchangeSecretConfigured            bool             `json:"onyx_exchange_secret_configured"`
-	OnyxLaunchTokenTTLSeconds               int              `json:"onyx_launch_token_ttl_seconds"`
-	OnyxDefaultRedirectPath                 string           `json:"onyx_default_redirect_path"`
-	OnyxDefaultTextModel                    string           `json:"onyx_default_text_model"`
-	OnyxDefaultImageModel                   string           `json:"onyx_default_image_model"`
-	LobeHubEnabled                          bool             `json:"lobehub_enabled"`
-	LobeHubBaseURL                          string           `json:"lobehub_base_url"`
-	LobeHubMenuLabel                        string           `json:"lobehub_menu_label"`
-	LobeHubExchangeSecretConfigured         bool             `json:"lobehub_exchange_secret_configured"`
-	LobeHubAllowedEmails                    string           `json:"lobehub_allowed_emails"`
-	VideoPlaygroundEnabled                  bool             `json:"video_playground_enabled"`
-	VideoPlaygroundBaseURL                  string           `json:"video_playground_base_url"`
-	VideoPlaygroundMenuLabel                string           `json:"video_playground_menu_label"`
-	VideoPlaygroundExchangeSecretConfigured bool             `json:"video_playground_exchange_secret_configured"`
+	SiteName                                string            `json:"site_name"`
+	SiteLogo                                string            `json:"site_logo"`
+	SiteSubtitle                            string            `json:"site_subtitle"`
+	APIBaseURL                              string            `json:"api_base_url"`
+	ContactInfo                             string            `json:"contact_info"`
+	DocURL                                  string            `json:"doc_url"`
+	ImagePlaygroundDocURL                   string            `json:"image_playground_doc_url"`
+	VideoPlaygroundDocURL                   string            `json:"video_playground_doc_url"`
+	RedeemPurchaseURL                       string            `json:"redeem_purchase_url"`
+	HomeContent                             string            `json:"home_content"`
+	HideCcsImportButton                     bool              `json:"hide_ccs_import_button"`
+	PurchaseSubscriptionEnabled             bool              `json:"purchase_subscription_enabled"`
+	PurchaseSubscriptionURL                 string            `json:"purchase_subscription_url"`
+	TableDefaultPageSize                    int               `json:"table_default_page_size"`
+	TablePageSizeOptions                    []int             `json:"table_page_size_options"`
+	CustomMenuItems                         []CustomMenuItem  `json:"custom_menu_items"`
+	VictoryMenuItems                        []VictoryMenuItem `json:"victory_menu_items"`
+	CustomEndpoints                         []CustomEndpoint  `json:"custom_endpoints"`
+	OnyxEnabled                             bool              `json:"onyx_enabled"`
+	OnyxBaseURL                             string            `json:"onyx_base_url"`
+	OnyxMenuLabel                           string            `json:"onyx_menu_label"`
+	OnyxExchangeSecretConfigured            bool              `json:"onyx_exchange_secret_configured"`
+	OnyxLaunchTokenTTLSeconds               int               `json:"onyx_launch_token_ttl_seconds"`
+	OnyxDefaultRedirectPath                 string            `json:"onyx_default_redirect_path"`
+	OnyxDefaultTextModel                    string            `json:"onyx_default_text_model"`
+	OnyxDefaultImageModel                   string            `json:"onyx_default_image_model"`
+	LobeHubEnabled                          bool              `json:"lobehub_enabled"`
+	LobeHubBaseURL                          string            `json:"lobehub_base_url"`
+	LobeHubMenuLabel                        string            `json:"lobehub_menu_label"`
+	LobeHubExchangeSecretConfigured         bool              `json:"lobehub_exchange_secret_configured"`
+	LobeHubAllowedEmails                    string            `json:"lobehub_allowed_emails"`
+	VideoPlaygroundEnabled                  bool              `json:"video_playground_enabled"`
+	VideoPlaygroundBaseURL                  string            `json:"video_playground_base_url"`
+	VideoPlaygroundMenuLabel                string            `json:"video_playground_menu_label"`
+	VideoPlaygroundExchangeSecretConfigured bool              `json:"video_playground_exchange_secret_configured"`
 
 	DefaultConcurrency                    int                          `json:"default_concurrency"`
 	DefaultBalance                        float64                      `json:"default_balance"`
@@ -377,6 +388,7 @@ type PublicSettings struct {
 	TableDefaultPageSize             int                      `json:"table_default_page_size"`
 	TablePageSizeOptions             []int                    `json:"table_page_size_options"`
 	CustomMenuItems                  []CustomMenuItem         `json:"custom_menu_items"`
+	VictoryMenuItems                 []VictoryMenuItem        `json:"victory_menu_items"`
 	CustomEndpoints                  []CustomEndpoint         `json:"custom_endpoints"`
 	OnyxEnabled                      bool                     `json:"onyx_enabled"`
 	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
@@ -576,6 +588,20 @@ func ParseUserVisibleMenuItems(raw string) []CustomMenuItem {
 		}
 	}
 	return filtered
+}
+
+// ParseVictoryMenuItems parses a JSON string into a slice of VictoryMenuItem.
+// Returns empty slice on empty/invalid input.
+func ParseVictoryMenuItems(raw string) []VictoryMenuItem {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return []VictoryMenuItem{}
+	}
+	var items []VictoryMenuItem
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return []VictoryMenuItem{}
+	}
+	return items
 }
 
 // ParseCustomEndpoints parses a JSON string into a slice of CustomEndpoint.

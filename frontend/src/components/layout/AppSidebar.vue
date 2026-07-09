@@ -63,17 +63,39 @@
               </button>
               <!-- Children -->
               <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-gray-200 pl-2 dark:border-dark-600">
-                <router-link
-                  v-for="child in item.children"
-                  :key="child.path"
-                  :to="child.path"
-                  class="sidebar-link mb-0.5 py-1.5 text-sm"
-                  :class="{ 'sidebar-link-active': route.path === child.path }"
-                  @click="handleMenuItemClick(child.path)"
-                >
-                  <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
-                  <span>{{ child.label }}</span>
-                </router-link>
+                <template v-for="child in item.children" :key="child.path">
+                  <button
+                    v-if="child.action"
+                    type="button"
+                    class="sidebar-link mb-0.5 w-full py-1.5 text-sm"
+                    :disabled="isActionLaunching(child.action, child)"
+                    @click="handleActionLaunch(child.action, child)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ actionLabel(child) }}</span>
+                  </button>
+                  <a
+                    v-else-if="child.externalUrl"
+                    :href="child.externalUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </a>
+                  <router-link
+                    v-else
+                    :to="child.path"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    :class="{ 'sidebar-link-active': route.path === child.path }"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </router-link>
+                </template>
               </div>
             </template>
             <button
@@ -82,8 +104,8 @@
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              :disabled="isActionLaunching(item.action)"
-              @click="handleActionLaunch(item.action)"
+              :disabled="isActionLaunching(item.action, item)"
+              @click="handleActionLaunch(item.action, item)"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
@@ -124,14 +146,74 @@
           </div>
 
           <template v-for="item in personalNavItems" :key="item.path">
+            <template v-if="item.children?.length">
+              <button
+                type="button"
+                class="sidebar-link mb-1 w-full"
+                :class="{
+                  'sidebar-link-active': isGroupActive(item) && !isGroupExpanded(item),
+                  'sidebar-link-collapsed': sidebarCollapsed
+                }"
+                :title="sidebarCollapsed ? item.label : undefined"
+                @click="handleGroupClick(item)"
+              >
+                <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+                <span
+                  class="sidebar-label sidebar-label-flex"
+                  :class="{ 'sidebar-label-collapsed': sidebarCollapsed }"
+                  :aria-hidden="sidebarCollapsed ? 'true' : 'false'"
+                >
+                  <span class="min-w-0 truncate">{{ item.label }}</span>
+                  <ChevronDownIcon
+                    class="h-4 w-4 flex-shrink-0 transition-transform duration-200"
+                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                  />
+                </span>
+              </button>
+              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-gray-200 pl-2 dark:border-dark-600">
+                <template v-for="child in item.children" :key="child.path">
+                  <button
+                    v-if="child.action"
+                    type="button"
+                    class="sidebar-link mb-0.5 w-full py-1.5 text-sm"
+                    :disabled="isActionLaunching(child.action, child)"
+                    @click="handleActionLaunch(child.action, child)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ actionLabel(child) }}</span>
+                  </button>
+                  <a
+                    v-else-if="child.externalUrl"
+                    :href="child.externalUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </a>
+                  <router-link
+                    v-else
+                    :to="child.path"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    :class="{ 'sidebar-link-active': route.path === child.path }"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </router-link>
+                </template>
+              </div>
+            </template>
             <button
-              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              :disabled="isActionLaunching(item.action)"
-              @click="handleActionLaunch(item.action)"
+              :disabled="isActionLaunching(item.action, item)"
+              @click="handleActionLaunch(item.action, item)"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
@@ -173,14 +255,74 @@
       <template v-else-if="!appStore.backendModeEnabled">
         <div class="sidebar-section">
           <template v-for="item in userNavItems" :key="item.path">
+            <template v-if="item.children?.length">
+              <button
+                type="button"
+                class="sidebar-link mb-1 w-full"
+                :class="{
+                  'sidebar-link-active': isGroupActive(item) && !isGroupExpanded(item),
+                  'sidebar-link-collapsed': sidebarCollapsed
+                }"
+                :title="sidebarCollapsed ? item.label : undefined"
+                @click="handleGroupClick(item)"
+              >
+                <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+                <span
+                  class="sidebar-label sidebar-label-flex"
+                  :class="{ 'sidebar-label-collapsed': sidebarCollapsed }"
+                  :aria-hidden="sidebarCollapsed ? 'true' : 'false'"
+                >
+                  <span class="min-w-0 truncate">{{ item.label }}</span>
+                  <ChevronDownIcon
+                    class="h-4 w-4 flex-shrink-0 transition-transform duration-200"
+                    :class="isGroupExpanded(item) ? 'rotate-180' : ''"
+                  />
+                </span>
+              </button>
+              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-gray-200 pl-2 dark:border-dark-600">
+                <template v-for="child in item.children" :key="child.path">
+                  <button
+                    v-if="child.action"
+                    type="button"
+                    class="sidebar-link mb-0.5 w-full py-1.5 text-sm"
+                    :disabled="isActionLaunching(child.action, child)"
+                    @click="handleActionLaunch(child.action, child)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ actionLabel(child) }}</span>
+                  </button>
+                  <a
+                    v-else-if="child.externalUrl"
+                    :href="child.externalUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </a>
+                  <router-link
+                    v-else
+                    :to="child.path"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    :class="{ 'sidebar-link-active': route.path === child.path }"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <component :is="child.icon" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </router-link>
+                </template>
+              </div>
+            </template>
             <button
-              v-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
-              :disabled="isActionLaunching(item.action)"
-              @click="handleActionLaunch(item.action)"
+              :disabled="isActionLaunching(item.action, item)"
+              @click="handleActionLaunch(item.action, item)"
             >
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
@@ -267,8 +409,9 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchImagePlayground, launchLobeHub, launchOnyx, launchVideoPlayground } from '@/api/onyx'
+import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu, launchVideoPlayground } from '@/api/onyx'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import type { VictoryMenuItem } from '@/types'
 
 interface NavItem {
   path: string
@@ -278,12 +421,13 @@ interface NavItem {
   externalUrl?: string
   hideInSimpleMode?: boolean
   children?: NavItem[]
+  victoryMenuID?: string
   /**
    * When true, the parent item only toggles the expand/collapse state and
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground'
+  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground' | 'victoryMenu'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -326,6 +470,7 @@ const lobeHubLaunching = ref(false)
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
 const videoPlaygroundLaunching = ref(false)
+const victoryMenuLaunching = ref<Record<string, boolean>>({})
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 
@@ -819,6 +964,25 @@ const purchaseSubscriptionUrl = computed(() => {
 })
 const flagBatchImageAccess = () => canUseBatchImage.value
 
+const defaultVictoryMenuItems: VictoryMenuItem[] = [
+  {
+    id: 'xiaoni-offer',
+    label: '小逆Offer',
+    url: 'https://offer.xiaoni-ai.top',
+    carry_api_key: false,
+    enabled: true,
+    sort_order: 0,
+  },
+]
+
+const victoryMenuItems = computed(() => {
+  const configured = appStore.cachedPublicSettings?.victory_menu_items
+  const items = Array.isArray(configured) && configured.length > 0 ? configured : defaultVictoryMenuItems
+  return items
+    .filter((item) => item.enabled !== false && item.label.trim() && item.url.trim())
+    .sort((a, b) => a.sort_order - b.sort_order)
+})
+
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
 // withDashboard=true 时包含仪表盘（用户端），false 时不含（管理员的个人区已经有独立仪表盘入口）。
 //
@@ -837,6 +1001,22 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
     { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagImagePlayground, action: 'imagePlayground' },
     { path: '__video_playground__', label: t('nav.videoPlayground'), icon: VideoIcon, hideInSimpleMode: true, featureFlag: flagVideoPlayground, action: 'videoPlayground' },
+    { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
+    {
+      path: '__victory_menu__',
+      label: '旗开得胜',
+      icon: GiftIcon,
+      hideInSimpleMode: true,
+      expandOnly: true,
+      children: victoryMenuItems.value.map((item): NavItem => ({
+        path: `__victory_menu_${item.id}__`,
+        label: item.label,
+        icon: GiftIcon,
+        externalUrl: item.carry_api_key ? undefined : item.url,
+        action: item.carry_api_key ? 'victoryMenu' : undefined,
+        victoryMenuID: item.id,
+      })),
+    },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -1068,7 +1248,33 @@ async function handleVideoPlaygroundLaunch() {
   }
 }
 
-function handleActionLaunch(action: NavItem['action']) {
+async function handleVictoryMenuLaunch(item: NavItem) {
+  const menuID = item.victoryMenuID
+  if (!menuID || victoryMenuLaunching.value[menuID]) return
+  handleMenuItemClick(item.path)
+  const launchWindow = window.open('', '_blank')
+  if (launchWindow) {
+    launchWindow.opener = null
+  }
+  victoryMenuLaunching.value = { ...victoryMenuLaunching.value, [menuID]: true }
+  try {
+    const result = await launchVictoryMenu(menuID)
+    if (launchWindow) {
+      launchWindow.location.href = result.redirect_url
+    } else {
+      window.location.href = result.redirect_url
+    }
+  } catch (error) {
+    launchWindow?.close()
+    appStore.showError(resolveVictoryMenuLaunchError(error))
+  } finally {
+    const next = { ...victoryMenuLaunching.value }
+    delete next[menuID]
+    victoryMenuLaunching.value = next
+  }
+}
+
+function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
   if (action === 'lobehub') {
     return handleLobeHubLaunch()
   }
@@ -1081,13 +1287,17 @@ function handleActionLaunch(action: NavItem['action']) {
   if (action === 'videoPlayground') {
     return handleVideoPlaygroundLaunch()
   }
+  if (action === 'victoryMenu' && item) {
+    return handleVictoryMenuLaunch(item)
+  }
 }
 
-function isActionLaunching(action: NavItem['action']): boolean {
+function isActionLaunching(action: NavItem['action'], item?: NavItem): boolean {
   if (action === 'lobehub') return lobeHubLaunching.value
   if (action === 'onyx') return onyxLaunching.value
   if (action === 'imagePlayground') return imagePlaygroundLaunching.value
   if (action === 'videoPlayground') return videoPlaygroundLaunching.value
+  if (action === 'victoryMenu' && item?.victoryMenuID) return !!victoryMenuLaunching.value[item.victoryMenuID]
   return false
 }
 
@@ -1096,6 +1306,7 @@ function actionLabel(item: NavItem): string {
   if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
   if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
   if (item.action === 'videoPlayground' && videoPlaygroundLaunching.value) return t('videoPlayground.opening')
+  if (item.action === 'victoryMenu' && item.victoryMenuID && victoryMenuLaunching.value[item.victoryMenuID]) return t('victoryMenu.opening')
   return item.label
 }
 
@@ -1141,6 +1352,14 @@ function resolveVideoPlaygroundLaunchError(error: unknown): string {
     return t('videoPlayground.notConfigured')
   }
   return apiError.message || t('videoPlayground.openFailed')
+}
+
+function resolveVictoryMenuLaunchError(error: unknown): string {
+  const apiError = error as { status?: number; reason?: string; message?: string }
+  if (apiError.reason === 'CHAT_API_KEY_NOT_FOUND') {
+    return t('onyx.noAvailableApiKey')
+  }
+  return apiError.message || t('victoryMenu.openFailed')
 }
 
 function isActive(path: string): boolean {

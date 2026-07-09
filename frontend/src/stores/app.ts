@@ -351,6 +351,15 @@ export const useAppStore = defineStore('app', () => {
         table_default_page_size: 20,
         table_page_size_options: [10, 20, 50, 100],
         custom_menu_items: [],
+        victory_menu_items: [
+          {
+            id: 'xiaoni-offer',
+            label: '小逆Offer',
+            url: 'https://offer.xiaoni-ai.top',
+            carry_api_key: false,
+            sort_order: 0,
+          },
+        ],
         custom_endpoints: [],
         linuxdo_oauth_enabled: false,
         wechat_oauth_enabled: false,

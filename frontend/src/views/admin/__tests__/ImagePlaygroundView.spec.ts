@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import ImagePlaygroundView from '../ImagePlaygroundView.vue'
 
-const { listModels, listProbeRuns, runProbe, showError, showSuccess } = vi.hoisted(() => ({
+const { listModels, listProbeRuns, runModelProbe, runProbe, showError, showSuccess } = vi.hoisted(() => ({
   listModels: vi.fn(),
   listProbeRuns: vi.fn(),
+  runModelProbe: vi.fn(),
   runProbe: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock('@/api/admin', () => ({
     imagePlayground: {
       listModels,
       listProbeRuns,
+      runModelProbe,
       runProbe,
       createModel: vi.fn(),
       updateModel: vi.fn(),
@@ -51,9 +53,11 @@ vi.mock('vue-i18n', async () => {
     'admin.imagePlayground.reuse': '复用',
     'admin.imagePlayground.probeRuns.button': '探测记录',
     'admin.imagePlayground.probeRuns.runButton': '主动探测',
+    'admin.imagePlayground.probeRuns.singleRunButton': '探测',
     'admin.imagePlayground.probeRuns.title': '探测记录',
     'admin.imagePlayground.probeRuns.description': '探测描述',
     'admin.imagePlayground.probeRuns.runSuccess': '主动探测已开始',
+    'admin.imagePlayground.probeRuns.singleRunSuccess': '{name} 探测已开始',
     'admin.imagePlayground.probeRuns.previous': '上一页',
     'admin.imagePlayground.probeRuns.next': '下一页',
     'admin.imagePlayground.probeRuns.pageInfo': '第 {page} 页，共 {total} 条',
@@ -161,6 +165,14 @@ const model = {
   sort_order: 1,
 }
 
+const secondModel = {
+  ...model,
+  id: 8,
+  display_name: 'Image Backup',
+  model: 'gpt-image-backup',
+  sort_order: 2,
+}
+
 function mountView() {
   return mount(ImagePlaygroundView, {
     global: {
@@ -179,6 +191,7 @@ describe('ImagePlaygroundView', () => {
   beforeEach(() => {
     listModels.mockReset()
     listProbeRuns.mockReset()
+    runModelProbe.mockReset()
     runProbe.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
@@ -206,6 +219,7 @@ describe('ImagePlaygroundView', () => {
       page: 1,
       page_size: 20,
     })
+    runModelProbe.mockResolvedValue({ ok: true, running: true })
     runProbe.mockResolvedValue({ ok: true, running: true })
   })
 
@@ -252,5 +266,55 @@ describe('ImagePlaygroundView', () => {
     expect(runProbe).toHaveBeenCalledTimes(1)
     expect(showSuccess).toHaveBeenCalledWith('主动探测已开始')
     expect(listModels).toHaveBeenCalledTimes(2)
+  })
+
+  it('runs a single model probe from the config row', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('button').find((button) => button.text() === '探测')!.trigger('click')
+    await flushPromises()
+
+    expect(runModelProbe).toHaveBeenCalledWith(7)
+    expect(showSuccess).toHaveBeenCalledWith('Image Fast 探测已开始')
+    expect(listModels).toHaveBeenCalledTimes(2)
+  })
+
+  it('tracks loading state independently for multiple row probes', async () => {
+    listModels.mockResolvedValue([model, secondModel])
+    let resolveFirst!: (value: { ok: boolean; running: boolean }) => void
+    let resolveSecond!: (value: { ok: boolean; running: boolean }) => void
+    runModelProbe.mockImplementation((id: number) => {
+      return new Promise((resolve) => {
+        if (id === 7) {
+          resolveFirst = resolve
+          return
+        }
+        resolveSecond = resolve
+      })
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const probeButtons = () => wrapper.findAll('button').filter((button) => button.text() === '探测')
+    await probeButtons()[0].trigger('click')
+    await nextTick()
+    await probeButtons()[1].trigger('click')
+    await nextTick()
+
+    expect(runModelProbe).toHaveBeenNthCalledWith(1, 7)
+    expect(runModelProbe).toHaveBeenNthCalledWith(2, 8)
+    expect(probeButtons()[0].attributes('disabled')).toBeDefined()
+    expect(probeButtons()[1].attributes('disabled')).toBeDefined()
+
+    resolveFirst({ ok: true, running: true })
+    await flushPromises()
+    expect(probeButtons()[0].attributes('disabled')).toBeUndefined()
+    expect(probeButtons()[1].attributes('disabled')).toBeDefined()
+
+    resolveSecond({ ok: true, running: true })
+    await flushPromises()
+    expect(probeButtons()[1].attributes('disabled')).toBeUndefined()
   })
 })

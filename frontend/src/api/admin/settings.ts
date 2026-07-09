@@ -9,6 +9,7 @@ import type {
   CustomMenuItem,
   LoginAgreementDocument,
   NotifyEmailEntry,
+  VictoryMenuItem,
 } from "@/types";
 
 export interface DefaultSubscriptionSetting {
@@ -460,6 +461,7 @@ export interface SystemSettings {
   table_page_size_options: number[];
   backend_mode_enabled: boolean;
   custom_menu_items: CustomMenuItem[];
+  victory_menu_items: VictoryMenuItem[];
   custom_endpoints: CustomEndpoint[];
   lobehub_allowed_emails: string;
   video_playground_enabled: boolean;
@@ -784,6 +786,7 @@ export interface UpdateSettingsRequest {
   table_page_size_options?: number[];
   backend_mode_enabled?: boolean;
   custom_menu_items?: CustomMenuItem[];
+  victory_menu_items?: VictoryMenuItem[];
   custom_endpoints?: CustomEndpoint[];
   lobehub_allowed_emails?: string;
   video_playground_enabled?: boolean;

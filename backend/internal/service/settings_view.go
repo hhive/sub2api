@@ -150,6 +150,7 @@ type SystemSettings struct {
 	TableDefaultPageSize          int
 	TablePageSizeOptions          []int
 	CustomMenuItems               string // JSON array of custom menu items
+	VictoryMenuItems              string // JSON array of victory menu items
 	CustomEndpoints               string // JSON array of custom endpoints
 	OnyxEnabled                   bool
 	OnyxBaseURL                   string
@@ -352,6 +353,7 @@ type PublicSettings struct {
 	TableDefaultPageSize        int
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
+	VictoryMenuItems            string // JSON array of victory menu items
 	CustomEndpoints             string // JSON array of custom endpoints
 	OnyxEnabled                 bool
 	OnyxMenuLabel               string

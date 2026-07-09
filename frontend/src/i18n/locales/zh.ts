@@ -487,6 +487,11 @@ export default {
     openFailed: '打开视频生成失败'
   },
 
+  victoryMenu: {
+    opening: '正在打开旗开得胜',
+    openFailed: '打开旗开得胜菜单失败'
+  },
+
   lobehub: {
     opening: '正在打开新·聊天台',
     notConfigured: '新·聊天台尚未配置，请联系管理员',
@@ -1707,11 +1712,14 @@ export default {
       probeRuns: {
         button: '探测记录',
         runButton: '主动探测',
+        singleRunButton: '探测',
         title: '探测记录',
         description: '按时间倒序展示图片站最近的模型探测 attempt 记录。',
         loadFailed: '加载探测记录失败',
         runSuccess: '主动探测已开始',
         runFailed: '主动探测失败',
+        singleRunSuccess: '{name} 探测已开始',
+        singleRunFailed: '模型探测失败',
         previous: '上一页',
         next: '下一页',
         pageInfo: '第 {page} 页，共 {total} 条',
@@ -6712,6 +6720,21 @@ export default {
         visibilityUser: '普通用户',
         visibilityAdmin: '管理员',
         add: '添加菜单项',
+        remove: '删除',
+        moveUp: '上移',
+        moveDown: '下移',
+      },
+      victoryMenu: {
+        title: '旗开得胜菜单',
+        description: '配置左侧用户导航栏“旗开得胜”下的子菜单，可选择跳转时是否携带用户 API Key。',
+        itemLabel: '子菜单 #{n}',
+        name: '菜单名称',
+        namePlaceholder: '如：小逆Offer',
+        url: '跳转链接',
+        urlPlaceholder: 'https://offer.xiaoni-ai.top',
+        enabled: '启用',
+        carryApiKey: '携带 APIKey',
+        add: '添加子菜单',
         remove: '删除',
         moveUp: '上移',
         moveDown: '下移',

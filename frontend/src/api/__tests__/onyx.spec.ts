@@ -10,7 +10,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { launchImagePlayground, launchLobeHub, launchOnyx, launchVideoPlayground } from '@/api/onyx'
+import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu, launchVideoPlayground } from '@/api/onyx'
 
 describe('onyx api', () => {
   beforeEach(() => {
@@ -50,5 +50,14 @@ describe('onyx api', () => {
 
     expect(post).toHaveBeenCalledWith('/lobehub/launch')
     expect(result.redirect_url).toBe('https://lobe.example.com/api/sub2api/launch?token=abc')
+  })
+
+  it('launches a victory menu item through the backend launch endpoint', async () => {
+    post.mockResolvedValueOnce({ data: { redirect_url: 'https://offer.xiaoni-ai.top?apikey=sk-test' } })
+
+    const result = await launchVictoryMenu('xiaoni-offer')
+
+    expect(post).toHaveBeenCalledWith('/menu-launch/victory', { menu_id: 'xiaoni-offer' })
+    expect(result.redirect_url).toBe('https://offer.xiaoni-ai.top?apikey=sk-test')
   })
 })

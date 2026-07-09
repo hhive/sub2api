@@ -64,6 +64,7 @@ type Handlers struct {
 	Onyx             *OnyxHandler
 	ImagePlayground  *ImagePlaygroundTaskHandler
 	BatchImage       *BatchImageHandler
+	MenuLaunch       *MenuLaunchHandler
 }
 
 // BuildInfo contains build-time information
