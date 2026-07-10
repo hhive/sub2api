@@ -59,6 +59,21 @@ export default {
     addBalanceWithCode: '使用兑换码充值'
   },
 
+  chat: {
+    title: '聊天台',
+    subtitle: '直接使用你的可用 API Key 与大模型对话',
+    newChat: '新对话',
+    emptyTitle: '开始一次对话',
+    emptyDescription: '输入问题后，系统会自动使用你的可用分组和默认模型完成回答。',
+    inputPlaceholder: '输入你的问题，按 Enter 发送，Shift + Enter 换行',
+    send: '发送',
+    sending: '发送中...',
+    thinking: '模型正在思考...',
+    loadModelsFailed: '加载模型失败，请先创建并绑定可用分组的 API Key。',
+    sendFailed: '发送失败，请检查 API Key、余额或上游渠道状态。',
+    emptyReply: '模型没有返回内容'
+  },
+
   // Groups (shared)
   groups: {
     subscription: '订阅'
@@ -91,6 +106,7 @@ export default {
     noGroup: '无分组',
     searchGroup: '搜索分组...',
     noGroupFound: '未找到匹配的分组',
+    noAvailableModels: '暂无可用模型',
     created: '创建时间',
     copyToClipboard: '复制到剪贴板',
     copied: '已复制！',
@@ -513,6 +529,14 @@ export default {
     stats: {
       rebateRate: '我的返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',
+      subscriptionRebateRate: '订阅返利比例',
+      subscriptionRebateRateHint: '被邀请用户购买订阅套餐后你可获得的返利比例',
+      rebateTier: '返利等级',
+      tier1: '一级',
+      tier2: '二级',
+      tier3: '三级',
+      tierHint: '有效返利邀请 {count} 人，当前倍率 {multiplier}%',
+      nextTierHint: '还差 {count} 人升级下一等级',
       invitedUsers: '邀请人数',
       availableQuota: '可转返利额度',
       frozenQuota: '冻结中',
@@ -550,6 +574,8 @@ export default {
   redeem: {
     title: '兑换码',
     description: '输入兑换码以充值余额或增加并发数',
+    purchaseUrl: '兑换码购买地址：',
+    purchaseLink: '点击购买',
     currentBalance: '当前余额',
     concurrency: '并发数',
     requests: '请求',
@@ -575,6 +601,7 @@ export default {
     balanceAddedAffiliate: '余额充值（返利转入）',
     balanceAddedAdmin: '余额充值（管理员）',
     balanceDeductedAdmin: '余额扣除（管理员）',
+    balanceExpired: '余额过期清零',
     concurrencyAddedRedeem: '并发增加（兑换）',
     concurrencyAddedAdmin: '并发增加（管理员）',
     concurrencyReducedAdmin: '并发减少（管理员）',

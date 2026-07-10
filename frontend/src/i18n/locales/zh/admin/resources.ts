@@ -378,8 +378,10 @@ export default {
       searchAnnouncements: '搜索公告...',
       status: '状态',
       allStatus: '全部状态',
+      allSites: '全部站点',
       columns: {
         title: '标题',
+        site: '站点',
         status: '状态',
         notifyMode: '通知方式',
         targeting: '展示条件',
@@ -396,9 +398,15 @@ export default {
         silent: '静默',
         popup: '弹窗'
       },
+      siteLabels: {
+        main: 'Sub2API',
+        image: '图片站',
+        video: '视频站'
+      },
       form: {
         title: '标题',
         content: '内容（支持 Markdown）',
+        site: '投放站点',
         status: '状态',
         notifyMode: '通知方式',
         notifyModeHint: '弹窗模式会自动弹出通知给用户',

@@ -317,8 +317,10 @@ export default {
       searchAnnouncements: 'Search announcements...',
       status: 'Status',
       allStatus: 'All Status',
+      allSites: 'All Sites',
       columns: {
         title: 'Title',
+        site: 'Site',
         status: 'Status',
         notifyMode: 'Notify Mode',
         targeting: 'Targeting',
@@ -335,9 +337,15 @@ export default {
         silent: 'Silent',
         popup: 'Popup'
       },
+      siteLabels: {
+        main: 'Sub2API',
+        image: 'Image Site',
+        video: 'Video Site'
+      },
       form: {
         title: 'Title',
         content: 'Content (Markdown supported)',
+        site: 'Target Site',
         status: 'Status',
         notifyMode: 'Notify Mode',
         notifyModeHint: 'Popup mode will show a popup notification to users',

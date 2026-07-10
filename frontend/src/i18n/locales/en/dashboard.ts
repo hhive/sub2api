@@ -59,6 +59,21 @@ export default {
     addBalanceWithCode: 'Add balance with a code'
   },
 
+  chat: {
+    title: 'Chat',
+    subtitle: 'Chat with models through your available API key',
+    newChat: 'New chat',
+    emptyTitle: 'Start a conversation',
+    emptyDescription: 'Ask a question and the system will use your available group and default model automatically.',
+    inputPlaceholder: 'Type your question. Enter to send, Shift + Enter for a new line',
+    send: 'Send',
+    sending: 'Sending...',
+    thinking: 'The model is thinking...',
+    loadModelsFailed: 'Failed to load models. Create an API key bound to an available group first.',
+    sendFailed: 'Failed to send. Check your API key, balance, or upstream channel status.',
+    emptyReply: 'The model returned no content'
+  },
+
   // Groups (shared)
   groups: {
     subscription: 'Sub'
@@ -91,6 +106,7 @@ export default {
     noGroup: 'No group',
     searchGroup: 'Search groups...',
     noGroupFound: 'No groups found',
+    noAvailableModels: 'No available models',
     created: 'Created',
     copyToClipboard: 'Copy to clipboard',
     copied: 'Copied!',
@@ -508,6 +524,14 @@ export default {
     stats: {
       rebateRate: 'My Rebate Rate',
       rebateRateHint: 'What you earn each time an invitee recharges',
+      subscriptionRebateRate: 'Subscription Rebate Rate',
+      subscriptionRebateRateHint: 'What you earn when an invitee buys a subscription plan',
+      rebateTier: 'Rebate Tier',
+      tier1: 'Tier 1',
+      tier2: 'Tier 2',
+      tier3: 'Tier 3',
+      tierHint: '{count} rebated invitees, current multiplier {multiplier}%',
+      nextTierHint: '{count} more rebated invitees to the next tier',
       invitedUsers: 'Invited Users',
       availableQuota: 'Available Rebate Quota',
       frozenQuota: 'Frozen',
@@ -545,6 +569,8 @@ export default {
   redeem: {
     title: 'Redeem Code',
     description: 'Enter your redeem code to add balance or increase concurrency',
+    purchaseUrl: 'Redeem code purchase URL: ',
+    purchaseLink: 'Buy now',
     currentBalance: 'Current Balance',
     concurrency: 'Concurrency',
     requests: 'requests',
@@ -570,6 +596,7 @@ export default {
     balanceAddedAffiliate: 'Balance Added (Affiliate Transfer)',
     balanceAddedAdmin: 'Balance Added (Admin)',
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
+    balanceExpired: 'Balance Expired',
     concurrencyAddedRedeem: 'Concurrency Added (Redeem)',
     concurrencyAddedAdmin: 'Concurrency Added (Admin)',
     concurrencyReducedAdmin: 'Concurrency Reduced (Admin)',
