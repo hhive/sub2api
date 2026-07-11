@@ -448,6 +448,11 @@ func TestOnyxLaunchService_CreateImagePlaygroundLaunch_UsesEnvBaseURLOverride(t 
 	require.Equal(t, store.storeCalls[0].token, redirectURL.Query().Get("token"))
 }
 
+func TestImagePlaygroundGoLaunchBaseURL_DefaultsToInfiniteCanvas(t *testing.T) {
+	t.Setenv("IMAGE_PLAYGROUND_GO_BASE_URL", "")
+	require.Equal(t, "https://acanvas.xiaoni-ai.top/", imagePlaygroundGoLaunchBaseURL())
+}
+
 func TestOnyxLaunchService_CreateImagePlaygroundLaunch_ReturnsServiceUnavailableWhenExchangeSecretMissing(t *testing.T) {
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, &config.Config{})
 	svc := &OnyxLaunchService{settingService: settings}

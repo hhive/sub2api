@@ -75,6 +75,12 @@ describe('AppSidebar image playground menu wiring', () => {
     expect(componentSource).toContain('launchImagePlayground()')
     expect(componentSource).toContain("handleMenuItemClick('__image_playground__')")
   })
+
+  it('labels the user launch entry as Infinite Canvas while keeping the admin model config separate', () => {
+    const zhLocale = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../i18n/locales/zh/common.ts'), 'utf8')
+    expect(zhLocale).toContain("imagePlayground: '无限画布'")
+    expect(zhLocale).toContain("imagePlaygroundConfig: '图片模型配置'")
+  })
 })
 
 describe('AppSidebar video playground menu wiring', () => {

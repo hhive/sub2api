@@ -154,7 +154,7 @@ export default {
     usage: '使用记录',
     chat: '聊天台',
     lobehub: '新·聊天台',
-    imagePlayground: '图片生成',
+    imagePlayground: '无限画布',
     videoPlayground: '视频生成',
     onyx: 'Onyx',
     redeem: '兑换',
@@ -208,9 +208,9 @@ export default {
   },
 
   imagePlayground: {
-    opening: '正在打开图片生成',
-    notConfigured: '图片生成尚未配置，请联系管理员',
-    openFailed: '打开图片生成失败'
+    opening: '正在打开无限画布',
+    notConfigured: '无限画布尚未配置，请联系管理员',
+    openFailed: '打开无限画布失败'
   },
 
   videoPlayground: {

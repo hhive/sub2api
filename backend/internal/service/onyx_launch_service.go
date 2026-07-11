@@ -33,7 +33,7 @@ type OnyxLaunchResult struct {
 }
 
 const defaultImagePlaygroundBaseURL = "https://xiaoni-ai.top/image_playground/"
-const defaultImagePlaygroundGoBaseURL = "http://127.0.0.1:3304/"
+const defaultImagePlaygroundGoBaseURL = "https://acanvas.xiaoni-ai.top/"
 const defaultVideoPlaygroundBaseURL = "https://video.xiaoni-ai.top/"
 
 type OnyxLaunchPayload struct {

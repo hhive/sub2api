@@ -154,7 +154,7 @@ export default {
     usage: 'Usage',
     chat: 'Chat',
     lobehub: 'New Chat',
-    imagePlayground: 'Image Generation',
+    imagePlayground: 'Infinite Canvas',
     videoPlayground: 'Video Generation',
     onyx: 'Onyx',
     redeem: 'Redeem',
@@ -208,9 +208,9 @@ export default {
   },
 
   imagePlayground: {
-    opening: 'Opening image generation',
-    notConfigured: 'Image generation is not configured. Contact an administrator.',
-    openFailed: 'Failed to open image generation'
+    opening: 'Opening Infinite Canvas',
+    notConfigured: 'Infinite Canvas is not configured. Contact an administrator.',
+    openFailed: 'Failed to open Infinite Canvas'
   },
 
   videoPlayground: {
