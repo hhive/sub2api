@@ -1,7 +1,7 @@
 export default {
   videoPlayground: {
-    title: 'Video Model Config',
-    description: 'Configure independent video site models, upstream domains, per-call pricing, and failure refunds',
+    title: 'Media Site Video Models',
+    description: 'Configure media-site video models, upstream protocols, per-call pricing, and failure refunds',
     createModel: 'Create model',
     editModel: 'Edit model',
     reuse: 'Reuse',
@@ -17,7 +17,7 @@ export default {
     callRecords: {
       button: 'Call records',
       title: 'Call records',
-      description: 'Latest video-site upstream calls in reverse chronological order.',
+      description: 'Latest media-site video upstream calls in reverse chronological order.',
       loadFailed: 'Failed to load call records',
       previous: 'Previous',
       next: 'Next',
@@ -41,14 +41,9 @@ export default {
     billingModes: {
       balance_prepaid: 'Prepaid balance per call'
     },
-    templates: {
-      baseModel: 'Base model'
-    },
-    modelKinds: {
-      t2v: 'Text to video',
-      i2v: 'Image to video',
-      reference_video: 'Reference image video',
-      extend: 'Video extension'
+    apiModes: {
+      openai_videos: 'OpenAI Videos API',
+      seedance_content_generation: 'Seedance Content Generation API'
     },
     columns: {
       name: 'Model',
@@ -63,8 +58,7 @@ export default {
     fields: {
       displayName: 'Display name',
       model: 'Model ID',
-      studioTemplate: 'Seedance capability template',
-      modelKind: 'Model type',
+      apiMode: 'API mode',
       providerName: 'Provider',
       upstreamBaseURL: 'Upstream domain',
       upstreamAPIKey: 'Upstream API Key',
@@ -73,14 +67,12 @@ export default {
       refundEnabled: 'Refund failed generations automatically',
       timeoutSeconds: 'Timeout seconds',
       sortOrder: 'Sort order',
-      enabled: 'Enable model',
-      inputSchemaJSON: 'Input Schema JSON',
-      payloadMappingJSON: 'Payload Mapping JSON'
+      enabled: 'Enable model'
     }
   },
   imagePlayground: {
-    title: 'Image Model Config',
-    description: 'Configure independent image site models, upstream domains, 1k/2k/4k pricing, and enabled state',
+    title: 'Media Site Image Models',
+    description: 'Configure media-site image models, upstream domains, 1k/2k/4k pricing, and enabled state',
     createModel: 'Create model',
     editModel: 'Edit model',
     reuse: 'Reuse',
@@ -98,7 +90,7 @@ export default {
     callRecords: {
       button: 'Call records',
       title: 'Call records',
-      description: 'Latest image-site upstream calls in reverse chronological order.',
+      description: 'Latest media-site image upstream calls in reverse chronological order.',
       loadFailed: 'Failed to load call records',
       previous: 'Previous',
       next: 'Next',
@@ -167,7 +159,7 @@ export default {
       runButton: 'Run probe',
       singleRunButton: 'Probe',
       title: 'Probe records',
-      description: 'Latest image-site model probe attempts in reverse chronological order.',
+      description: 'Latest media-site image model probe attempts in reverse chronological order.',
       loadFailed: 'Failed to load probe records',
       runSuccess: 'Probe started',
       runFailed: 'Failed to run probe',

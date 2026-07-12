@@ -16,12 +16,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ImagePlaygroundHandler struct {
+type MediaPlaygroundImageHandler struct {
 	settingService *service.SettingService
 	httpClient     *http.Client
 }
 
-type imagePlaygroundModelRequest struct {
+type mediaPlaygroundImageModelRequest struct {
 	DisplayName         string   `json:"display_name"`
 	Model               string   `json:"model"`
 	APIMode             string   `json:"api_mode"`
@@ -38,81 +38,81 @@ type imagePlaygroundModelRequest struct {
 	SortOrder           int      `json:"sort_order"`
 }
 
-func NewImagePlaygroundHandler(settingService *service.SettingService) *ImagePlaygroundHandler {
-	return &ImagePlaygroundHandler{
+func NewMediaPlaygroundImageHandler(settingService *service.SettingService) *MediaPlaygroundImageHandler {
+	return &MediaPlaygroundImageHandler{
 		settingService: settingService,
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-func (h *ImagePlaygroundHandler) ListModels(c *gin.Context) {
-	h.proxy(c, http.MethodGet, "/api/admin/models", nil)
+func (h *MediaPlaygroundImageHandler) ListModels(c *gin.Context) {
+	h.proxy(c, http.MethodGet, "/api/admin/media/models", nil)
 }
 
-func (h *ImagePlaygroundHandler) ListProbeRuns(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) ListProbeRuns(c *gin.Context) {
 	query := c.Request.URL.RawQuery
-	path := "/api/admin/model-probe-runs"
+	path := "/api/admin/media/model-probe-runs"
 	if query != "" {
 		path += "?" + query
 	}
 	h.proxy(c, http.MethodGet, path, nil)
 }
 
-func (h *ImagePlaygroundHandler) ListUpstreamRequests(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) ListUpstreamRequests(c *gin.Context) {
 	query := c.Request.URL.RawQuery
-	path := "/api/admin/upstream-requests"
+	path := "/api/admin/media/upstream-requests"
 	if query != "" {
 		path += "?" + query
 	}
 	h.proxy(c, http.MethodGet, path, nil)
 }
 
-func (h *ImagePlaygroundHandler) RunProbe(c *gin.Context) {
-	h.proxy(c, http.MethodPost, "/api/admin/model-probe-runs/run", map[string]bool{"ok": true})
+func (h *MediaPlaygroundImageHandler) RunProbe(c *gin.Context) {
+	h.proxy(c, http.MethodPost, "/api/admin/media/model-probe-runs/run", map[string]bool{"ok": true})
 }
 
-func (h *ImagePlaygroundHandler) RunModelProbe(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) RunModelProbe(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {
 		response.BadRequest(c, "invalid model id")
 		return
 	}
-	h.proxy(c, http.MethodPost, fmt.Sprintf("/api/admin/models/%d/probe", id), map[string]bool{"ok": true})
+	h.proxy(c, http.MethodPost, fmt.Sprintf("/api/admin/media/models/%d/probe", id), map[string]bool{"ok": true})
 }
 
-func (h *ImagePlaygroundHandler) CreateModel(c *gin.Context) {
-	var req imagePlaygroundModelRequest
+func (h *MediaPlaygroundImageHandler) CreateModel(c *gin.Context) {
+	var req mediaPlaygroundImageModelRequest
 	if err := bindAllowedImageModelRequest(c, &req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	h.proxy(c, http.MethodPost, "/api/admin/models", req)
+	h.proxy(c, http.MethodPost, "/api/admin/media/models", req)
 }
 
-func (h *ImagePlaygroundHandler) UpdateModel(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) UpdateModel(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {
 		response.BadRequest(c, "invalid model id")
 		return
 	}
-	var req imagePlaygroundModelRequest
+	var req mediaPlaygroundImageModelRequest
 	if err := bindAllowedImageModelRequest(c, &req); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	h.proxy(c, http.MethodPatch, fmt.Sprintf("/api/admin/models/%d", id), req)
+	h.proxy(c, http.MethodPatch, fmt.Sprintf("/api/admin/media/models/%d", id), req)
 }
 
-func (h *ImagePlaygroundHandler) DeleteModel(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) DeleteModel(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {
 		response.BadRequest(c, "invalid model id")
 		return
 	}
-	h.proxy(c, http.MethodDelete, fmt.Sprintf("/api/admin/models/%d", id), nil)
+	h.proxy(c, http.MethodDelete, fmt.Sprintf("/api/admin/media/models/%d", id), nil)
 }
 
-func bindAllowedImageModelRequest(c *gin.Context, out *imagePlaygroundModelRequest) error {
+func bindAllowedImageModelRequest(c *gin.Context, out *mediaPlaygroundImageModelRequest) error {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func bindAllowedImageModelRequest(c *gin.Context, out *imagePlaygroundModelReque
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return err
 	}
-	disallowed := []string{"api_key", "submit_path", "status_path_template", "content_path_template"}
+	disallowed := []string{"id", "media_type", "upstream_api_key_mask", "api_key", "submit_path", "status_path_template", "content_path_template"}
 	for _, key := range disallowed {
 		if _, ok := raw[key]; ok {
 			return fmt.Errorf("%s is not configurable here", key)
@@ -132,7 +132,7 @@ func bindAllowedImageModelRequest(c *gin.Context, out *imagePlaygroundModelReque
 	return dec.Decode(out)
 }
 
-func (h *ImagePlaygroundHandler) proxy(c *gin.Context, method, path string, payload any) {
+func (h *MediaPlaygroundImageHandler) proxy(c *gin.Context, method, path string, payload any) {
 	baseURL, err := h.imagePlaygroundAdminTarget(c)
 	if err != nil {
 		response.InternalError(c, err.Error())
@@ -157,26 +157,26 @@ func (h *ImagePlaygroundHandler) proxy(c *gin.Context, method, path string, payl
 	}
 	resp, err := h.httpClient.Do(req)
 	if err != nil {
-		response.InternalError(c, fmt.Sprintf("image playground request failed: %v", err))
+		response.InternalError(c, fmt.Sprintf("media playground image request failed: %v", err))
 		return
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		response.Error(c, resp.StatusCode, "image playground error: "+strings.TrimSpace(string(respBody)))
+		response.Error(c, resp.StatusCode, "media playground image error: "+strings.TrimSpace(string(respBody)))
 		return
 	}
 	var data any
 	if len(strings.TrimSpace(string(respBody))) > 0 {
 		if err := json.Unmarshal(respBody, &data); err != nil {
-			response.InternalError(c, "invalid image playground response")
+			response.InternalError(c, "invalid media playground image response")
 			return
 		}
 	}
 	response.Success(c, data)
 }
 
-func (h *ImagePlaygroundHandler) imagePlaygroundAdminTarget(c *gin.Context) (string, error) {
+func (h *MediaPlaygroundImageHandler) imagePlaygroundAdminTarget(c *gin.Context) (string, error) {
 	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
 		return strings.TrimRight(baseURL, "/"), nil
 	}

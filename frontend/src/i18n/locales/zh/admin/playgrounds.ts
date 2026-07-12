@@ -1,7 +1,7 @@
 export default {
   videoPlayground: {
-    title: '视频模型配置',
-    description: '配置独立视频站可用模型、上游域名、单次价格与失败退款策略',
+    title: '媒体站视频模型',
+    description: '配置媒体站视频模型、上游协议、单次价格与失败退款策略',
     createModel: '新建模型',
     editModel: '编辑模型',
     reuse: '复用',
@@ -17,7 +17,7 @@ export default {
     callRecords: {
       button: '调用记录',
       title: '调用记录',
-      description: '按时间倒序展示视频站最近请求上游的记录。',
+      description: '按时间倒序展示媒体站视频最近请求上游的记录。',
       loadFailed: '加载调用记录失败',
       previous: '上一页',
       next: '下一页',
@@ -41,14 +41,9 @@ export default {
     billingModes: {
       balance_prepaid: '按次预扣余额'
     },
-    templates: {
-      baseModel: '基础模型'
-    },
-    modelKinds: {
-      t2v: '文生视频',
-      i2v: '图生视频',
-      reference_video: '参考图视频',
-      extend: '视频延长'
+    apiModes: {
+      openai_videos: 'OpenAI Videos API',
+      seedance_content_generation: 'Seedance Content Generation API'
     },
     columns: {
       name: '模型',
@@ -63,8 +58,7 @@ export default {
     fields: {
       displayName: '显示名',
       model: '模型 ID',
-      studioTemplate: '即梦能力模板',
-      modelKind: '模型类型',
+      apiMode: 'API 模式',
       providerName: '供应商',
       upstreamBaseURL: '上游域名',
       upstreamAPIKey: '上游 API Key',
@@ -73,14 +67,12 @@ export default {
       refundEnabled: '视频生成失败时自动退款',
       timeoutSeconds: '超时秒数',
       sortOrder: '排序',
-      enabled: '启用模型',
-      inputSchemaJSON: '输入 Schema JSON',
-      payloadMappingJSON: 'Payload 映射 JSON'
+      enabled: '启用模型'
     }
   },
   imagePlayground: {
-    title: '图片模型配置',
-    description: '配置独立图片站可用模型、上游域名、1k/2k/4k 价格与启用状态',
+    title: '媒体站图片模型',
+    description: '配置媒体站图片模型、上游域名、1k/2k/4k 价格与启用状态',
     createModel: '新建模型',
     editModel: '编辑模型',
     reuse: '复用',
@@ -98,7 +90,7 @@ export default {
     callRecords: {
       button: '调用记录',
       title: '调用记录',
-      description: '按时间倒序展示图片站最近请求上游的记录。',
+      description: '按时间倒序展示媒体站图片最近请求上游的记录。',
       loadFailed: '加载调用记录失败',
       previous: '上一页',
       next: '下一页',
@@ -167,7 +159,7 @@ export default {
       runButton: '主动探测',
       singleRunButton: '探测',
       title: '探测记录',
-      description: '按时间倒序展示图片站最近的模型探测 attempt 记录。',
+      description: '按时间倒序展示媒体站图片最近的模型探测 attempt 记录。',
       loadFailed: '加载探测记录失败',
       runSuccess: '主动探测已开始',
       runFailed: '主动探测失败',

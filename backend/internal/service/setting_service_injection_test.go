@@ -43,6 +43,15 @@ func TestSettingService_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 	require.Equal(t, "/api/v1/lobehub/launch", settings.LobeHubLaunchPath)
 }
 
+func TestSettingService_GetPublicSettings_DefaultsImagePlaygroundToImageAndVideo(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "图片与视频", settings.ImagePlaygroundMenuLabel)
+	require.Equal(t, "/api/v1/image-playground/launch", settings.ImagePlaygroundLaunchPath)
+}
+
 func TestPublicSettingsInjectionPayloadKeepsPublicSettingsFields(t *testing.T) {
 	publicSettingsType := reflect.TypeOf(PublicSettings{})
 	injectionPayloadType := reflect.TypeOf(PublicSettingsInjectionPayload{})

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
-import ImagePlaygroundView from '../ImagePlaygroundView.vue'
+import MediaPlaygroundImageView from '../MediaPlaygroundImageView.vue'
 
 const { listModels, listProbeRuns, runModelProbe, runProbe, showError, showSuccess } = vi.hoisted(() => ({
   listModels: vi.fn(),
@@ -15,7 +15,7 @@ const { listModels, listProbeRuns, runModelProbe, runProbe, showError, showSucce
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
-    imagePlayground: {
+    mediaPlaygroundImage: {
       listModels,
       listProbeRuns,
       runModelProbe,
@@ -174,7 +174,7 @@ const secondModel = {
 }
 
 function mountView() {
-  return mount(ImagePlaygroundView, {
+  return mount(MediaPlaygroundImageView, {
     global: {
       stubs: {
         AppLayout: { template: '<div><slot /></div>' },
@@ -187,7 +187,7 @@ function mountView() {
   })
 }
 
-describe('ImagePlaygroundView', () => {
+describe('MediaPlaygroundImageView', () => {
   beforeEach(() => {
     listModels.mockReset()
     listProbeRuns.mockReset()

@@ -101,9 +101,8 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
-		// 独立视频站模型配置
-		registerVideoPlaygroundRoutes(admin, h)
-		registerImagePlaygroundRoutes(admin, h)
+		// 统一媒体站模型配置
+		registerMediaPlaygroundRoutes(admin, h)
 
 		// 风控中心
 		registerContentModerationRoutes(admin, h)
@@ -113,28 +112,26 @@ func RegisterAdminRoutes(
 	}
 }
 
-func registerVideoPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	videoPlayground := admin.Group("/video-playground")
+func registerMediaPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	mediaPlayground := admin.Group("/media-playground")
+	video := mediaPlayground.Group("/video")
 	{
-		videoPlayground.GET("/models", h.Admin.VideoPlayground.ListModels)
-		videoPlayground.GET("/upstream-requests", h.Admin.VideoPlayground.ListUpstreamRequests)
-		videoPlayground.POST("/models", h.Admin.VideoPlayground.CreateModel)
-		videoPlayground.PATCH("/models/:id", h.Admin.VideoPlayground.UpdateModel)
-		videoPlayground.DELETE("/models/:id", h.Admin.VideoPlayground.DeleteModel)
+		video.GET("/models", h.Admin.MediaPlaygroundVideo.ListModels)
+		video.GET("/upstream-requests", h.Admin.MediaPlaygroundVideo.ListUpstreamRequests)
+		video.POST("/models", h.Admin.MediaPlaygroundVideo.CreateModel)
+		video.PATCH("/models/:id", h.Admin.MediaPlaygroundVideo.UpdateModel)
+		video.DELETE("/models/:id", h.Admin.MediaPlaygroundVideo.DeleteModel)
 	}
-}
-
-func registerImagePlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	imagePlayground := admin.Group("/image-playground")
+	image := mediaPlayground.Group("/image")
 	{
-		imagePlayground.GET("/models", h.Admin.ImagePlayground.ListModels)
-		imagePlayground.GET("/model-probe-runs", h.Admin.ImagePlayground.ListProbeRuns)
-		imagePlayground.GET("/upstream-requests", h.Admin.ImagePlayground.ListUpstreamRequests)
-		imagePlayground.POST("/model-probe-runs/run", h.Admin.ImagePlayground.RunProbe)
-		imagePlayground.POST("/models/:id/probe", h.Admin.ImagePlayground.RunModelProbe)
-		imagePlayground.POST("/models", h.Admin.ImagePlayground.CreateModel)
-		imagePlayground.PATCH("/models/:id", h.Admin.ImagePlayground.UpdateModel)
-		imagePlayground.DELETE("/models/:id", h.Admin.ImagePlayground.DeleteModel)
+		image.GET("/models", h.Admin.MediaPlaygroundImage.ListModels)
+		image.GET("/model-probe-runs", h.Admin.MediaPlaygroundImage.ListProbeRuns)
+		image.GET("/upstream-requests", h.Admin.MediaPlaygroundImage.ListUpstreamRequests)
+		image.POST("/model-probe-runs/run", h.Admin.MediaPlaygroundImage.RunProbe)
+		image.POST("/models/:id/probe", h.Admin.MediaPlaygroundImage.RunModelProbe)
+		image.POST("/models", h.Admin.MediaPlaygroundImage.CreateModel)
+		image.PATCH("/models/:id", h.Admin.MediaPlaygroundImage.UpdateModel)
+		image.DELETE("/models/:id", h.Admin.MediaPlaygroundImage.DeleteModel)
 	}
 }
 

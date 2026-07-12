@@ -22,10 +22,6 @@ func RegisterOnyxRoutes(
 	{
 		lobeHubPublic.POST("/exchange", h.Onyx.LobeHubExchange)
 	}
-	videoPlaygroundPublic := v1.Group("/video-playground")
-	{
-		videoPlaygroundPublic.POST("/exchange", h.Onyx.VideoPlaygroundExchange)
-	}
 	imagePlaygroundPublic := v1.Group("/image-playground")
 	{
 		imagePlaygroundPublic.POST("/exchange", h.Onyx.ImagePlaygroundExchange)
@@ -46,10 +42,6 @@ func RegisterOnyxRoutes(
 		lobeHub := authenticated.Group("/lobehub")
 		{
 			lobeHub.POST("/launch", h.Onyx.LobeHubLaunch)
-		}
-		videoPlayground := authenticated.Group("/video-playground")
-		{
-			videoPlayground.POST("/launch", h.Onyx.VideoPlaygroundLaunch)
 		}
 	}
 

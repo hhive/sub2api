@@ -18,12 +18,12 @@ func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return fn(req)
 }
 
-func TestImagePlaygroundHandlerListProbeRunsProxiesQuery(t *testing.T) {
+func TestMediaPlaygroundImageHandlerListProbeRunsProxiesQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath, gotQuery string
 	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
 
-	handler := NewImagePlaygroundHandler(nil)
+	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		gotPath = r.URL.Path
 		gotQuery = r.URL.RawQuery
@@ -49,17 +49,17 @@ func TestImagePlaygroundHandlerListProbeRunsProxiesQuery(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "/api/admin/model-probe-runs", gotPath)
+	require.Equal(t, "/api/admin/media/model-probe-runs", gotPath)
 	require.Equal(t, "page=2&page_size=20", gotQuery)
 	require.Contains(t, rec.Body.String(), `"run_id":"run-1"`)
 }
 
-func TestImagePlaygroundHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
+func TestMediaPlaygroundImageHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath, gotQuery string
 	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
 
-	handler := NewImagePlaygroundHandler(nil)
+	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		gotPath = r.URL.Path
 		gotQuery = r.URL.RawQuery
@@ -79,17 +79,17 @@ func TestImagePlaygroundHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "/api/admin/upstream-requests", gotPath)
+	require.Equal(t, "/api/admin/media/upstream-requests", gotPath)
 	require.Equal(t, "page=3&page_size=20", gotQuery)
 	require.Contains(t, rec.Body.String(), `"task-1"`)
 }
 
-func TestImagePlaygroundHandlerRunProbeProxiesPost(t *testing.T) {
+func TestMediaPlaygroundImageHandlerRunProbeProxiesPost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath string
 	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
 
-	handler := NewImagePlaygroundHandler(nil)
+	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		gotPath = r.URL.Path
 		require.Equal(t, http.MethodPost, r.Method)
@@ -108,16 +108,16 @@ func TestImagePlaygroundHandlerRunProbeProxiesPost(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "/api/admin/model-probe-runs/run", gotPath)
+	require.Equal(t, "/api/admin/media/model-probe-runs/run", gotPath)
 	require.Contains(t, rec.Body.String(), `"running":true`)
 }
 
-func TestImagePlaygroundHandlerRunModelProbeProxiesPost(t *testing.T) {
+func TestMediaPlaygroundImageHandlerRunModelProbeProxiesPost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath string
 	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
 
-	handler := NewImagePlaygroundHandler(nil)
+	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		gotPath = r.URL.Path
 		require.Equal(t, http.MethodPost, r.Method)
@@ -136,13 +136,13 @@ func TestImagePlaygroundHandlerRunModelProbeProxiesPost(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "/api/admin/models/7/probe", gotPath)
+	require.Equal(t, "/api/admin/media/models/7/probe", gotPath)
 	require.Contains(t, rec.Body.String(), `"running":true`)
 }
 
-func TestImagePlaygroundHandlerRunModelProbeRejectsInvalidID(t *testing.T) {
+func TestMediaPlaygroundImageHandlerRunModelProbeRejectsInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := NewImagePlaygroundHandler(nil)
+	handler := NewMediaPlaygroundImageHandler(nil)
 	router := gin.New()
 	router.POST("/models/:id/probe", handler.RunModelProbe)
 

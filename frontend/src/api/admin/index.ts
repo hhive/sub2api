@@ -33,8 +33,8 @@ import adminPaymentAPI from './payment'
 import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
-import videoPlaygroundAPI from './videoPlayground'
-import imagePlaygroundAPI from './imagePlayground'
+import mediaPlaygroundVideoAPI from './mediaPlaygroundVideo'
+import mediaPlaygroundImageAPI from './mediaPlaygroundImage'
 
 /**
  * Unified admin API object for convenient access
@@ -70,8 +70,8 @@ export const adminAPI = {
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
-  videoPlayground: videoPlaygroundAPI,
-  imagePlayground: imagePlaygroundAPI
+  mediaPlaygroundVideo: mediaPlaygroundVideoAPI,
+  mediaPlaygroundImage: mediaPlaygroundImageAPI
 }
 
 export {
@@ -105,8 +105,8 @@ export {
   affiliatesAPI,
   riskControlAPI,
   adminComplianceAPI,
-  videoPlaygroundAPI,
-  imagePlaygroundAPI
+  mediaPlaygroundVideoAPI,
+  mediaPlaygroundImageAPI
 }
 
 export default adminAPI
@@ -117,14 +117,14 @@ export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from 
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
-export type { VideoPlaygroundModel, VideoPlaygroundModelPayload, VideoPlaygroundUpstreamRequest, VideoPlaygroundUpstreamRequestPage } from './videoPlayground'
+export type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoUpstreamRequest, MediaPlaygroundVideoUpstreamRequestPage, VideoAPIMode } from './mediaPlaygroundVideo'
 export type {
-  ImagePlaygroundHealthStatus,
-  ImagePlaygroundModel,
-  ImagePlaygroundModelPayload,
-  ImagePlaygroundProbeRun,
-  ImagePlaygroundProbeRunPage,
-  ImagePlaygroundUpstreamRequest,
-  ImagePlaygroundUpstreamRequestPage,
+  MediaPlaygroundImageHealthStatus,
+  MediaPlaygroundImageModel,
+  MediaPlaygroundImageModelPayload,
+  MediaPlaygroundImageProbeRun,
+  MediaPlaygroundImageProbeRunPage,
+  MediaPlaygroundImageUpstreamRequest,
+  MediaPlaygroundImageUpstreamRequestPage,
   ImageSizeTier
-} from './imagePlayground'
+} from './mediaPlaygroundImage'

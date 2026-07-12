@@ -56,7 +56,7 @@ describe('AppSidebar header styles', () => {
 
 describe('AppSidebar Onyx menu wiring', () => {
   it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
-    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu, launchVideoPlayground } from '@/api/onyx'")
+    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu } from '@/api/onyx'")
     expect(componentSource).toContain('FeatureFlags.onyx')
     expect(componentSource).toContain('handleOnyxLaunch')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
@@ -68,7 +68,7 @@ describe('AppSidebar Onyx menu wiring', () => {
 
 describe('AppSidebar image playground menu wiring', () => {
   it('adds an authenticated launch action next to the chat menu', () => {
-    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground' | 'victoryMenu'")
+    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'victoryMenu'")
     expect(componentSource).toContain("label: t('nav.imagePlayground')")
     expect(componentSource).toContain("action: 'imagePlayground'")
     expect(componentSource).toContain('handleImagePlaygroundLaunch')
@@ -78,19 +78,17 @@ describe('AppSidebar image playground menu wiring', () => {
 
   it('labels the user launch entry as Infinite Canvas while keeping the admin model config separate', () => {
     const zhLocale = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../i18n/locales/zh/common.ts'), 'utf8')
-    expect(zhLocale).toContain("imagePlayground: '无限画布'")
-    expect(zhLocale).toContain("imagePlaygroundConfig: '图片模型配置'")
+    expect(zhLocale).toContain("imagePlayground: '图片与视频'")
+    expect(zhLocale).toContain("imagePlaygroundConfig: '媒体站图片模型'")
   })
 })
 
-describe('AppSidebar video playground menu wiring', () => {
-  it('adds an authenticated video launch action', () => {
-    expect(componentSource).toContain('FeatureFlags.videoPlayground')
-    expect(componentSource).toContain("label: t('nav.videoPlayground')")
-    expect(componentSource).toContain("action: 'videoPlayground'")
-    expect(componentSource).toContain('handleVideoPlaygroundLaunch')
-    expect(componentSource).toContain('launchVideoPlayground()')
-    expect(componentSource).toContain("handleMenuItemClick('__video_playground__')")
+describe('AppSidebar video playground menu retirement', () => {
+  it('keeps video administration but removes the standalone user launch', () => {
+    expect(componentSource).toContain("path: '/admin/media-playground/video'")
+    expect(componentSource).not.toContain("path: '__video_playground__'")
+    expect(componentSource).not.toContain("action: 'videoPlayground'")
+    expect(componentSource).not.toContain('launchVideoPlayground()')
   })
 })
 

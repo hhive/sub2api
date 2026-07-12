@@ -400,7 +400,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { ImagePlaygroundModel, ImagePlaygroundModelPayload, ImagePlaygroundProbeRun, ImagePlaygroundUpstreamRequest, ImageSizeTier } from '@/api/admin'
+import type { MediaPlaygroundImageModel, MediaPlaygroundImageModelPayload, MediaPlaygroundImageProbeRun, MediaPlaygroundImageUpstreamRequest, ImageSizeTier } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -414,9 +414,9 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const sizeOptions: ImageSizeTier[] = ['1k', '2k', '4k']
 
-const models = ref<ImagePlaygroundModel[]>([])
-const probeRuns = ref<ImagePlaygroundProbeRun[]>([])
-const callRecords = ref<ImagePlaygroundUpstreamRequest[]>([])
+const models = ref<MediaPlaygroundImageModel[]>([])
+const probeRuns = ref<MediaPlaygroundImageProbeRun[]>([])
+const callRecords = ref<MediaPlaygroundImageUpstreamRequest[]>([])
 const loading = ref(false)
 const probeRunsLoading = ref(false)
 const callRecordsLoading = ref(false)
@@ -432,7 +432,7 @@ const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showProbeRunsDialog = ref(false)
 const showCallRecordsDialog = ref(false)
-const deletingModel = ref<ImagePlaygroundModel | null>(null)
+const deletingModel = ref<MediaPlaygroundImageModel | null>(null)
 const probeRunsPage = ref(1)
 const probeRunsPageSize = 20
 const probeRunsTotal = ref(0)
@@ -440,7 +440,7 @@ const callRecordsPage = ref(1)
 const callRecordsPageSize = 20
 const callRecordsTotal = ref(0)
 
-const defaultForm = (): ImagePlaygroundModelPayload => ({
+const defaultForm = (): MediaPlaygroundImageModelPayload => ({
   display_name: '',
   model: '',
   api_mode: 'images',
@@ -457,7 +457,7 @@ const defaultForm = (): ImagePlaygroundModelPayload => ({
   sort_order: 0,
 })
 
-const form = reactive<ImagePlaygroundModelPayload>(defaultForm())
+const form = reactive<MediaPlaygroundImageModelPayload>(defaultForm())
 
 const dialogTitle = computed(() => {
   return editingId.value ? t('admin.imagePlayground.editModel') : t('admin.imagePlayground.createModel')
@@ -519,7 +519,7 @@ const callRecordColumns = computed<Column[]>(() => [
 async function loadModels() {
   loading.value = true
   try {
-    models.value = await adminAPI.imagePlayground.listModels()
+    models.value = await adminAPI.mediaPlaygroundImage.listModels()
   } catch (err) {
     appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.loadFailed')))
   } finally {
@@ -530,7 +530,7 @@ async function loadModels() {
 async function loadProbeRuns(page = 1) {
   probeRunsLoading.value = true
   try {
-    const result = await adminAPI.imagePlayground.listProbeRuns({ page, page_size: probeRunsPageSize })
+    const result = await adminAPI.mediaPlaygroundImage.listProbeRuns({ page, page_size: probeRunsPageSize })
     probeRuns.value = result.items || []
     probeRunsPage.value = result.page || page
     probeRunsTotal.value = result.total || 0
@@ -544,7 +544,7 @@ async function loadProbeRuns(page = 1) {
 async function loadCallRecords(page = 1) {
   callRecordsLoading.value = true
   try {
-    const result = await adminAPI.imagePlayground.listUpstreamRequests({ page, page_size: callRecordsPageSize })
+    const result = await adminAPI.mediaPlaygroundImage.listUpstreamRequests({ page, page_size: callRecordsPageSize })
     callRecords.value = result.items || []
     callRecordsPage.value = result.page || page
     callRecordsTotal.value = result.total || 0
@@ -555,7 +555,7 @@ async function loadCallRecords(page = 1) {
   }
 }
 
-function assignFormFromModel(model: ImagePlaygroundModel, options: { copyKey: boolean }) {
+function assignFormFromModel(model: MediaPlaygroundImageModel, options: { copyKey: boolean }) {
   Object.assign(form, {
     display_name: model.display_name,
     model: model.model,
@@ -595,7 +595,7 @@ function closeCallRecordsDialog() {
 async function runModelProbe() {
   runningProbe.value = true
   try {
-    await adminAPI.imagePlayground.runProbe()
+    await adminAPI.mediaPlaygroundImage.runProbe()
     appStore.showSuccess(t('admin.imagePlayground.probeRuns.runSuccess'))
     await loadModels()
     if (showProbeRunsDialog.value) {
@@ -608,10 +608,10 @@ async function runModelProbe() {
   }
 }
 
-async function runSingleModelProbe(model: ImagePlaygroundModel) {
+async function runSingleModelProbe(model: MediaPlaygroundImageModel) {
   probingModelIds.value = new Set(probingModelIds.value).add(model.id)
   try {
-    await adminAPI.imagePlayground.runModelProbe(model.id)
+    await adminAPI.mediaPlaygroundImage.runModelProbe(model.id)
     appStore.showSuccess(t('admin.imagePlayground.probeRuns.singleRunSuccess', { name: model.display_name || model.model }))
     await loadModels()
     if (showProbeRunsDialog.value) {
@@ -631,7 +631,7 @@ function openCreateDialog() {
   showDialog.value = true
 }
 
-function openEditDialog(model: ImagePlaygroundModel) {
+function openEditDialog(model: MediaPlaygroundImageModel) {
   editingId.value = model.id
   editingKeyMask.value = model.upstream_api_key_mask || model.upstream_api_key || ''
   reusedKeyMask.value = ''
@@ -640,7 +640,7 @@ function openEditDialog(model: ImagePlaygroundModel) {
   showDialog.value = true
 }
 
-function openReuseDialog(model: ImagePlaygroundModel) {
+function openReuseDialog(model: MediaPlaygroundImageModel) {
   resetForm()
   assignFormFromModel(model, { copyKey: false })
   reusedKeyMask.value = model.upstream_api_key_mask || model.upstream_api_key || ''
@@ -705,15 +705,15 @@ function finishDialog() {
   resetForm()
 }
 
-function buildSavePayload(): ImagePlaygroundModelPayload {
-  const payload: ImagePlaygroundModelPayload = { ...form, supported_sizes: [...form.supported_sizes] }
+function buildSavePayload(): MediaPlaygroundImageModelPayload {
+  const payload: MediaPlaygroundImageModelPayload = { ...form, supported_sizes: [...form.supported_sizes] }
   if (editingId.value && editingKeyMask.value && payload.upstream_api_key === editingKeyMask.value) {
     payload.upstream_api_key = ''
   }
   return payload
 }
 
-function buildUpdatePayloadFromModel(model: ImagePlaygroundModel, overrides: Partial<ImagePlaygroundModelPayload> = {}): ImagePlaygroundModelPayload {
+function buildUpdatePayloadFromModel(model: MediaPlaygroundImageModel, overrides: Partial<MediaPlaygroundImageModelPayload> = {}): MediaPlaygroundImageModelPayload {
   return {
     display_name: model.display_name,
     model: model.model,
@@ -733,10 +733,10 @@ function buildUpdatePayloadFromModel(model: ImagePlaygroundModel, overrides: Par
   }
 }
 
-async function toggleModelEnabled(model: ImagePlaygroundModel) {
+async function toggleModelEnabled(model: MediaPlaygroundImageModel) {
   togglingId.value = model.id
   try {
-    await adminAPI.imagePlayground.updateModel(model.id, buildUpdatePayloadFromModel(model, { enabled: !model.enabled }))
+    await adminAPI.mediaPlaygroundImage.updateModel(model.id, buildUpdatePayloadFromModel(model, { enabled: !model.enabled }))
     await loadModels()
     appStore.showSuccess(model.enabled ? t('admin.imagePlayground.disabledToast') : t('admin.imagePlayground.enabledToast'))
   } catch (err) {
@@ -755,9 +755,9 @@ async function saveModel() {
   try {
     const payload = buildSavePayload()
     if (editingId.value) {
-      await adminAPI.imagePlayground.updateModel(editingId.value, payload)
+      await adminAPI.mediaPlaygroundImage.updateModel(editingId.value, payload)
     } else {
-      await adminAPI.imagePlayground.createModel(payload)
+      await adminAPI.mediaPlaygroundImage.createModel(payload)
     }
     finishDialog()
     await loadModels()
@@ -769,7 +769,7 @@ async function saveModel() {
   }
 }
 
-function requestDeleteModel(model: ImagePlaygroundModel) {
+function requestDeleteModel(model: MediaPlaygroundImageModel) {
   deletingModel.value = model
   showDeleteDialog.value = true
 }
@@ -782,7 +782,7 @@ function closeDeleteDialog() {
 async function confirmDeleteModel() {
   if (!deletingModel.value) return
   try {
-    await adminAPI.imagePlayground.deleteModel(deletingModel.value.id)
+    await adminAPI.mediaPlaygroundImage.deleteModel(deletingModel.value.id)
     closeDeleteDialog()
     await loadModels()
     appStore.showSuccess(t('common.deleted'))

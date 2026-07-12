@@ -496,25 +496,25 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/image-playground',
-    name: 'AdminImagePlayground',
-    component: () => import('@/views/admin/ImagePlaygroundView.vue'),
+    path: '/admin/media-playground/image',
+    name: 'AdminMediaPlaygroundImage',
+    component: () => import('@/views/admin/MediaPlaygroundImageView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Image Playground Models',
+      title: 'Media Site Image Models',
       titleKey: 'admin.imagePlayground.title',
       descriptionKey: 'admin.imagePlayground.description'
     }
   },
   {
-    path: '/admin/video-playground',
-    name: 'AdminVideoPlayground',
-    component: () => import('@/views/admin/VideoPlaygroundView.vue'),
+    path: '/admin/media-playground/video',
+    name: 'AdminMediaPlaygroundVideo',
+    component: () => import('@/views/admin/MediaPlaygroundVideoView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Video Playground Models',
+      title: 'Media Site Video Models',
       titleKey: 'admin.videoPlayground.title',
       descriptionKey: 'admin.videoPlayground.description'
     }

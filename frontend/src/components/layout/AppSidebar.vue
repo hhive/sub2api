@@ -99,7 +99,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -207,7 +207,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -316,7 +316,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground' || item.action === 'videoPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -408,8 +408,9 @@ import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
+import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu, launchVideoPlayground } from '@/api/onyx'
+import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu } from '@/api/onyx'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import type { VictoryMenuItem } from '@/types'
 
@@ -427,7 +428,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'videoPlayground' | 'victoryMenu'
+  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'victoryMenu'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -470,7 +471,6 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const lobeHubLaunching = ref(false)
 const onyxLaunching = ref(false)
 const imagePlaygroundLaunching = ref(false)
-const videoPlaygroundLaunching = ref(false)
 const victoryMenuLaunching = ref<Record<string, boolean>>({})
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
@@ -480,7 +480,7 @@ const expandedGroups = ref<Set<string>>(new Set())
 
 // Site settings from appStore (cached, no flicker)
 const siteName = computed(() => appStore.siteName)
-const siteLogo = computed(() => appStore.siteLogo)
+const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteVersion = computed(() => appStore.siteVersion)
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 // SVG Icon Components
@@ -954,7 +954,6 @@ const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
 const flagImagePlayground = makeSidebarFlag(FeatureFlags.imagePlayground)
-const flagVideoPlayground = makeSidebarFlag(FeatureFlags.videoPlayground)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagRechargeSubscription = makeSidebarFlag(FeatureFlags.purchaseSubscription)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
@@ -1001,7 +1000,6 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
     { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagImagePlayground, action: 'imagePlayground' },
-    { path: '__video_playground__', label: t('nav.videoPlayground'), icon: VideoIcon, hideInSimpleMode: true, featureFlag: flagVideoPlayground, action: 'videoPlayground' },
     { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
     {
       path: '__victory_menu__',
@@ -1083,8 +1081,8 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
-    { path: '/admin/image-playground', label: t('nav.imagePlaygroundConfig'), icon: ImageIcon, hideInSimpleMode: true },
-    { path: '/admin/video-playground', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
+    { path: '/admin/media-playground/image', label: t('nav.imagePlaygroundConfig'), icon: ImageIcon, hideInSimpleMode: true },
+    { path: '/admin/media-playground/video', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
@@ -1235,20 +1233,6 @@ async function handleImagePlaygroundLaunch() {
   }
 }
 
-async function handleVideoPlaygroundLaunch() {
-  if (videoPlaygroundLaunching.value) return
-  handleMenuItemClick('__video_playground__')
-  videoPlaygroundLaunching.value = true
-  try {
-    const result = await launchVideoPlayground()
-    window.open(result.redirect_url, '_blank', 'noopener')
-  } catch (error) {
-    appStore.showError(resolveVideoPlaygroundLaunchError(error))
-  } finally {
-    videoPlaygroundLaunching.value = false
-  }
-}
-
 async function handleVictoryMenuLaunch(item: NavItem) {
   const menuID = item.victoryMenuID
   if (!menuID || victoryMenuLaunching.value[menuID]) return
@@ -1285,9 +1269,6 @@ function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
   if (action === 'imagePlayground') {
     return handleImagePlaygroundLaunch()
   }
-  if (action === 'videoPlayground') {
-    return handleVideoPlaygroundLaunch()
-  }
   if (action === 'victoryMenu' && item) {
     return handleVictoryMenuLaunch(item)
   }
@@ -1297,7 +1278,6 @@ function isActionLaunching(action: NavItem['action'], item?: NavItem): boolean {
   if (action === 'lobehub') return lobeHubLaunching.value
   if (action === 'onyx') return onyxLaunching.value
   if (action === 'imagePlayground') return imagePlaygroundLaunching.value
-  if (action === 'videoPlayground') return videoPlaygroundLaunching.value
   if (action === 'victoryMenu' && item?.victoryMenuID) return !!victoryMenuLaunching.value[item.victoryMenuID]
   return false
 }
@@ -1306,7 +1286,6 @@ function actionLabel(item: NavItem): string {
   if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
   if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
-  if (item.action === 'videoPlayground' && videoPlaygroundLaunching.value) return t('videoPlayground.opening')
   if (item.action === 'victoryMenu' && item.victoryMenuID && victoryMenuLaunching.value[item.victoryMenuID]) return t('victoryMenu.opening')
   return item.label
 }
@@ -1342,17 +1321,6 @@ function resolveImagePlaygroundLaunchError(error: unknown): string {
     return t('imagePlayground.notConfigured')
   }
   return apiError.message || t('imagePlayground.openFailed')
-}
-
-function resolveVideoPlaygroundLaunchError(error: unknown): string {
-  const apiError = error as { status?: number; reason?: string; message?: string }
-  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
-    return t('onyx.noAvailableApiKey')
-  }
-  if (apiError.status === 503) {
-    return t('videoPlayground.notConfigured')
-  }
-  return apiError.message || t('videoPlayground.openFailed')
 }
 
 function resolveVictoryMenuLaunchError(error: unknown): string {

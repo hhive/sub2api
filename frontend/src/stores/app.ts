@@ -403,7 +403,7 @@ export const useAppStore = defineStore('app', () => {
           '1312623967@qq.com',
         ],
         image_playground_enabled: false,
-        image_playground_menu_label: '图片生成',
+        image_playground_menu_label: '图片与视频',
         image_playground_launch_path: '/api/v1/image-playground/launch',
         video_playground_enabled: false,
         video_playground_menu_label: '视频生成',

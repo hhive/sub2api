@@ -12,7 +12,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { listProbeRuns, runModelProbe, runProbe } from '@/api/admin/imagePlayground'
+import { listProbeRuns, runModelProbe, runProbe } from '@/api/admin/mediaPlaygroundImage'
 
 describe('admin image playground api', () => {
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe('admin image playground api', () => {
 
     const result = await listProbeRuns({ page: 2, page_size: 20 })
 
-    expect(get).toHaveBeenCalledWith('/admin/image-playground/model-probe-runs', {
+    expect(get).toHaveBeenCalledWith('/admin/media-playground/image/model-probe-runs', {
       params: { page: 2, page_size: 20 },
     })
     expect(result).toEqual(page)
@@ -37,7 +37,7 @@ describe('admin image playground api', () => {
 
     const result = await runProbe()
 
-    expect(post).toHaveBeenCalledWith('/admin/image-playground/model-probe-runs/run')
+    expect(post).toHaveBeenCalledWith('/admin/media-playground/image/model-probe-runs/run')
     expect(result).toEqual({ ok: true, running: true })
   })
 
@@ -46,7 +46,7 @@ describe('admin image playground api', () => {
 
     const result = await runModelProbe(7)
 
-    expect(post).toHaveBeenCalledWith('/admin/image-playground/models/7/probe')
+    expect(post).toHaveBeenCalledWith('/admin/media-playground/image/models/7/probe')
     expect(result).toEqual({ ok: true, running: true })
   })
 })

@@ -14,11 +14,6 @@ export async function launchImagePlayground(): Promise<OnyxLaunchResponse> {
   return data
 }
 
-export async function launchVideoPlayground(): Promise<OnyxLaunchResponse> {
-  const { data } = await apiClient.post<OnyxLaunchResponse>('/video-playground/launch')
-  return data
-}
-
 export async function launchLobeHub(): Promise<OnyxLaunchResponse> {
   const { data } = await apiClient.post<OnyxLaunchResponse>('/lobehub/launch')
   return data

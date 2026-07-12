@@ -38,8 +38,8 @@ type AdminHandlers struct {
 	Payment                *admin.PaymentHandler
 	Affiliate              *admin.AffiliateHandler
 	Compliance             *admin.ComplianceHandler
-	VideoPlayground        *admin.VideoPlaygroundHandler
-	ImagePlayground        *admin.ImagePlaygroundHandler
+	MediaPlaygroundVideo   *admin.MediaPlaygroundVideoHandler
+	MediaPlaygroundImage   *admin.MediaPlaygroundImageHandler
 }
 
 // Handlers contains all HTTP handlers

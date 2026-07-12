@@ -195,8 +195,8 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
-    imagePlaygroundConfig: 'Image Model Config',
-    videoPlaygroundConfig: 'Video Model Config',
+    imagePlaygroundConfig: 'Media Site Image Models',
+    videoPlaygroundConfig: 'Media Site Video Models',
     riskControl: 'Risk Control',
   },
 
