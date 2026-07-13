@@ -91,6 +91,26 @@ describe('AppSidebar video playground menu retirement', () => {
   })
 })
 
+describe('AppSidebar other operations menu', () => {
+  it('places the four admin tools after settings without duplicate top-level entries', () => {
+    const adminNavBlock = componentSource.match(/const adminNavItems = computed[\s\S]*?return visible\n}\)/)?.[0] ?? ''
+    const groupStart = adminNavBlock.indexOf('const otherOperationsItem')
+    const groupEnd = adminNavBlock.indexOf('\n  }', groupStart)
+    const groupBlock = adminNavBlock.slice(groupStart, groupEnd)
+
+    expect(adminNavBlock.indexOf('visible.push(otherOperationsItem)')).toBeGreaterThan(adminNavBlock.indexOf("visible.push({ path: '/admin/settings'"))
+    expect(adminNavBlock.lastIndexOf('for (const cm of customMenuItemsForAdmin.value)')).toBeGreaterThan(adminNavBlock.indexOf('visible.push(otherOperationsItem)'))
+    expect(groupBlock.indexOf("path: '/admin/channels/default-pricing'")).toBeLessThan(groupBlock.indexOf("path: '/admin/balance-credits'"))
+    expect(groupBlock.indexOf("path: '/admin/balance-credits'")).toBeLessThan(groupBlock.indexOf("path: '/admin/media-playground/image'"))
+    expect(groupBlock.indexOf("path: '/admin/media-playground/image'")).toBeLessThan(groupBlock.indexOf("path: '/admin/media-playground/video'"))
+    expect(adminNavBlock.match(/path: '\/admin\/balance-credits'/g)).toHaveLength(1)
+    expect(adminNavBlock.match(/path: '\/admin\/media-playground\/image'/g)).toHaveLength(1)
+    expect(adminNavBlock.match(/path: '\/admin\/media-playground\/video'/g)).toHaveLength(1)
+    expect(groupBlock.match(/hideInSimpleMode: true/g)).toHaveLength(5)
+    expect(adminNavBlock.slice(adminNavBlock.indexOf('if (authStore.isSimpleMode)'), adminNavBlock.indexOf('visible.push(otherOperationsItem)'))).not.toContain('filtered.push(otherOperationsItem)')
+  })
+})
+
 describe('AppSidebar LobeHub menu wiring', () => {
   it('places the sole chat entry before the unified media entry', () => {
     expect(componentSource).toContain('FeatureFlags.lobehub')

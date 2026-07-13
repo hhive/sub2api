@@ -2,8 +2,10 @@ package admin
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -139,6 +141,45 @@ type accountStatsPricingRuleResponse struct {
 	GroupIDs   []int64                       `json:"group_ids"`
 	AccountIDs []int64                       `json:"account_ids"`
 	Pricing    []channelModelPricingResponse `json:"pricing"`
+}
+
+type defaultModelPricingResponse struct {
+	Model                               string   `json:"model"`
+	Provider                            string   `json:"provider"`
+	Mode                                string   `json:"mode"`
+	InputCostPerToken                   *float64 `json:"input_cost_per_token"`
+	InputCostPerTokenPriority           *float64 `json:"input_cost_per_token_priority"`
+	OutputCostPerToken                  *float64 `json:"output_cost_per_token"`
+	OutputCostPerTokenPriority          *float64 `json:"output_cost_per_token_priority"`
+	CacheCreationInputTokenCost         *float64 `json:"cache_creation_input_token_cost"`
+	CacheCreationInputTokenCostPriority *float64 `json:"cache_creation_input_token_cost_priority"`
+	CacheCreationInputTokenCostAbove1hr *float64 `json:"cache_creation_input_token_cost_above_1hr"`
+	CacheReadInputTokenCost             *float64 `json:"cache_read_input_token_cost"`
+	CacheReadInputTokenCostPriority     *float64 `json:"cache_read_input_token_cost_priority"`
+	OutputCostPerImage                  *float64 `json:"output_cost_per_image"`
+	OutputCostPerImageToken             *float64 `json:"output_cost_per_image_token"`
+	LongContextInputTokenThreshold      *int     `json:"long_context_input_token_threshold"`
+	LongContextInputCostMultiplier      *float64 `json:"long_context_input_cost_multiplier"`
+	LongContextOutputCostMultiplier     *float64 `json:"long_context_output_cost_multiplier"`
+	SupportsServiceTier                 bool     `json:"supports_service_tier"`
+	SupportsPromptCaching               bool     `json:"supports_prompt_caching"`
+	TokenPricingAbsent                  bool     `json:"token_pricing_absent"`
+}
+
+type defaultModelPricingStatusResponse struct {
+	ModelCount  int        `json:"model_count"`
+	LastUpdated *time.Time `json:"last_updated"`
+	LocalHash   string     `json:"local_hash"`
+}
+
+type defaultModelPricingListResponse struct {
+	Items     []defaultModelPricingResponse     `json:"items"`
+	Total     int                               `json:"total"`
+	Page      int                               `json:"page"`
+	PageSize  int                               `json:"page_size"`
+	Providers []string                          `json:"providers"`
+	Modes     []string                          `json:"modes"`
+	Status    defaultModelPricingStatusResponse `json:"status"`
 }
 
 func channelToResponse(ch *service.Channel) *channelResponse {
@@ -473,6 +514,165 @@ func (h *ChannelHandler) Delete(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Channel deleted successfully"})
+}
+
+// ListDefaultModelPricing returns the in-memory canonical default pricing catalog.
+// GET /api/v1/admin/channels/default-model-pricing
+func (h *ChannelHandler) ListDefaultModelPricing(c *gin.Context) {
+	page, ok := parseCatalogIntParam(c, "page", 1, 1, 0, "INVALID_PAGE")
+	if !ok {
+		return
+	}
+	pageSize, ok := parseCatalogIntParam(c, "page_size", 20, 5, 1000, "INVALID_PAGE_SIZE")
+	if !ok {
+		return
+	}
+
+	sortBy := strings.ToLower(strings.TrimSpace(c.DefaultQuery("sort_by", "model")))
+	if sortBy != "model" && sortBy != "provider" && sortBy != "mode" {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_SORT_BY", "sort_by must be one of model, provider, or mode"))
+		return
+	}
+	sortOrder := strings.ToLower(strings.TrimSpace(c.DefaultQuery("sort_order", "asc")))
+	if sortOrder != "asc" && sortOrder != "desc" {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_SORT_ORDER", "sort_order must be asc or desc"))
+		return
+	}
+
+	snapshot := h.pricingService.ListModelPricingCatalog()
+	providers := uniqueCatalogValues(snapshot.Entries, func(entry service.ModelPricingCatalogEntry) string { return entry.Provider })
+	modes := uniqueCatalogValues(snapshot.Entries, func(entry service.ModelPricingCatalogEntry) string { return entry.Mode })
+	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
+	provider := strings.ToLower(strings.TrimSpace(c.Query("provider")))
+	mode := strings.ToLower(strings.TrimSpace(c.Query("mode")))
+	filtered := make([]service.ModelPricingCatalogEntry, 0, len(snapshot.Entries))
+	for _, entry := range snapshot.Entries {
+		if search != "" && !strings.Contains(strings.ToLower(entry.Model), search) {
+			continue
+		}
+		if provider != "" && strings.ToLower(entry.Provider) != provider {
+			continue
+		}
+		if mode != "" && strings.ToLower(entry.Mode) != mode {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+
+	sort.SliceStable(filtered, func(i, j int) bool {
+		left, right := catalogSortValue(filtered[i], sortBy), catalogSortValue(filtered[j], sortBy)
+		if left == right {
+			left, right = strings.ToLower(filtered[i].Model), strings.ToLower(filtered[j].Model)
+		}
+		if sortOrder == "desc" {
+			return left > right
+		}
+		return left < right
+	})
+
+	total := len(filtered)
+	start := total
+	if page-1 <= total/pageSize {
+		start = (page - 1) * pageSize
+	}
+	if start > total {
+		start = total
+	}
+	end := min(start+pageSize, total)
+	items := make([]defaultModelPricingResponse, 0, end-start)
+	for _, entry := range filtered[start:end] {
+		items = append(items, defaultModelPricingToResponse(entry))
+	}
+	response.Success(c, defaultModelPricingListResponse{
+		Items:     items,
+		Total:     total,
+		Page:      page,
+		PageSize:  pageSize,
+		Providers: providers,
+		Modes:     modes,
+		Status: defaultModelPricingStatusResponse{
+			ModelCount:  snapshot.ModelCount,
+			LastUpdated: optionalCatalogTime(snapshot.LastUpdated),
+			LocalHash:   snapshot.LocalHash,
+		},
+	})
+}
+
+func optionalCatalogTime(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	copy := value
+	return &copy
+}
+
+func parseCatalogIntParam(c *gin.Context, name string, defaultValue, minValue, maxValue int, reason string) (int, bool) {
+	raw, exists := c.GetQuery(name)
+	if !exists {
+		return defaultValue, true
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value < minValue || (maxValue > 0 && value > maxValue) {
+		response.ErrorFrom(c, infraerrors.BadRequest(reason, fmt.Sprintf("invalid %s", name)).WithMetadata(map[string]string{"param": name}))
+		return 0, false
+	}
+	return value, true
+}
+
+func uniqueCatalogValues(entries []service.ModelPricingCatalogEntry, value func(service.ModelPricingCatalogEntry) string) []string {
+	seen := make(map[string]string)
+	for _, entry := range entries {
+		raw := strings.TrimSpace(value(entry))
+		if raw == "" {
+			continue
+		}
+		normalized := strings.ToLower(raw)
+		if _, exists := seen[normalized]; !exists {
+			seen[normalized] = raw
+		}
+	}
+	values := make([]string, 0, len(seen))
+	for _, raw := range seen {
+		values = append(values, raw)
+	}
+	sort.Slice(values, func(i, j int) bool { return strings.ToLower(values[i]) < strings.ToLower(values[j]) })
+	return values
+}
+
+func catalogSortValue(entry service.ModelPricingCatalogEntry, sortBy string) string {
+	switch sortBy {
+	case "provider":
+		return strings.ToLower(entry.Provider)
+	case "mode":
+		return strings.ToLower(entry.Mode)
+	default:
+		return strings.ToLower(entry.Model)
+	}
+}
+
+func defaultModelPricingToResponse(entry service.ModelPricingCatalogEntry) defaultModelPricingResponse {
+	return defaultModelPricingResponse{
+		Model:                               entry.Model,
+		Provider:                            entry.Provider,
+		Mode:                                entry.Mode,
+		InputCostPerToken:                   entry.InputCostPerToken,
+		InputCostPerTokenPriority:           entry.InputCostPerTokenPriority,
+		OutputCostPerToken:                  entry.OutputCostPerToken,
+		OutputCostPerTokenPriority:          entry.OutputCostPerTokenPriority,
+		CacheCreationInputTokenCost:         entry.CacheCreationInputTokenCost,
+		CacheCreationInputTokenCostPriority: entry.CacheCreationInputTokenCostPriority,
+		CacheCreationInputTokenCostAbove1hr: entry.CacheCreationInputTokenCostAbove1hr,
+		CacheReadInputTokenCost:             entry.CacheReadInputTokenCost,
+		CacheReadInputTokenCostPriority:     entry.CacheReadInputTokenCostPriority,
+		OutputCostPerImage:                  entry.OutputCostPerImage,
+		OutputCostPerImageToken:             entry.OutputCostPerImageToken,
+		LongContextInputTokenThreshold:      entry.LongContextInputTokenThreshold,
+		LongContextInputCostMultiplier:      entry.LongContextInputCostMultiplier,
+		LongContextOutputCostMultiplier:     entry.LongContextOutputCostMultiplier,
+		SupportsServiceTier:                 entry.SupportsServiceTier,
+		SupportsPromptCaching:               entry.SupportsPromptCaching,
+		TokenPricingAbsent:                  entry.TokenPricingAbsent,
+	}
 }
 
 // GetModelDefaultPricing 获取模型的默认定价（用于前端自动填充）

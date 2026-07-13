@@ -496,6 +496,22 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/other-operations',
+    redirect: '/admin/channels/default-pricing'
+  },
+  {
+    path: '/admin/channels/default-pricing',
+    name: 'AdminDefaultModelPricing',
+    component: () => import('@/views/admin/DefaultModelPricingView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Default Model Pricing',
+      titleKey: 'admin.defaultModelPricing.title',
+      descriptionKey: 'admin.defaultModelPricing.description'
+    }
+  },
+  {
     path: '/admin/media-playground/image',
     name: 'AdminMediaPlaygroundImage',
     component: () => import('@/views/admin/MediaPlaygroundImageView.vue'),

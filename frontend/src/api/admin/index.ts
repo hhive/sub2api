@@ -35,6 +35,7 @@ import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
 import mediaPlaygroundVideoAPI from './mediaPlaygroundVideo'
 import mediaPlaygroundImageAPI from './mediaPlaygroundImage'
+import defaultModelPricingAPI from './defaultModelPricing'
 
 /**
  * Unified admin API object for convenient access
@@ -71,7 +72,8 @@ export const adminAPI = {
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
   mediaPlaygroundVideo: mediaPlaygroundVideoAPI,
-  mediaPlaygroundImage: mediaPlaygroundImageAPI
+  mediaPlaygroundImage: mediaPlaygroundImageAPI,
+  defaultModelPricing: defaultModelPricingAPI
 }
 
 export {
@@ -106,7 +108,8 @@ export {
   riskControlAPI,
   adminComplianceAPI,
   mediaPlaygroundVideoAPI,
-  mediaPlaygroundImageAPI
+  mediaPlaygroundImageAPI,
+  defaultModelPricingAPI
 }
 
 export default adminAPI
@@ -128,3 +131,4 @@ export type {
   MediaPlaygroundImageUpstreamRequestPage,
   ImageSizeTier
 } from './mediaPlaygroundImage'
+export type { DefaultModelPricingItem, DefaultModelPricingResponse, DefaultModelPricingParams } from './defaultModelPricing'

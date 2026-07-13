@@ -1,4 +1,48 @@
 export default {
+    defaultModelPricing: {
+      title: '默认模型定价',
+      description: '查看当前运行时加载的默认模型目录价格（只读）',
+      search: '搜索模型...',
+      allProviders: '全部 Provider',
+      allModes: '全部模式',
+      status: '模型 {count} 个 · 更新于 {updated} · 版本 {hash}',
+      loadError: '加载默认模型定价失败',
+      empty: '暂无默认模型定价',
+      noResults: '没有符合条件的模型',
+      columns: {
+        model: '模型',
+        provider: 'Provider',
+        mode: '模式',
+        input: '输入 / 1M tokens',
+        output: '输出 / 1M tokens',
+        cacheWrite: '缓存写入',
+        cacheRead: '缓存读取',
+        image: '图片 / 次',
+        details: '扩展价格'
+      },
+      details: {
+        priorityInput: 'Priority 输入',
+        priorityOutput: 'Priority 输出',
+        priorityCacheWrite: 'Priority 缓存写入',
+        priorityCacheRead: 'Priority 缓存读取',
+        cacheOneHour: '1 小时缓存写入',
+        imageOutputToken: '图片输出 Token',
+        longContextThreshold: '长上下文阈值',
+        longContextInputMultiplier: '长上下文输入倍率',
+        longContextOutputMultiplier: '长上下文输出倍率',
+        serviceTier: '支持服务层级',
+        promptCaching: '支持提示词缓存',
+        tokenPricingAbsent: '缺少 Token 定价'
+      },
+      hints: {
+        priority: '请求 priority 服务层级时使用的价格。',
+        cacheOneHour: '缓存有效期超过一小时时使用的缓存写入价格。',
+        imageOutputToken: '按图片输出 Token 计费的图片模型所使用的单 Token 输出价格。',
+        longContext: '目录为长上下文请求声明的阈值和价格倍率。',
+        capabilities: '当前加载的定价目录报告的能力标志。',
+        tokenPricingAbsent: '源条目包含图片价格，但没有输入或输出 Token 价格。'
+      }
+    },
     availableChannels: {
       title: '可用渠道',
       description: '按渠道聚合查看关联分组与支持模型（已展开通配符）',

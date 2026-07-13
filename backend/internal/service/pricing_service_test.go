@@ -4,11 +4,96 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPricingService_ListModelPricingCatalogPreservesNullAndZero(t *testing.T) {
+	svc := &PricingService{}
+	data, err := svc.parsePricingData([]byte(`{
+		"image-model": {
+			"input_cost_per_token": 0,
+			"output_cost_per_image": 0.04,
+			"output_cost_per_image_token": 0,
+			"litellm_provider": "openai",
+			"mode": "image_generation",
+			"supports_service_tier": true,
+			"supports_prompt_caching": false
+		}
+	}`))
+	require.NoError(t, err)
+	svc.pricingData = data
+	svc.lastUpdated = time.Date(2026, 7, 13, 12, 0, 0, 0, time.UTC)
+	svc.localHash = "1234567890abcdef"
+
+	snapshot := svc.ListModelPricingCatalog()
+	require.Equal(t, 1, snapshot.ModelCount)
+	require.Equal(t, svc.lastUpdated, snapshot.LastUpdated)
+	require.Equal(t, "12345678", snapshot.LocalHash)
+	require.Len(t, snapshot.Entries, 1)
+	entry := snapshot.Entries[0]
+	require.Equal(t, "image-model", entry.Model)
+	require.Equal(t, "openai", entry.Provider)
+	require.Equal(t, "image_generation", entry.Mode)
+	require.NotNil(t, entry.InputCostPerToken)
+	require.Zero(t, *entry.InputCostPerToken)
+	require.Nil(t, entry.OutputCostPerToken)
+	require.NotNil(t, entry.OutputCostPerImage)
+	require.InDelta(t, 0.04, *entry.OutputCostPerImage, 1e-12)
+	require.NotNil(t, entry.OutputCostPerImageToken)
+	require.Zero(t, *entry.OutputCostPerImageToken)
+	require.True(t, entry.SupportsServiceTier)
+
+	*entry.InputCostPerToken = 99
+	again := svc.ListModelPricingCatalog()
+	require.Zero(t, *again.Entries[0].InputCostPerToken, "snapshot must not expose internal or prior snapshot pointers")
+}
+
+func TestPricingService_ListModelPricingCatalogStatusIsAtomic(t *testing.T) {
+	parsedA, err := (&PricingService{}).parsePricingData([]byte(`{"a":{"input_cost_per_token":1}}`))
+	require.NoError(t, err)
+	parsedB, err := (&PricingService{}).parsePricingData([]byte(`{"b":{"input_cost_per_token":2},"c":{"output_cost_per_token":3}}`))
+	require.NoError(t, err)
+	timeA := time.Date(2026, 7, 13, 1, 0, 0, 0, time.UTC)
+	timeB := time.Date(2026, 7, 13, 2, 0, 0, 0, time.UTC)
+	svc := &PricingService{pricingData: parsedA, localHash: "aaaaaaaa", lastUpdated: timeA}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			svc.mu.Lock()
+			if i%2 == 0 {
+				svc.pricingData = parsedB
+				svc.localHash = "bbbbbbbb"
+				svc.lastUpdated = timeB
+			} else {
+				svc.pricingData = parsedA
+				svc.localHash = "aaaaaaaa"
+				svc.lastUpdated = timeA
+			}
+			svc.mu.Unlock()
+		}
+	}()
+	for i := 0; i < 1000; i++ {
+		snapshot := svc.ListModelPricingCatalog()
+		require.Equal(t, snapshot.ModelCount, len(snapshot.Entries))
+		if snapshot.LocalHash == "aaaaaaaa" {
+			require.Equal(t, 1, snapshot.ModelCount)
+			require.Equal(t, timeA, snapshot.LastUpdated)
+		} else {
+			require.Equal(t, "bbbbbbbb", snapshot.LocalHash)
+			require.Equal(t, 2, snapshot.ModelCount)
+			require.Equal(t, timeB, snapshot.LastUpdated)
+		}
+	}
+	wg.Wait()
+}
 
 func TestParsePricingData_ParsesPriorityAndServiceTierFields(t *testing.T) {
 	svc := &PricingService{}

@@ -130,6 +130,51 @@ type LiteLLMModelPricing struct {
 	// 此类条目只可用于图片计费，token 计费必须回退到 fallback 或 fail-closed，
 	// 否则 token 流量会被按 $0 计费。零值（false）表示条目具备 token 价格。
 	TokenPricingAbsent bool `json:"-"`
+
+	// Presence flags preserve the distinction between an omitted source field and
+	// an explicitly configured zero. They are intentionally private so billing's
+	// existing value-based contract is unchanged.
+	hasInputCostPerToken, hasInputCostPerTokenPriority                     bool
+	hasOutputCostPerToken, hasOutputCostPerTokenPriority                   bool
+	hasCacheCreationInputTokenCost, hasCacheCreationInputTokenCostPriority bool
+	hasCacheCreationInputTokenCostAbove1hr                                 bool
+	hasCacheReadInputTokenCost, hasCacheReadInputTokenCostPriority         bool
+	hasLongContextInputTokenThreshold                                      bool
+	hasLongContextInputCostMultiplier, hasLongContextOutputCostMultiplier  bool
+	hasOutputCostPerImage, hasOutputCostPerImageToken                      bool
+}
+
+// ModelPricingCatalogEntry is a read-only view of one canonical pricing entry.
+// Nullable price fields preserve source omission versus an explicit zero.
+type ModelPricingCatalogEntry struct {
+	Model                               string
+	Provider                            string
+	Mode                                string
+	InputCostPerToken                   *float64
+	InputCostPerTokenPriority           *float64
+	OutputCostPerToken                  *float64
+	OutputCostPerTokenPriority          *float64
+	CacheCreationInputTokenCost         *float64
+	CacheCreationInputTokenCostPriority *float64
+	CacheCreationInputTokenCostAbove1hr *float64
+	CacheReadInputTokenCost             *float64
+	CacheReadInputTokenCostPriority     *float64
+	OutputCostPerImage                  *float64
+	OutputCostPerImageToken             *float64
+	LongContextInputTokenThreshold      *int
+	LongContextInputCostMultiplier      *float64
+	LongContextOutputCostMultiplier     *float64
+	SupportsServiceTier                 bool
+	SupportsPromptCaching               bool
+	TokenPricingAbsent                  bool
+}
+
+// ModelPricingCatalog is an immutable snapshot of entries and status metadata.
+type ModelPricingCatalog struct {
+	Entries     []ModelPricingCatalogEntry
+	ModelCount  int
+	LastUpdated time.Time
+	LocalHash   string
 }
 
 // PricingRemoteClient 远程价格数据获取接口
@@ -449,45 +494,59 @@ func (s *PricingService) parsePricingData(body []byte) (map[string]*LiteLLMModel
 
 		if entry.InputCostPerToken != nil {
 			pricing.InputCostPerToken = *entry.InputCostPerToken
+			pricing.hasInputCostPerToken = true
 		}
 		if entry.InputCostPerTokenPriority != nil {
 			pricing.InputCostPerTokenPriority = *entry.InputCostPerTokenPriority
+			pricing.hasInputCostPerTokenPriority = true
 		}
 		if entry.OutputCostPerToken != nil {
 			pricing.OutputCostPerToken = *entry.OutputCostPerToken
+			pricing.hasOutputCostPerToken = true
 		}
 		if entry.OutputCostPerTokenPriority != nil {
 			pricing.OutputCostPerTokenPriority = *entry.OutputCostPerTokenPriority
+			pricing.hasOutputCostPerTokenPriority = true
 		}
 		if entry.CacheCreationInputTokenCost != nil {
 			pricing.CacheCreationInputTokenCost = *entry.CacheCreationInputTokenCost
+			pricing.hasCacheCreationInputTokenCost = true
 		}
 		if entry.CacheCreationInputTokenCostPriority != nil {
 			pricing.CacheCreationInputTokenCostPriority = *entry.CacheCreationInputTokenCostPriority
+			pricing.hasCacheCreationInputTokenCostPriority = true
 		}
 		if entry.CacheCreationInputTokenCostAbove1hr != nil {
 			pricing.CacheCreationInputTokenCostAbove1hr = *entry.CacheCreationInputTokenCostAbove1hr
+			pricing.hasCacheCreationInputTokenCostAbove1hr = true
 		}
 		if entry.CacheReadInputTokenCost != nil {
 			pricing.CacheReadInputTokenCost = *entry.CacheReadInputTokenCost
+			pricing.hasCacheReadInputTokenCost = true
 		}
 		if entry.CacheReadInputTokenCostPriority != nil {
 			pricing.CacheReadInputTokenCostPriority = *entry.CacheReadInputTokenCostPriority
+			pricing.hasCacheReadInputTokenCostPriority = true
 		}
 		if entry.LongContextInputTokenThreshold != nil {
 			pricing.LongContextInputTokenThreshold = *entry.LongContextInputTokenThreshold
+			pricing.hasLongContextInputTokenThreshold = true
 		}
 		if entry.LongContextInputCostMultiplier != nil {
 			pricing.LongContextInputCostMultiplier = *entry.LongContextInputCostMultiplier
+			pricing.hasLongContextInputCostMultiplier = true
 		}
 		if entry.LongContextOutputCostMultiplier != nil {
 			pricing.LongContextOutputCostMultiplier = *entry.LongContextOutputCostMultiplier
+			pricing.hasLongContextOutputCostMultiplier = true
 		}
 		if entry.OutputCostPerImage != nil {
 			pricing.OutputCostPerImage = *entry.OutputCostPerImage
+			pricing.hasOutputCostPerImage = true
 		}
 		if entry.OutputCostPerImageToken != nil {
 			pricing.OutputCostPerImageToken = *entry.OutputCostPerImageToken
+			pricing.hasOutputCostPerImageToken = true
 		}
 
 		result[modelName] = pricing
@@ -1016,6 +1075,70 @@ func (s *PricingService) GetStatus() map[string]any {
 		"last_updated": s.lastUpdated,
 		"local_hash":   s.localHash[:min(8, len(s.localHash))],
 	}
+}
+
+// ListModelPricingCatalog returns canonical catalog entries and status metadata
+// captured under the same read lock. Returned pointers address copied values and
+// never expose the service's internal map entries.
+func (s *PricingService) ListModelPricingCatalog() ModelPricingCatalog {
+	s.mu.RLock()
+	entries := make([]ModelPricingCatalogEntry, 0, len(s.pricingData))
+	for model, pricing := range s.pricingData {
+		if pricing == nil {
+			continue
+		}
+		entry := ModelPricingCatalogEntry{
+			Model:                 model,
+			Provider:              pricing.LiteLLMProvider,
+			Mode:                  pricing.Mode,
+			SupportsServiceTier:   pricing.SupportsServiceTier,
+			SupportsPromptCaching: pricing.SupportsPromptCaching,
+			TokenPricingAbsent:    pricing.TokenPricingAbsent,
+		}
+		entry.InputCostPerToken = optionalFloat(pricing.InputCostPerToken, pricing.hasInputCostPerToken)
+		entry.InputCostPerTokenPriority = optionalFloat(pricing.InputCostPerTokenPriority, pricing.hasInputCostPerTokenPriority)
+		entry.OutputCostPerToken = optionalFloat(pricing.OutputCostPerToken, pricing.hasOutputCostPerToken)
+		entry.OutputCostPerTokenPriority = optionalFloat(pricing.OutputCostPerTokenPriority, pricing.hasOutputCostPerTokenPriority)
+		entry.CacheCreationInputTokenCost = optionalFloat(pricing.CacheCreationInputTokenCost, pricing.hasCacheCreationInputTokenCost)
+		entry.CacheCreationInputTokenCostPriority = optionalFloat(pricing.CacheCreationInputTokenCostPriority, pricing.hasCacheCreationInputTokenCostPriority)
+		entry.CacheCreationInputTokenCostAbove1hr = optionalFloat(pricing.CacheCreationInputTokenCostAbove1hr, pricing.hasCacheCreationInputTokenCostAbove1hr)
+		entry.CacheReadInputTokenCost = optionalFloat(pricing.CacheReadInputTokenCost, pricing.hasCacheReadInputTokenCost)
+		entry.CacheReadInputTokenCostPriority = optionalFloat(pricing.CacheReadInputTokenCostPriority, pricing.hasCacheReadInputTokenCostPriority)
+		entry.OutputCostPerImage = optionalFloat(pricing.OutputCostPerImage, pricing.hasOutputCostPerImage)
+		entry.OutputCostPerImageToken = optionalFloat(pricing.OutputCostPerImageToken, pricing.hasOutputCostPerImageToken)
+		entry.LongContextInputTokenThreshold = optionalInt(pricing.LongContextInputTokenThreshold, pricing.hasLongContextInputTokenThreshold)
+		entry.LongContextInputCostMultiplier = optionalFloat(pricing.LongContextInputCostMultiplier, pricing.hasLongContextInputCostMultiplier)
+		entry.LongContextOutputCostMultiplier = optionalFloat(pricing.LongContextOutputCostMultiplier, pricing.hasLongContextOutputCostMultiplier)
+		entries = append(entries, entry)
+	}
+	snapshot := ModelPricingCatalog{
+		Entries:     entries,
+		ModelCount:  len(s.pricingData),
+		LastUpdated: s.lastUpdated,
+		LocalHash:   s.localHash[:min(8, len(s.localHash))],
+	}
+	s.mu.RUnlock()
+
+	sort.Slice(snapshot.Entries, func(i, j int) bool {
+		return snapshot.Entries[i].Model < snapshot.Entries[j].Model
+	})
+	return snapshot
+}
+
+func optionalFloat(value float64, present bool) *float64 {
+	if !present {
+		return nil
+	}
+	copy := value
+	return &copy
+}
+
+func optionalInt(value int, present bool) *int {
+	if !present {
+		return nil
+	}
+	copy := value
+	return &copy
 }
 
 // ForceUpdate 强制更新

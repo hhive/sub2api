@@ -1,4 +1,48 @@
 export default {
+    defaultModelPricing: {
+      title: 'Default Model Pricing',
+      description: 'Read-only prices from the catalog currently loaded by this instance',
+      search: 'Search models...',
+      allProviders: 'All providers',
+      allModes: 'All modes',
+      status: '{count} models · updated {updated} · version {hash}',
+      loadError: 'Failed to load default model pricing',
+      empty: 'No default model pricing',
+      noResults: 'No matching models',
+      columns: {
+        model: 'Model',
+        provider: 'Provider',
+        mode: 'Mode',
+        input: 'Input / 1M tokens',
+        output: 'Output / 1M tokens',
+        cacheWrite: 'Cache write',
+        cacheRead: 'Cache read',
+        image: 'Image / each',
+        details: 'Extended pricing'
+      },
+      details: {
+        priorityInput: 'Priority input',
+        priorityOutput: 'Priority output',
+        priorityCacheWrite: 'Priority cache write',
+        priorityCacheRead: 'Priority cache read',
+        cacheOneHour: '1-hour cache write',
+        imageOutputToken: 'Image output tokens',
+        longContextThreshold: 'Long-context threshold',
+        longContextInputMultiplier: 'Long-context input multiplier',
+        longContextOutputMultiplier: 'Long-context output multiplier',
+        serviceTier: 'Service tier',
+        promptCaching: 'Prompt caching',
+        tokenPricingAbsent: 'Token pricing absent'
+      },
+      hints: {
+        priority: 'Price applied when the priority service tier is requested.',
+        cacheOneHour: 'Cache creation price when the cache lifetime exceeds one hour.',
+        imageOutputToken: 'Per-token output price for image models that bill image output tokens.',
+        longContext: 'Threshold and multipliers declared for long-context requests.',
+        capabilities: 'Capability flags reported by the loaded pricing catalog.',
+        tokenPricingAbsent: 'The source entry has image pricing but no input or output token price.'
+      }
+    },
     availableChannels: {
       title: 'Available Channels',
       description: 'Aggregated view: each channel with its linked groups and supported models (wildcards expanded)',

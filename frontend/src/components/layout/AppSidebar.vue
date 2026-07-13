@@ -1065,7 +1065,6 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
     { path: '/admin/ops', label: t('nav.ops'), icon: ChartIcon, featureFlag: flagOpsMonitoring },
     { path: '/admin/users', label: t('nav.users'), icon: UsersIcon, hideInSimpleMode: true },
-    { path: '/admin/balance-credits', label: t('nav.balanceCredits'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon, hideInSimpleMode: true },
     {
       path: '/admin/channels',
@@ -1078,8 +1077,6 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
-    { path: '/admin/media-playground/image', label: t('nav.mediaPlaygroundImageConfig'), icon: ImageIcon, hideInSimpleMode: true },
-    { path: '/admin/media-playground/video', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
@@ -1117,6 +1114,19 @@ const adminNavItems = computed((): NavItem[] => {
   ]
 
   const visible = applyFeatureFlags(baseItems)
+  const otherOperationsItem: NavItem = {
+    path: '/admin/other-operations',
+    label: t('nav.otherOperations'),
+    icon: PriceTagIcon,
+    hideInSimpleMode: true,
+    expandOnly: true,
+    children: [
+      { path: '/admin/channels/default-pricing', label: t('nav.defaultModelPricing'), icon: PriceTagIcon, hideInSimpleMode: true },
+      { path: '/admin/balance-credits', label: t('nav.balanceQuery'), icon: CreditCardIcon, hideInSimpleMode: true },
+      { path: '/admin/media-playground/image', label: t('nav.mediaPlaygroundImageConfig'), icon: ImageIcon, hideInSimpleMode: true },
+      { path: '/admin/media-playground/video', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true }
+    ]
+  }
 
   // 简单模式下，在系统设置前插入 API密钥
   if (authStore.isSimpleMode) {
@@ -1130,6 +1140,7 @@ const adminNavItems = computed((): NavItem[] => {
   }
 
   visible.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })
+  visible.push(otherOperationsItem)
   for (const cm of customMenuItemsForAdmin.value) {
     visible.push({ path: `/custom/${cm.id}`, label: cm.label, icon: null, iconSvg: cm.icon_svg })
   }

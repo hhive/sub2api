@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -20,6 +23,22 @@ import (
 
 func float64Ptr(v float64) *float64 { return &v }
 func intPtr(v int) *int             { return &v }
+
+func newCatalogPricingService(t *testing.T) (*service.PricingService, *config.Config) {
+	t.Helper()
+	dir := t.TempDir()
+	body := []byte(`{
+		"Zulu": {"input_cost_per_token":0,"litellm_provider":"OpenAI","mode":"chat"},
+		"alpha-image": {"output_cost_per_image":0.04,"output_cost_per_image_token":0,"litellm_provider":"openai","mode":"image_generation"},
+		"beta": {"input_cost_per_token":0.000001,"output_cost_per_token":0.000002,"litellm_provider":"Anthropic","mode":"chat"}
+	}`)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "model_pricing.json"), body, 0o600))
+	cfg := &config.Config{Pricing: config.PricingConfig{DataDir: dir, HashCheckIntervalMinutes: 60}}
+	svc := service.NewPricingService(cfg, nil)
+	require.NoError(t, svc.Initialize())
+	t.Cleanup(svc.Stop)
+	return svc, cfg
+}
 
 // ---------------------------------------------------------------------------
 // 1. channelToResponse
@@ -419,6 +438,129 @@ func TestPricingRequestToService_NilPriceFields(t *testing.T) {
 	require.Nil(t, r.CacheReadPrice)
 	require.Nil(t, r.ImageOutputPrice)
 	require.Nil(t, r.PerRequestPrice)
+}
+
+func setupDefaultModelPricingRouter(h *ChannelHandler) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/channels/default-model-pricing", h.ListDefaultModelPricing)
+	router.GET("/channels/model-pricing", h.GetModelDefaultPricing)
+	return router
+}
+
+func TestListDefaultModelPricing_DefaultsAndNullableFields(t *testing.T) {
+	svc, cfg := newCatalogPricingService(t)
+	router := setupDefaultModelPricingRouter(&ChannelHandler{
+		pricingService: svc,
+		billingService: service.NewBillingService(cfg, svc),
+	})
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/channels/default-model-pricing", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data defaultModelPricingListResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, 1, body.Data.Page)
+	require.Equal(t, 20, body.Data.PageSize)
+	require.Equal(t, 3, body.Data.Total)
+	require.Len(t, body.Data.Items, 3)
+	require.Equal(t, []string{"Anthropic", "OpenAI"}, body.Data.Providers)
+	require.Equal(t, []string{"chat", "image_generation"}, body.Data.Modes)
+	require.Equal(t, "alpha-image", body.Data.Items[0].Model)
+	require.Nil(t, body.Data.Items[0].InputCostPerToken)
+	require.NotNil(t, body.Data.Items[0].OutputCostPerImage)
+	require.NotNil(t, body.Data.Items[0].OutputCostPerImageToken)
+	require.Zero(t, *body.Data.Items[0].OutputCostPerImageToken)
+	require.Equal(t, 3, body.Data.Status.ModelCount)
+	require.NotNil(t, body.Data.Status.LastUpdated)
+	require.Len(t, body.Data.Status.LocalHash, 8)
+}
+
+func TestListDefaultModelPricing_FiltersSortsAndKeepsFullFacets(t *testing.T) {
+	svc, _ := newCatalogPricingService(t)
+	router := setupDefaultModelPricingRouter(&ChannelHandler{pricingService: svc})
+	w := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/channels/default-model-pricing?search=BE&provider=anthropic&mode=CHAT&sort_by=provider&sort_order=desc&page_size=5", nil)
+	router.ServeHTTP(w, request)
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data defaultModelPricingListResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, 1, body.Data.Total)
+	require.Equal(t, "beta", body.Data.Items[0].Model)
+	require.Equal(t, []string{"Anthropic", "OpenAI"}, body.Data.Providers, "facets must come from the unfiltered snapshot")
+	require.Equal(t, []string{"chat", "image_generation"}, body.Data.Modes)
+}
+
+func TestListDefaultModelPricing_RejectsInvalidParameters(t *testing.T) {
+	svc, _ := newCatalogPricingService(t)
+	router := setupDefaultModelPricingRouter(&ChannelHandler{pricingService: svc})
+	tests := []struct {
+		query  string
+		reason string
+	}{
+		{query: "page=0", reason: "INVALID_PAGE"},
+		{query: "page=nope", reason: "INVALID_PAGE"},
+		{query: "page_size=4", reason: "INVALID_PAGE_SIZE"},
+		{query: "page_size=1001", reason: "INVALID_PAGE_SIZE"},
+		{query: "sort_by=price", reason: "INVALID_SORT_BY"},
+		{query: "sort_order=sideways", reason: "INVALID_SORT_ORDER"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/channels/default-model-pricing?"+tt.query, nil))
+			require.Equal(t, http.StatusBadRequest, w.Code)
+			var body struct {
+				Reason string `json:"reason"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			require.Equal(t, tt.reason, body.Reason)
+		})
+	}
+}
+
+func TestListDefaultModelPricing_EmptySnapshot(t *testing.T) {
+	router := setupDefaultModelPricingRouter(&ChannelHandler{pricingService: service.NewPricingService(nil, nil)})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/channels/default-model-pricing", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data defaultModelPricingListResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.NotNil(t, body.Data.Items)
+	require.Empty(t, body.Data.Items)
+	require.Zero(t, body.Data.Total)
+	require.Nil(t, body.Data.Status.LastUpdated)
+}
+
+func TestGetModelDefaultPricing_ContractRemainsUnchanged(t *testing.T) {
+	svc, cfg := newCatalogPricingService(t)
+	router := setupDefaultModelPricingRouter(&ChannelHandler{pricingService: svc, billingService: service.NewBillingService(cfg, svc)})
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/channels/model-pricing?model=beta", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var found struct {
+		Data struct {
+			Found       bool    `json:"found"`
+			InputPrice  float64 `json:"input_price"`
+			OutputPrice float64 `json:"output_price"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &found))
+	require.True(t, found.Data.Found)
+	require.InDelta(t, 0.000001, found.Data.InputPrice, 1e-12)
+	require.InDelta(t, 0.000002, found.Data.OutputPrice, 1e-12)
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/channels/model-pricing?model=unknown", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), `"found":false`)
 }
 
 // ---------------------------------------------------------------------------
