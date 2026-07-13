@@ -23,7 +23,7 @@ export { totpAPI } from './totp'
 export { default as announcementsAPI } from './announcements'
 export { channelMonitorUserAPI } from './channelMonitor'
 export { chatAPI, getChatModels, sendChatCompletion } from './chat'
-export { launchLobeHub, launchOnyx, type OnyxLaunchResponse } from './onyx'
+export { launchMediaPlayground, launchLobeHub, launchVictoryMenu, type LaunchResponse } from './launch'
 
 // Admin APIs
 export { adminAPI } from './admin'

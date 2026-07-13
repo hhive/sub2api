@@ -82,40 +82,6 @@ func TestSettingHandler_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t 
 	require.True(t, resp.Data.ForceEmailOnThirdPartySignup)
 }
 
-func TestSettingHandler_GetPublicSettings_ExposesOnyxMenuConfig(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	repo := &settingHandlerPublicRepoStub{
-		values: map[string]string{
-			service.SettingKeyOnyxEnabled:   "true",
-			service.SettingKeyOnyxMenuLabel: "Onyx",
-		},
-	}
-	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
-
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
-
-	h.GetPublicSettings(c)
-
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	var resp struct {
-		Code int `json:"code"`
-		Data struct {
-			OnyxEnabled    bool   `json:"onyx_enabled"`
-			OnyxMenuLabel  string `json:"onyx_menu_label"`
-			OnyxLaunchPath string `json:"onyx_launch_path"`
-		} `json:"data"`
-	}
-	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
-	require.Equal(t, 0, resp.Code)
-	require.True(t, resp.Data.OnyxEnabled)
-	require.Equal(t, "Onyx", resp.Data.OnyxMenuLabel)
-	require.Equal(t, "/api/v1/onyx/launch", resp.Data.OnyxLaunchPath)
-}
-
 func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

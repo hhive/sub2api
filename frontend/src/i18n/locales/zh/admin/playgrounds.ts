@@ -34,6 +34,21 @@ export default {
         error: '错误'
       }
     },
+    taskRecords: {
+      button: '任务记录',
+      title: '视频任务记录',
+      detailTitle: '视频任务详情',
+      allStatuses: '全部状态',
+      loadFailed: '加载视频任务失败',
+      previous: '上一页',
+      next: '下一页',
+      pageInfo: '第 {page} 页，共 {total} 条',
+      status: '状态',
+      error: '失败原因',
+      refund: '退款',
+      upstream: '上游任务',
+      columns: { task: '任务' }
+    },
     keyConfigured: '已配置：{mask}，留空则不变',
     keyNotCopied: '原配置已设置 Key（{mask}），复用时不会复制密钥',
     invalidJSON: '{field} 不是有效 JSON',
@@ -43,6 +58,7 @@ export default {
     },
     apiModes: {
       openai_videos: 'OpenAI Videos API',
+      openai_videos_v2: 'OpenAI Videos API2',
       seedance_content_generation: 'Seedance Content Generation API'
     },
     columns: {
@@ -70,7 +86,7 @@ export default {
       enabled: '启用模型'
     }
   },
-  imagePlayground: {
+  mediaPlaygroundImage: {
     title: '媒体站图片模型',
     description: '配置媒体站图片模型、上游域名、1k/2k/4k 价格与启用状态',
     createModel: '新建模型',

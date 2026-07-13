@@ -116,18 +116,10 @@ export default {
           urlPlaceholder: 'https://pay.ldxp.cn/shop/xiaoni-ai',
           urlHint: '必须是完整的 http(s) 链接；留空时前端会使用默认购买地址。'
         },
-        videoPlayground: {
-          title: '视频生成展示',
-          description: '控制用户侧边栏是否展示独立视频生成入口。',
-          enabled: '显示视频生成入口',
-          enabledHint: '关闭后用户侧边栏隐藏视频生成入口。',
-          imageDocUrl: '图片站文档链接',
-          videoDocUrl: '视频站文档链接',
-          baseUrl: '视频生成基础 URL',
-          menuLabel: '菜单名称',
-          exchangeSecret: '交换密钥',
-          exchangeSecretConfigured: '已配置，留空表示不修改',
-          exchangeSecretHint: '仅在首次启用或需要轮换密钥时填写；保存后不会在前端回显。'
+        mediaPlayground: {
+          title: '媒体站文档',
+          description: '配置统一媒体站的图片接口文档链接。',
+          imageDocUrl: '媒体站图片文档链接',
         },
       },
       emailTabDisabledTitle: '邮箱验证未启用',

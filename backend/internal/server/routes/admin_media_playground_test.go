@@ -30,6 +30,8 @@ func TestMediaPlaygroundAdminRoutesReplaceLegacyRoutes(t *testing.T) {
 		"GET /api/admin/media-playground/image/models",
 		"GET /api/admin/media-playground/image/model-probe-runs",
 		"GET /api/admin/media-playground/video/models",
+		"GET /api/admin/media-playground/video/tasks",
+		"GET /api/admin/media-playground/video/tasks/:id",
 		"GET /api/admin/media-playground/video/upstream-requests",
 	} {
 		require.Contains(t, routes, route)

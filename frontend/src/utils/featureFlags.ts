@@ -124,25 +124,15 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'Affiliate',
   }),
-  onyx: defineFlag({
-    key: 'onyx_enabled',
-    mode: 'opt-in',
-    label: 'Onyx',
-  }),
   lobehub: defineFlag({
     key: 'lobehub_enabled',
     mode: 'opt-in',
     label: 'LobeHub',
   }),
-  imagePlayground: defineFlag({
-    key: 'image_playground_enabled',
+  mediaPlayground: defineFlag({
+    key: 'media_playground_enabled',
     mode: 'opt-in',
-    label: 'Image Playground',
-  }),
-  videoPlayground: defineFlag({
-    key: 'video_playground_enabled',
-    mode: 'opt-in',
-    label: 'Video Playground',
+    label: 'Media Playground',
   }),
 } as const
 

@@ -4,11 +4,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import MediaPlaygroundImageView from '../MediaPlaygroundImageView.vue'
 
-const { listModels, listProbeRuns, runModelProbe, runProbe, showError, showSuccess } = vi.hoisted(() => ({
+const { listModels, listProbeRuns, runModelProbe, showError, showSuccess } = vi.hoisted(() => ({
   listModels: vi.fn(),
   listProbeRuns: vi.fn(),
   runModelProbe: vi.fn(),
-  runProbe: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
 }))
@@ -19,7 +18,6 @@ vi.mock('@/api/admin', () => ({
       listModels,
       listProbeRuns,
       runModelProbe,
-      runProbe,
       createModel: vi.fn(),
       updateModel: vi.fn(),
       deleteModel: vi.fn(),
@@ -47,54 +45,54 @@ vi.mock('vue-i18n', async () => {
     'common.disabled': '停用',
     'common.edit': '编辑',
     'common.delete': '删除',
-    'admin.imagePlayground.title': '图片模型配置',
-    'admin.imagePlayground.description': '描述',
-    'admin.imagePlayground.createModel': '新建模型',
-    'admin.imagePlayground.reuse': '复用',
-    'admin.imagePlayground.probeRuns.button': '探测记录',
-    'admin.imagePlayground.probeRuns.runButton': '主动探测',
-    'admin.imagePlayground.probeRuns.singleRunButton': '探测',
-    'admin.imagePlayground.probeRuns.title': '探测记录',
-    'admin.imagePlayground.probeRuns.description': '探测描述',
-    'admin.imagePlayground.probeRuns.runSuccess': '主动探测已开始',
-    'admin.imagePlayground.probeRuns.singleRunSuccess': '{name} 探测已开始',
-    'admin.imagePlayground.probeRuns.previous': '上一页',
-    'admin.imagePlayground.probeRuns.next': '下一页',
-    'admin.imagePlayground.probeRuns.pageInfo': '第 {page} 页，共 {total} 条',
-    'admin.imagePlayground.columns.name': '模型',
-    'admin.imagePlayground.columns.apiMode': 'API 模式',
-    'admin.imagePlayground.columns.provider': '供应商',
-    'admin.imagePlayground.columns.upstream': '上游域名',
-    'admin.imagePlayground.columns.prices': '档位价格',
-    'admin.imagePlayground.columns.sizes': '尺寸',
-    'admin.imagePlayground.columns.sortOrder': '排序',
-    'admin.imagePlayground.columns.health': '健康状态',
-    'admin.imagePlayground.columns.enabled': '启用',
-    'admin.imagePlayground.apiModes.images': 'Images API',
-    'admin.imagePlayground.apiModes.responses': 'Responses API',
-    'admin.imagePlayground.apiModes.geminiGenerateContent': 'Gemini GenerateContent API',
-    'admin.imagePlayground.health.cooldownUntil': '冷却至',
-    'admin.imagePlayground.health.failures': '失败',
-    'admin.imagePlayground.health.cooldowns': '冷却',
-    'admin.imagePlayground.health.halfOpenAttempts': '半开',
-    'admin.imagePlayground.health.lastError': '最后错误：',
-    'admin.imagePlayground.health.status.available': '可用',
-    'admin.imagePlayground.health.status.temporaryUnavailable': '冷却中',
-    'admin.imagePlayground.health.status.halfOpen': '半开探测',
-    'admin.imagePlayground.health.status.disabled': '已禁用',
-    'admin.imagePlayground.probeRuns.columns.createdAt': '时间',
-    'admin.imagePlayground.probeRuns.columns.model': '模型',
-    'admin.imagePlayground.probeRuns.columns.apiMode': 'API 模式',
-    'admin.imagePlayground.probeRuns.columns.upstream': '上游域名',
-    'admin.imagePlayground.probeRuns.columns.attempt': '轮次',
-    'admin.imagePlayground.probeRuns.columns.status': '状态',
-    'admin.imagePlayground.probeRuns.columns.httpStatus': 'HTTP',
-    'admin.imagePlayground.probeRuns.columns.elapsed': '耗时',
-    'admin.imagePlayground.probeRuns.columns.responseBytes': '响应大小',
-    'admin.imagePlayground.probeRuns.columns.imageCount': '图片数',
-    'admin.imagePlayground.probeRuns.columns.error': '错误',
-    'admin.imagePlayground.probeRuns.status.success': '成功',
-    'admin.imagePlayground.probeRuns.status.failed': '失败',
+    'admin.mediaPlaygroundImage.title': '图片模型配置',
+    'admin.mediaPlaygroundImage.description': '描述',
+    'admin.mediaPlaygroundImage.createModel': '新建模型',
+    'admin.mediaPlaygroundImage.reuse': '复用',
+    'admin.mediaPlaygroundImage.probeRuns.button': '探测记录',
+    'admin.mediaPlaygroundImage.probeRuns.runButton': '主动探测',
+    'admin.mediaPlaygroundImage.probeRuns.singleRunButton': '探测',
+    'admin.mediaPlaygroundImage.probeRuns.title': '探测记录',
+    'admin.mediaPlaygroundImage.probeRuns.description': '探测描述',
+    'admin.mediaPlaygroundImage.probeRuns.runSuccess': '主动探测已开始',
+    'admin.mediaPlaygroundImage.probeRuns.singleRunSuccess': '{name} 探测已开始',
+    'admin.mediaPlaygroundImage.probeRuns.previous': '上一页',
+    'admin.mediaPlaygroundImage.probeRuns.next': '下一页',
+    'admin.mediaPlaygroundImage.probeRuns.pageInfo': '第 {page} 页，共 {total} 条',
+    'admin.mediaPlaygroundImage.columns.name': '模型',
+    'admin.mediaPlaygroundImage.columns.apiMode': 'API 模式',
+    'admin.mediaPlaygroundImage.columns.provider': '供应商',
+    'admin.mediaPlaygroundImage.columns.upstream': '上游域名',
+    'admin.mediaPlaygroundImage.columns.prices': '档位价格',
+    'admin.mediaPlaygroundImage.columns.sizes': '尺寸',
+    'admin.mediaPlaygroundImage.columns.sortOrder': '排序',
+    'admin.mediaPlaygroundImage.columns.health': '健康状态',
+    'admin.mediaPlaygroundImage.columns.enabled': '启用',
+    'admin.mediaPlaygroundImage.apiModes.images': 'Images API',
+    'admin.mediaPlaygroundImage.apiModes.responses': 'Responses API',
+    'admin.mediaPlaygroundImage.apiModes.geminiGenerateContent': 'Gemini GenerateContent API',
+    'admin.mediaPlaygroundImage.health.cooldownUntil': '冷却至',
+    'admin.mediaPlaygroundImage.health.failures': '失败',
+    'admin.mediaPlaygroundImage.health.cooldowns': '冷却',
+    'admin.mediaPlaygroundImage.health.halfOpenAttempts': '半开',
+    'admin.mediaPlaygroundImage.health.lastError': '最后错误：',
+    'admin.mediaPlaygroundImage.health.status.available': '可用',
+    'admin.mediaPlaygroundImage.health.status.temporaryUnavailable': '冷却中',
+    'admin.mediaPlaygroundImage.health.status.halfOpen': '半开探测',
+    'admin.mediaPlaygroundImage.health.status.disabled': '已禁用',
+    'admin.mediaPlaygroundImage.probeRuns.columns.createdAt': '时间',
+    'admin.mediaPlaygroundImage.probeRuns.columns.model': '模型',
+    'admin.mediaPlaygroundImage.probeRuns.columns.apiMode': 'API 模式',
+    'admin.mediaPlaygroundImage.probeRuns.columns.upstream': '上游域名',
+    'admin.mediaPlaygroundImage.probeRuns.columns.attempt': '轮次',
+    'admin.mediaPlaygroundImage.probeRuns.columns.status': '状态',
+    'admin.mediaPlaygroundImage.probeRuns.columns.httpStatus': 'HTTP',
+    'admin.mediaPlaygroundImage.probeRuns.columns.elapsed': '耗时',
+    'admin.mediaPlaygroundImage.probeRuns.columns.responseBytes': '响应大小',
+    'admin.mediaPlaygroundImage.probeRuns.columns.imageCount': '图片数',
+    'admin.mediaPlaygroundImage.probeRuns.columns.error': '错误',
+    'admin.mediaPlaygroundImage.probeRuns.status.success': '成功',
+    'admin.mediaPlaygroundImage.probeRuns.status.failed': '失败',
   }
   return {
     ...actual,
@@ -192,7 +190,6 @@ describe('MediaPlaygroundImageView', () => {
     listModels.mockReset()
     listProbeRuns.mockReset()
     runModelProbe.mockReset()
-    runProbe.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
     listModels.mockResolvedValue([model])
@@ -220,7 +217,6 @@ describe('MediaPlaygroundImageView', () => {
       page_size: 20,
     })
     runModelProbe.mockResolvedValue({ ok: true, running: true })
-    runProbe.mockResolvedValue({ ok: true, running: true })
   })
 
   it('shows image model health and error state in the config table', async () => {
@@ -256,18 +252,6 @@ describe('MediaPlaygroundImageView', () => {
     expect(listProbeRuns).toHaveBeenLastCalledWith({ page: 2, page_size: 20 })
   })
 
-  it('runs a manual async probe, shows started toast, and reloads models', async () => {
-    const wrapper = mountView()
-    await flushPromises()
-
-    await wrapper.findAll('button').find((button) => button.text() === '主动探测')!.trigger('click')
-    await flushPromises()
-
-    expect(runProbe).toHaveBeenCalledTimes(1)
-    expect(showSuccess).toHaveBeenCalledWith('主动探测已开始')
-    expect(listModels).toHaveBeenCalledTimes(2)
-  })
-
   it('runs a single model probe from the config row', async () => {
     const wrapper = mountView()
     await flushPromises()
@@ -284,15 +268,10 @@ describe('MediaPlaygroundImageView', () => {
     listModels.mockResolvedValue([model, secondModel])
     let resolveFirst!: (value: { ok: boolean; running: boolean }) => void
     let resolveSecond!: (value: { ok: boolean; running: boolean }) => void
-    runModelProbe.mockImplementation((id: number) => {
-      return new Promise((resolve) => {
-        if (id === 7) {
-          resolveFirst = resolve
-          return
-        }
-        resolveSecond = resolve
-      })
-    })
+    runModelProbe.mockImplementation((id: number) => new Promise((resolve) => {
+      if (id === 7) resolveFirst = resolve
+      else resolveSecond = resolve
+    }))
 
     const wrapper = mountView()
     await flushPromises()
@@ -317,4 +296,5 @@ describe('MediaPlaygroundImageView', () => {
     await flushPromises()
     expect(probeButtons()[1].attributes('disabled')).toBeUndefined()
   })
+
 })

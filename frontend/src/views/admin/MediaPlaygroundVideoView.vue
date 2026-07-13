@@ -14,6 +14,9 @@
           <button class="btn btn-secondary" type="button" @click="openCallRecordsDialog">
             {{ t('admin.videoPlayground.callRecords.button') }}
           </button>
+          <button class="btn btn-secondary" type="button" @click="openTaskRecordsDialog">
+            {{ t('admin.videoPlayground.taskRecords.button') }}
+          </button>
           <button class="btn btn-primary" type="button" @click="openCreateDialog">
             {{ t('admin.videoPlayground.createModel') }}
           </button>
@@ -72,6 +75,65 @@
       </section>
 
       <BaseDialog
+        :show="showTaskRecordsDialog"
+        :title="t('admin.videoPlayground.taskRecords.title')"
+        width="extra-wide"
+        @close="closeTaskRecordsDialog"
+      >
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <select v-model="taskStatusFilter" class="input max-w-xs" @change="loadTaskRecords(1)">
+              <option value="">{{ t('admin.videoPlayground.taskRecords.allStatuses') }}</option>
+              <option value="failed">failed</option>
+              <option value="completed">completed</option>
+              <option value="running">running</option>
+              <option value="queued">queued</option>
+              <option value="canceled">canceled</option>
+              <option value="expired">expired</option>
+            </select>
+            <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading" @click="loadTaskRecords(taskRecordsPage)">
+              <Icon name="refresh" size="md" :class="taskRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
+              {{ t('common.refresh') }}
+            </button>
+          </div>
+          <DataTable :columns="taskRecordColumns" :data="taskRecords" :loading="taskRecordsLoading">
+            <template #cell-task_id="{ row }">
+              <button class="font-mono text-xs text-primary-600 hover:underline" type="button" @click="openTaskDetail(row.task_id)">{{ row.task_id }}</button>
+            </template>
+            <template #cell-status="{ row }">
+              <span :class="row.status === 'completed' ? 'badge badge-success' : row.status === 'failed' ? 'badge badge-danger' : 'badge badge-gray'">{{ row.status }}</span>
+            </template>
+            <template #cell-error_message="{ value }">
+              <span class="inline-block max-w-[260px] truncate text-sm" :title="value || ''">{{ value || '-' }}</span>
+            </template>
+            <template #cell-refund_status="{ row }">
+              {{ row.refund_status }}<span v-if="row.refund_reason" class="ml-1 text-xs text-gray-500">({{ row.refund_reason }})</span>
+            </template>
+          </DataTable>
+          <div class="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-dark-700">
+            <span class="text-sm text-gray-500">{{ t('admin.videoPlayground.taskRecords.pageInfo', { page: taskRecordsPage, total: taskRecordsTotal }) }}</span>
+            <div class="flex gap-2">
+              <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading || taskRecordsPage <= 1" @click="loadTaskRecords(taskRecordsPage - 1)">{{ t('admin.videoPlayground.taskRecords.previous') }}</button>
+              <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading || !hasNextTaskRecordsPage" @click="loadTaskRecords(taskRecordsPage + 1)">{{ t('admin.videoPlayground.taskRecords.next') }}</button>
+            </div>
+          </div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog :show="showTaskDetailDialog" :title="t('admin.videoPlayground.taskRecords.detailTitle')" width="wide" @close="showTaskDetailDialog = false">
+        <div v-if="taskDetail" class="space-y-4 text-sm">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <div><strong>{{ t('admin.videoPlayground.taskRecords.status') }}:</strong> {{ taskDetail.task.status }} ({{ taskDetail.task.progress }}%)</div>
+            <div><strong>{{ t('admin.videoPlayground.taskRecords.refund') }}:</strong> {{ taskDetail.task.refund_status }} {{ taskDetail.task.refund_reason }}</div>
+            <div class="sm:col-span-2"><strong>{{ t('admin.videoPlayground.taskRecords.error') }}:</strong> {{ taskDetail.task.error_message || '-' }}</div>
+            <div class="sm:col-span-2"><strong>{{ t('admin.videoPlayground.taskRecords.upstream') }}:</strong> {{ taskDetail.task.upstream_task_id || '-' }}</div>
+          </div>
+          <pre class="max-h-52 overflow-auto rounded border border-gray-200 p-3 text-xs dark:border-dark-700">{{ JSON.stringify(taskDetail.task.upstream_response || {}, null, 2) }}</pre>
+          <DataTable :columns="callRecordColumns" :data="taskDetail.upstream_requests" :loading="false" />
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
         :show="showDialog"
         :title="dialogTitle"
         width="extra-wide"
@@ -103,6 +165,7 @@
               <span class="input-label">{{ t('admin.videoPlayground.fields.apiMode') }}</span>
               <select v-model="form.api_mode" class="input" required>
                 <option value="openai_videos">{{ t('admin.videoPlayground.apiModes.openai_videos') }}</option>
+                <option value="openai_videos_v2">{{ t('admin.videoPlayground.apiModes.openai_videos_v2') }}</option>
                 <option value="seedance_content_generation">{{ t('admin.videoPlayground.apiModes.seedance_content_generation') }}</option>
               </select>
             </label>
@@ -276,7 +339,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoUpstreamRequest } from '@/api/admin'
+import type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail, MediaPlaygroundVideoUpstreamRequest } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -291,6 +354,8 @@ const appStore = useAppStore()
 
 const models = ref<MediaPlaygroundVideoModel[]>([])
 const callRecords = ref<MediaPlaygroundVideoUpstreamRequest[]>([])
+const taskRecords = ref<MediaPlaygroundVideoTask[]>([])
+const taskDetail = ref<MediaPlaygroundVideoTaskDetail | null>(null)
 const loading = ref(false)
 const callRecordsLoading = ref(false)
 const saving = ref(false)
@@ -302,10 +367,16 @@ const upstreamKeyVisible = ref(false)
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showCallRecordsDialog = ref(false)
+const showTaskRecordsDialog = ref(false)
+const showTaskDetailDialog = ref(false)
 const deletingModel = ref<MediaPlaygroundVideoModel | null>(null)
 const callRecordsPage = ref(1)
 const callRecordsPageSize = 20
 const callRecordsTotal = ref(0)
+const taskRecordsLoading = ref(false)
+const taskRecordsPage = ref(1)
+const taskRecordsTotal = ref(0)
+const taskStatusFilter = ref('')
 
 const defaultForm = (): MediaPlaygroundVideoModelPayload => ({
   display_name: '',
@@ -362,7 +433,18 @@ const callRecordColumns = computed<Column[]>(() => [
   { key: 'error_message', label: t('admin.videoPlayground.callRecords.columns.error') },
 ])
 
+const taskRecordColumns = computed<Column[]>(() => [
+  { key: 'task_id', label: t('admin.videoPlayground.taskRecords.columns.task') },
+  { key: 'created_at', label: t('admin.videoPlayground.callRecords.columns.createdAt') },
+  { key: 'user_id', label: t('admin.videoPlayground.callRecords.columns.user') },
+  { key: 'model', label: t('admin.videoPlayground.callRecords.columns.model') },
+  { key: 'status', label: t('admin.videoPlayground.taskRecords.status') },
+  { key: 'error_message', label: t('admin.videoPlayground.taskRecords.error') },
+  { key: 'refund_status', label: t('admin.videoPlayground.taskRecords.refund') },
+])
+
 const hasNextCallRecordsPage = computed(() => callRecordsPage.value * callRecordsPageSize < callRecordsTotal.value)
+const hasNextTaskRecordsPage = computed(() => taskRecordsPage.value * 20 < taskRecordsTotal.value)
 
 async function loadModels() {
   loading.value = true
@@ -387,6 +469,38 @@ async function loadCallRecords(page = 1) {
   } finally {
     callRecordsLoading.value = false
   }
+}
+
+async function loadTaskRecords(page = 1) {
+  taskRecordsLoading.value = true
+  try {
+    const result = await adminAPI.mediaPlaygroundVideo.listTasks({ page, page_size: 20, status: taskStatusFilter.value || undefined })
+    taskRecords.value = result.items || []
+    taskRecordsPage.value = result.page || page
+    taskRecordsTotal.value = result.total || 0
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.taskRecords.loadFailed')))
+  } finally {
+    taskRecordsLoading.value = false
+  }
+}
+
+async function openTaskDetail(id: string) {
+  try {
+    taskDetail.value = await adminAPI.mediaPlaygroundVideo.getTask(id)
+    showTaskDetailDialog.value = true
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.taskRecords.loadFailed')))
+  }
+}
+
+function openTaskRecordsDialog() {
+  showTaskRecordsDialog.value = true
+  void loadTaskRecords(1)
+}
+
+function closeTaskRecordsDialog() {
+  showTaskRecordsDialog.value = false
 }
 
 function openCallRecordsDialog() {

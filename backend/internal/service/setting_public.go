@@ -184,8 +184,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAPIBaseURL,
 		SettingKeyContactInfo,
 		SettingKeyDocURL,
-		SettingKeyImagePlaygroundDocURL,
-		SettingKeyVideoPlaygroundDocURL,
+		SettingKeyMediaPlaygroundDocURL,
 		SettingKeyRedeemPurchaseURL,
 		SettingKeyHomeContent,
 		SettingKeyHideCcsImportButton,
@@ -196,13 +195,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyCustomMenuItems,
 		SettingKeyVictoryMenuItems,
 		SettingKeyCustomEndpoints,
-		SettingKeyOnyxEnabled,
-		SettingKeyOnyxMenuLabel,
 		SettingKeyLobeHubEnabled,
 		SettingKeyLobeHubMenuLabel,
 		SettingKeyLobeHubAllowedEmails,
-		SettingKeyVideoPlaygroundEnabled,
-		SettingKeyVideoPlaygroundMenuLabel,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
@@ -276,7 +271,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	gitHubEnabled := s.emailOAuthPublicEnabled(settings, "github")
 	googleEnabled := s.emailOAuthPublicEnabled(settings, "google")
 	weChatEnabled, weChatOpenEnabled, weChatMPEnabled, weChatMobileEnabled := s.weChatOAuthCapabilitiesFromSettings(settings)
-	imagePlaygroundEnabled := imagePlaygroundGoLaunchBaseURL() != "" && ImagePlaygroundExchangeSecret() != ""
+	mediaPlaygroundEnabled := mediaPlaygroundLaunchBaseURL() != "" && MediaPlaygroundExchangeSecret() != ""
 
 	// Password reset requires email verification to be enabled
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"
@@ -333,8 +328,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
-		ImagePlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyImagePlaygroundDocURL]),
-		VideoPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyVideoPlaygroundDocURL]),
+		MediaPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyMediaPlaygroundDocURL]),
 		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
@@ -345,36 +339,29 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		VictoryMenuItems:                 string(filterEnabledVictoryMenuItems(victoryMenuItemsRaw)),
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
-		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
-		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "聊天台"),
-		OnyxLaunchPath:                   "/api/v1/onyx/launch",
 		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
 		LobeHubAllowedEmails:             ParseLobeHubAllowedEmails(lobeHubAllowedEmailsRaw),
-		ImagePlaygroundEnabled:           imagePlaygroundEnabled,
-		ImagePlaygroundMenuLabel:         "图片与视频",
-		ImagePlaygroundLaunchPath:        "/api/v1/image-playground/launch",
-		// Video generation is now part of the unified Infinite Canvas entry.
-		VideoPlaygroundEnabled:      false,
-		VideoPlaygroundMenuLabel:    s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
-		VideoPlaygroundLaunchPath:   "/api/v1/video-playground/launch",
-		LinuxDoOAuthEnabled:         linuxDoEnabled,
-		DingTalkOAuthEnabled:        dingTalkEnabled,
-		WeChatOAuthEnabled:          weChatEnabled,
-		WeChatOAuthOpenEnabled:      weChatOpenEnabled,
-		WeChatOAuthMPEnabled:        weChatMPEnabled,
-		WeChatOAuthMobileEnabled:    weChatMobileEnabled,
-		BackendModeEnabled:          settings[SettingKeyBackendModeEnabled] == "true",
-		PaymentEnabled:              settings[SettingPaymentEnabled] == "true",
-		OIDCOAuthEnabled:            oidcEnabled,
-		OIDCOAuthProviderName:       oidcProviderName,
-		GitHubOAuthEnabled:          gitHubEnabled,
-		GoogleOAuthEnabled:          googleEnabled,
-		BalanceLowNotifyEnabled:     settings[SettingKeyBalanceLowNotifyEnabled] == "true",
-		AccountQuotaNotifyEnabled:   settings[SettingKeyAccountQuotaNotifyEnabled] == "true",
-		BalanceLowNotifyThreshold:   balanceLowNotifyThreshold,
-		BalanceLowNotifyRechargeURL: settings[SettingKeyBalanceLowNotifyRechargeURL],
+		MediaPlaygroundEnabled:           mediaPlaygroundEnabled,
+		MediaPlaygroundMenuLabel:         "图片与视频",
+		MediaPlaygroundLaunchPath:        "/api/v1/media-playground/launch",
+		LinuxDoOAuthEnabled:              linuxDoEnabled,
+		DingTalkOAuthEnabled:             dingTalkEnabled,
+		WeChatOAuthEnabled:               weChatEnabled,
+		WeChatOAuthOpenEnabled:           weChatOpenEnabled,
+		WeChatOAuthMPEnabled:             weChatMPEnabled,
+		WeChatOAuthMobileEnabled:         weChatMobileEnabled,
+		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
+		PaymentEnabled:                   settings[SettingPaymentEnabled] == "true",
+		OIDCOAuthEnabled:                 oidcEnabled,
+		OIDCOAuthProviderName:            oidcProviderName,
+		GitHubOAuthEnabled:               gitHubEnabled,
+		GoogleOAuthEnabled:               googleEnabled,
+		BalanceLowNotifyEnabled:          settings[SettingKeyBalanceLowNotifyEnabled] == "true",
+		AccountQuotaNotifyEnabled:        settings[SettingKeyAccountQuotaNotifyEnabled] == "true",
+		BalanceLowNotifyThreshold:        balanceLowNotifyThreshold,
+		BalanceLowNotifyRechargeURL:      settings[SettingKeyBalanceLowNotifyRechargeURL],
 
 		ChannelMonitorEnabled:                !isFalseSettingValue(settings[SettingKeyChannelMonitorEnabled]),
 		ChannelMonitorDefaultIntervalSeconds: parseChannelMonitorInterval(settings[SettingKeyChannelMonitorDefaultIntervalSeconds]),
@@ -516,8 +503,7 @@ type PublicSettingsInjectionPayload struct {
 	APIBaseURL                       string                   `json:"api_base_url"`
 	ContactInfo                      string                   `json:"contact_info"`
 	DocURL                           string                   `json:"doc_url"`
-	ImagePlaygroundDocURL            string                   `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL            string                   `json:"video_playground_doc_url"`
+	MediaPlaygroundDocURL            string                   `json:"media_playground_doc_url"`
 	RedeemPurchaseURL                string                   `json:"redeem_purchase_url"`
 	HomeContent                      string                   `json:"home_content"`
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`
@@ -528,19 +514,13 @@ type PublicSettingsInjectionPayload struct {
 	CustomMenuItems                  json.RawMessage          `json:"custom_menu_items"`
 	VictoryMenuItems                 json.RawMessage          `json:"victory_menu_items"`
 	CustomEndpoints                  json.RawMessage          `json:"custom_endpoints"`
-	OnyxEnabled                      bool                     `json:"onyx_enabled"`
-	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
-	OnyxLaunchPath                   string                   `json:"onyx_launch_path"`
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
-	ImagePlaygroundEnabled           bool                     `json:"image_playground_enabled"`
-	ImagePlaygroundMenuLabel         string                   `json:"image_playground_menu_label"`
-	ImagePlaygroundLaunchPath        string                   `json:"image_playground_launch_path"`
-	VideoPlaygroundEnabled           bool                     `json:"video_playground_enabled"`
-	VideoPlaygroundMenuLabel         string                   `json:"video_playground_menu_label"`
-	VideoPlaygroundLaunchPath        string                   `json:"video_playground_launch_path"`
+	MediaPlaygroundEnabled           bool                     `json:"media_playground_enabled"`
+	MediaPlaygroundMenuLabel         string                   `json:"media_playground_menu_label"`
+	MediaPlaygroundLaunchPath        string                   `json:"media_playground_launch_path"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`
@@ -610,8 +590,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		APIBaseURL:                       settings.APIBaseURL,
 		ContactInfo:                      settings.ContactInfo,
 		DocURL:                           settings.DocURL,
-		ImagePlaygroundDocURL:            strings.TrimSpace(settings.ImagePlaygroundDocURL),
-		VideoPlaygroundDocURL:            strings.TrimSpace(settings.VideoPlaygroundDocURL),
+		MediaPlaygroundDocURL:            strings.TrimSpace(settings.MediaPlaygroundDocURL),
 		RedeemPurchaseURL:                settings.RedeemPurchaseURL,
 		HomeContent:                      settings.HomeContent,
 		HideCcsImportButton:              settings.HideCcsImportButton,
@@ -622,19 +601,13 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		CustomMenuItems:                  filterUserVisibleMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                 filterEnabledVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                  safeRawJSONArray(settings.CustomEndpoints),
-		OnyxEnabled:                      settings.OnyxEnabled,
-		OnyxMenuLabel:                    settings.OnyxMenuLabel,
-		OnyxLaunchPath:                   settings.OnyxLaunchPath,
 		LobeHubEnabled:                   settings.LobeHubEnabled,
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
 		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
-		ImagePlaygroundEnabled:           settings.ImagePlaygroundEnabled,
-		ImagePlaygroundMenuLabel:         settings.ImagePlaygroundMenuLabel,
-		ImagePlaygroundLaunchPath:        settings.ImagePlaygroundLaunchPath,
-		VideoPlaygroundEnabled:           settings.VideoPlaygroundEnabled,
-		VideoPlaygroundMenuLabel:         settings.VideoPlaygroundMenuLabel,
-		VideoPlaygroundLaunchPath:        settings.VideoPlaygroundLaunchPath,
+		MediaPlaygroundEnabled:           settings.MediaPlaygroundEnabled,
+		MediaPlaygroundMenuLabel:         settings.MediaPlaygroundMenuLabel,
+		MediaPlaygroundLaunchPath:        settings.MediaPlaygroundLaunchPath,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		DingTalkOAuthEnabled:             settings.DingTalkOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,

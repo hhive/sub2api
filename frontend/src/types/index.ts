@@ -236,8 +236,7 @@ export interface PublicSettings {
   api_base_url: string
   contact_info: string
   doc_url: string
-  image_playground_doc_url: string
-  video_playground_doc_url: string
+  media_playground_doc_url: string
   redeem_purchase_url: string
   purchase_subscription_enabled: boolean
   purchase_subscription_url: string
@@ -274,19 +273,13 @@ export interface PublicSettings {
   available_channels_enabled: boolean
   service_quota_enabled: boolean
   affiliate_enabled: boolean
-  onyx_enabled: boolean
-  onyx_menu_label: string
-  onyx_launch_path: string
   lobehub_enabled: boolean
   lobehub_menu_label: string
   lobehub_launch_path: string
   lobehub_allowed_emails: string[]
-  image_playground_enabled: boolean
-  image_playground_menu_label: string
-  image_playground_launch_path: string
-  video_playground_enabled: boolean
-  video_playground_menu_label: string
-  video_playground_launch_path: string
+  media_playground_enabled: boolean
+  media_playground_menu_label: string
+  media_playground_launch_path: string
   allow_user_view_error_requests?: boolean
 }
 

@@ -503,8 +503,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: true,
       title: 'Media Site Image Models',
-      titleKey: 'admin.imagePlayground.title',
-      descriptionKey: 'admin.imagePlayground.description'
+      titleKey: 'admin.mediaPlaygroundImage.title',
+      descriptionKey: 'admin.mediaPlaygroundImage.description'
     }
   },
   {

@@ -152,11 +152,8 @@ export default {
     apiKeys: 'API 密钥',
     batchImage: '批量生图',
     usage: '使用记录',
-    chat: '聊天台',
-    lobehub: '新·聊天台',
-    imagePlayground: '图片与视频',
-    videoPlayground: '视频生成',
-    onyx: 'Onyx',
+    lobehub: '聊天台',
+    mediaPlayground: '图片与视频',
     redeem: '兑换',
     affiliate: '邀请返利',
     affiliateManagement: '邀请返利',
@@ -195,28 +192,19 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
-    imagePlaygroundConfig: '媒体站图片模型',
+    mediaPlaygroundImageConfig: '媒体站图片模型',
     videoPlaygroundConfig: '媒体站视频模型',
     riskControl: '风控中心',
   },
 
-  onyx: {
-    opening: '正在打开聊天台',
+  launch: {
     noAvailableApiKey: '没有可用 API Key，请先创建一条启用、未过期且有额度的 API Key',
-    notConfigured: 'Onyx 尚未配置，请联系管理员',
-    openFailed: '打开 Onyx 失败'
   },
 
-  imagePlayground: {
+  mediaPlayground: {
     opening: '正在打开无限画布',
     notConfigured: '无限画布尚未配置，请联系管理员',
     openFailed: '打开无限画布失败'
-  },
-
-  videoPlayground: {
-    opening: '正在打开视频生成',
-    notConfigured: '视频生成尚未配置，请联系管理员',
-    openFailed: '打开视频生成失败'
   },
 
   victoryMenu: {
@@ -225,9 +213,9 @@ export default {
   },
 
   lobehub: {
-    opening: '正在打开新·聊天台',
-    notConfigured: '新·聊天台尚未配置，请联系管理员',
-    openFailed: '打开新·聊天台失败'
+    opening: '正在打开聊天台',
+    notConfigured: '聊天台尚未配置，请联系管理员',
+    openFailed: '打开聊天台失败'
   },
 
   // Auth

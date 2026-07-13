@@ -54,32 +54,31 @@ describe('AppSidebar header styles', () => {
   })
 })
 
-describe('AppSidebar Onyx menu wiring', () => {
-  it('uses the backend launch endpoint and pre-opens the chat window synchronously', () => {
-    expect(componentSource).toContain("import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu } from '@/api/onyx'")
-    expect(componentSource).toContain('FeatureFlags.onyx')
-    expect(componentSource).toContain('handleOnyxLaunch')
+describe('AppSidebar chat menu wiring', () => {
+  it('exposes only the LobeHub chat launch', () => {
+    expect(componentSource).toContain("import { launchMediaPlayground, launchLobeHub, launchVictoryMenu } from '@/api/launch'")
+    expect(componentSource).toContain('FeatureFlags.lobehub')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
     expect(componentSource).toContain('launchWindow.opener = null')
     expect(componentSource).toContain('launchWindow.location.href = result.redirect_url')
-    expect(componentSource).not.toContain("{ path: '/chat', label: t('nav.chat')")
+    expect(componentSource).not.toContain("t('nav.chat')")
   })
 })
 
-describe('AppSidebar image playground menu wiring', () => {
+describe('AppSidebar media playground menu wiring', () => {
   it('adds an authenticated launch action next to the chat menu', () => {
-    expect(componentSource).toContain("action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'victoryMenu'")
-    expect(componentSource).toContain("label: t('nav.imagePlayground')")
-    expect(componentSource).toContain("action: 'imagePlayground'")
-    expect(componentSource).toContain('handleImagePlaygroundLaunch')
-    expect(componentSource).toContain('launchImagePlayground()')
-    expect(componentSource).toContain("handleMenuItemClick('__image_playground__')")
+    expect(componentSource).toContain("action?: 'lobehub' | 'mediaPlayground' | 'victoryMenu'")
+    expect(componentSource).toContain("label: t('nav.mediaPlayground')")
+    expect(componentSource).toContain("action: 'mediaPlayground'")
+    expect(componentSource).toContain('handleMediaPlaygroundLaunch')
+    expect(componentSource).toContain('launchMediaPlayground()')
+    expect(componentSource).toContain("handleMenuItemClick('__media_playground__')")
   })
 
   it('labels the user launch entry as Infinite Canvas while keeping the admin model config separate', () => {
     const zhLocale = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../i18n/locales/zh/common.ts'), 'utf8')
-    expect(zhLocale).toContain("imagePlayground: '图片与视频'")
-    expect(zhLocale).toContain("imagePlaygroundConfig: '媒体站图片模型'")
+    expect(zhLocale).toContain("mediaPlayground: '图片与视频'")
+    expect(zhLocale).toContain("mediaPlaygroundImageConfig: '媒体站图片模型'")
   })
 })
 
@@ -93,7 +92,7 @@ describe('AppSidebar video playground menu retirement', () => {
 })
 
 describe('AppSidebar LobeHub menu wiring', () => {
-  it('places LobeHub in the left user menu above the original chat launch item', () => {
+  it('places the sole chat entry before the unified media entry', () => {
     expect(componentSource).toContain('FeatureFlags.lobehub')
     expect(componentSource).toContain("action: 'lobehub'")
     expect(componentSource).toContain('handleLobeHubLaunch')
@@ -104,7 +103,8 @@ describe('AppSidebar LobeHub menu wiring', () => {
     const selfNavBlock = componentSource.match(/function buildSelfNavItems[\s\S]*?return items\n}/)?.[0] ?? ''
     const adminNavBlock = componentSource.match(/const adminNavItems = computed[\s\S]*?return visible\n}\)/)?.[0] ?? ''
     expect(selfNavBlock).toContain("path: '__lobehub__'")
-    expect(selfNavBlock.indexOf("path: '__lobehub__'")).toBeLessThan(selfNavBlock.indexOf("path: '__onyx__'"))
+    expect(selfNavBlock.indexOf("path: '__lobehub__'")).toBeLessThan(selfNavBlock.indexOf("path: '__media_playground__'"))
+    expect(selfNavBlock.match(/path: '__lobehub__'/g)).toHaveLength(1)
     expect(adminNavBlock).not.toContain("path: '__lobehub__'")
   })
 })

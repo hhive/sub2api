@@ -144,41 +144,31 @@ type SystemSettings struct {
 	GoogleOAuthRedirectURL            string `json:"google_oauth_redirect_url"`
 	GoogleOAuthFrontendRedirectURL    string `json:"google_oauth_frontend_redirect_url"`
 
-	SiteName                                string            `json:"site_name"`
-	SiteLogo                                string            `json:"site_logo"`
-	SiteSubtitle                            string            `json:"site_subtitle"`
-	APIBaseURL                              string            `json:"api_base_url"`
-	ContactInfo                             string            `json:"contact_info"`
-	DocURL                                  string            `json:"doc_url"`
-	ImagePlaygroundDocURL                   string            `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL                   string            `json:"video_playground_doc_url"`
-	RedeemPurchaseURL                       string            `json:"redeem_purchase_url"`
-	HomeContent                             string            `json:"home_content"`
-	HideCcsImportButton                     bool              `json:"hide_ccs_import_button"`
-	PurchaseSubscriptionEnabled             bool              `json:"purchase_subscription_enabled"`
-	PurchaseSubscriptionURL                 string            `json:"purchase_subscription_url"`
-	TableDefaultPageSize                    int               `json:"table_default_page_size"`
-	TablePageSizeOptions                    []int             `json:"table_page_size_options"`
-	CustomMenuItems                         []CustomMenuItem  `json:"custom_menu_items"`
-	VictoryMenuItems                        []VictoryMenuItem `json:"victory_menu_items"`
-	CustomEndpoints                         []CustomEndpoint  `json:"custom_endpoints"`
-	OnyxEnabled                             bool              `json:"onyx_enabled"`
-	OnyxBaseURL                             string            `json:"onyx_base_url"`
-	OnyxMenuLabel                           string            `json:"onyx_menu_label"`
-	OnyxExchangeSecretConfigured            bool              `json:"onyx_exchange_secret_configured"`
-	OnyxLaunchTokenTTLSeconds               int               `json:"onyx_launch_token_ttl_seconds"`
-	OnyxDefaultRedirectPath                 string            `json:"onyx_default_redirect_path"`
-	OnyxDefaultTextModel                    string            `json:"onyx_default_text_model"`
-	OnyxDefaultImageModel                   string            `json:"onyx_default_image_model"`
-	LobeHubEnabled                          bool              `json:"lobehub_enabled"`
-	LobeHubBaseURL                          string            `json:"lobehub_base_url"`
-	LobeHubMenuLabel                        string            `json:"lobehub_menu_label"`
-	LobeHubExchangeSecretConfigured         bool              `json:"lobehub_exchange_secret_configured"`
-	LobeHubAllowedEmails                    string            `json:"lobehub_allowed_emails"`
-	VideoPlaygroundEnabled                  bool              `json:"video_playground_enabled"`
-	VideoPlaygroundBaseURL                  string            `json:"video_playground_base_url"`
-	VideoPlaygroundMenuLabel                string            `json:"video_playground_menu_label"`
-	VideoPlaygroundExchangeSecretConfigured bool              `json:"video_playground_exchange_secret_configured"`
+	SiteName                        string            `json:"site_name"`
+	SiteLogo                        string            `json:"site_logo"`
+	SiteSubtitle                    string            `json:"site_subtitle"`
+	APIBaseURL                      string            `json:"api_base_url"`
+	ContactInfo                     string            `json:"contact_info"`
+	DocURL                          string            `json:"doc_url"`
+	MediaPlaygroundDocURL           string            `json:"media_playground_doc_url"`
+	RedeemPurchaseURL               string            `json:"redeem_purchase_url"`
+	HomeContent                     string            `json:"home_content"`
+	HideCcsImportButton             bool              `json:"hide_ccs_import_button"`
+	PurchaseSubscriptionEnabled     bool              `json:"purchase_subscription_enabled"`
+	PurchaseSubscriptionURL         string            `json:"purchase_subscription_url"`
+	TableDefaultPageSize            int               `json:"table_default_page_size"`
+	TablePageSizeOptions            []int             `json:"table_page_size_options"`
+	CustomMenuItems                 []CustomMenuItem  `json:"custom_menu_items"`
+	VictoryMenuItems                []VictoryMenuItem `json:"victory_menu_items"`
+	CustomEndpoints                 []CustomEndpoint  `json:"custom_endpoints"`
+	LaunchTokenTTLSeconds           int               `json:"launch_token_ttl_seconds"`
+	DefaultTextModel                string            `json:"default_text_model"`
+	DefaultImageModel               string            `json:"default_image_model"`
+	LobeHubEnabled                  bool              `json:"lobehub_enabled"`
+	LobeHubBaseURL                  string            `json:"lobehub_base_url"`
+	LobeHubMenuLabel                string            `json:"lobehub_menu_label"`
+	LobeHubExchangeSecretConfigured bool              `json:"lobehub_exchange_secret_configured"`
+	LobeHubAllowedEmails            string            `json:"lobehub_allowed_emails"`
 
 	DefaultConcurrency                    int                          `json:"default_concurrency"`
 	DefaultBalance                        float64                      `json:"default_balance"`
@@ -378,8 +368,7 @@ type PublicSettings struct {
 	APIBaseURL                       string                   `json:"api_base_url"`
 	ContactInfo                      string                   `json:"contact_info"`
 	DocURL                           string                   `json:"doc_url"`
-	ImagePlaygroundDocURL            string                   `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL            string                   `json:"video_playground_doc_url"`
+	MediaPlaygroundDocURL            string                   `json:"media_playground_doc_url"`
 	RedeemPurchaseURL                string                   `json:"redeem_purchase_url"`
 	HomeContent                      string                   `json:"home_content"`
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`
@@ -390,19 +379,13 @@ type PublicSettings struct {
 	CustomMenuItems                  []CustomMenuItem         `json:"custom_menu_items"`
 	VictoryMenuItems                 []VictoryMenuItem        `json:"victory_menu_items"`
 	CustomEndpoints                  []CustomEndpoint         `json:"custom_endpoints"`
-	OnyxEnabled                      bool                     `json:"onyx_enabled"`
-	OnyxMenuLabel                    string                   `json:"onyx_menu_label"`
-	OnyxLaunchPath                   string                   `json:"onyx_launch_path"`
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
 	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
-	ImagePlaygroundEnabled           bool                     `json:"image_playground_enabled"`
-	ImagePlaygroundMenuLabel         string                   `json:"image_playground_menu_label"`
-	ImagePlaygroundLaunchPath        string                   `json:"image_playground_launch_path"`
-	VideoPlaygroundEnabled           bool                     `json:"video_playground_enabled"`
-	VideoPlaygroundMenuLabel         string                   `json:"video_playground_menu_label"`
-	VideoPlaygroundLaunchPath        string                   `json:"video_playground_launch_path"`
+	MediaPlaygroundEnabled           bool                     `json:"media_playground_enabled"`
+	MediaPlaygroundMenuLabel         string                   `json:"media_playground_menu_label"`
+	MediaPlaygroundLaunchPath        string                   `json:"media_playground_launch_path"`
 	DingTalkOAuthEnabled             bool                     `json:"dingtalk_oauth_enabled"`
 	LinuxDoOAuthEnabled              bool                     `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool                     `json:"wechat_oauth_enabled"`

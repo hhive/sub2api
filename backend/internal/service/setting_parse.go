@@ -65,8 +65,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeySiteName:                                  "Sub2API",
 		SettingKeySiteLogo:                                  "",
 		SettingKeyAPIBaseURL:                                "http://127.0.0.1:8080",
-		SettingKeyImagePlaygroundDocURL:                     "",
-		SettingKeyVideoPlaygroundDocURL:                     "",
+		SettingKeyMediaPlaygroundDocURL:                     "",
 		SettingKeyRedeemPurchaseURL:                         defaultRedeemPurchaseURL,
 		SettingKeyPurchaseSubscriptionEnabled:               "false",
 		SettingKeyPurchaseSubscriptionURL:                   "",
@@ -75,23 +74,14 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyCustomMenuItems:                           "[]",
 		SettingKeyVictoryMenuItems:                          defaultVictoryMenuItemsValue,
 		SettingKeyCustomEndpoints:                           "[]",
-		SettingKeyOnyxEnabled:                               "false",
-		SettingKeyOnyxBaseURL:                               "",
-		SettingKeyOnyxMenuLabel:                             "聊天台",
-		SettingKeyOnyxExchangeSecret:                        "",
-		SettingKeyOnyxLaunchTokenTTLSeconds:                 "60",
-		SettingKeyOnyxDefaultRedirectPath:                   "/chat",
-		SettingKeyOnyxDefaultTextModel:                      "gpt-5.5",
-		SettingKeyOnyxDefaultImageModel:                     "gpt-image-2",
+		SettingKeyLaunchTokenTTLSeconds:                     "60",
+		SettingKeyDefaultTextModel:                          "gpt-5.5",
+		SettingKeyDefaultImageModel:                         "gpt-image-2",
 		SettingKeyLobeHubEnabled:                            "false",
 		SettingKeyLobeHubBaseURL:                            "",
 		SettingKeyLobeHubMenuLabel:                          "LobeHub",
 		SettingKeyLobeHubExchangeSecret:                     "",
 		SettingKeyLobeHubAllowedEmails:                      defaultLobeHubAllowedEmailsValue,
-		SettingKeyVideoPlaygroundEnabled:                    "false",
-		SettingKeyVideoPlaygroundBaseURL:                    "",
-		SettingKeyVideoPlaygroundMenuLabel:                  "视频生成",
-		SettingKeyVideoPlaygroundExchangeSecret:             "",
 		SettingKeyWeChatConnectEnabled:                      "false",
 		SettingKeyWeChatConnectAppID:                        "",
 		SettingKeyWeChatConnectAppSecret:                    "",
@@ -314,29 +304,17 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
-		ImagePlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyImagePlaygroundDocURL]),
-		VideoPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyVideoPlaygroundDocURL]),
+		MediaPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyMediaPlaygroundDocURL]),
 		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
-		OnyxEnabled:                      settings[SettingKeyOnyxEnabled] == "true",
-		OnyxBaseURL:                      strings.TrimSpace(settings[SettingKeyOnyxBaseURL]),
-		OnyxMenuLabel:                    s.getStringOrDefault(settings, SettingKeyOnyxMenuLabel, "聊天台"),
-		OnyxExchangeSecret:               strings.TrimSpace(settings[SettingKeyOnyxExchangeSecret]),
-		OnyxDefaultRedirectPath:          strings.TrimSpace(settings[SettingKeyOnyxDefaultRedirectPath]),
-		OnyxDefaultTextModel:             strings.TrimSpace(settings[SettingKeyOnyxDefaultTextModel]),
-		OnyxDefaultImageModel:            strings.TrimSpace(settings[SettingKeyOnyxDefaultImageModel]),
 		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubBaseURL:                   strings.TrimSpace(settings[SettingKeyLobeHubBaseURL]),
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubExchangeSecret:            strings.TrimSpace(settings[SettingKeyLobeHubExchangeSecret]),
 		LobeHubAllowedEmails:             NormalizeLobeHubAllowedEmailsValue(lobeHubAllowedEmailsForSettingsView(settings)),
-		VideoPlaygroundEnabled:           boolPtr(settings[SettingKeyVideoPlaygroundEnabled] == "true"),
-		VideoPlaygroundBaseURL:           strings.TrimSpace(settings[SettingKeyVideoPlaygroundBaseURL]),
-		VideoPlaygroundMenuLabel:         s.getStringOrDefault(settings, SettingKeyVideoPlaygroundMenuLabel, "视频生成"),
-		VideoPlaygroundExchangeSecret:    strings.TrimSpace(settings[SettingKeyVideoPlaygroundExchangeSecret]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		VictoryMenuItems:                 s.getStringOrDefault(settings, SettingKeyVictoryMenuItems, defaultVictoryMenuItemsValue),
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
@@ -369,10 +347,18 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	if hour, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyBalanceCreditDailySettlementHour])); err == nil && hour >= 0 && hour <= 23 {
 		result.BalanceCreditDailySettlementHour = &hour
 	}
-	if ttl, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyOnyxLaunchTokenTTLSeconds])); err == nil && ttl > 0 {
-		result.OnyxLaunchTokenTTLSeconds = ttl
+	if ttl, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyLaunchTokenTTLSeconds])); err == nil && ttl > 0 {
+		result.LaunchTokenTTLSeconds = ttl
 	} else {
-		result.OnyxLaunchTokenTTLSeconds = 60
+		result.LaunchTokenTTLSeconds = 60
+	}
+	result.DefaultTextModel = s.getStringOrDefault(settings, SettingKeyDefaultTextModel, "gpt-5.5")
+	if result.DefaultTextModel == "" {
+		result.DefaultTextModel = "gpt-5.5"
+	}
+	result.DefaultImageModel = s.getStringOrDefault(settings, SettingKeyDefaultImageModel, "gpt-image-2")
+	if result.DefaultImageModel == "" {
+		result.DefaultImageModel = "gpt-image-2"
 	}
 
 	// 解析浮点数类型

@@ -34,6 +34,21 @@ export default {
         error: 'Error'
       }
     },
+    taskRecords: {
+      button: 'Task records',
+      title: 'Video task records',
+      detailTitle: 'Video task details',
+      allStatuses: 'All statuses',
+      loadFailed: 'Failed to load video tasks',
+      previous: 'Previous',
+      next: 'Next',
+      pageInfo: 'Page {page}, {total} records',
+      status: 'Status',
+      error: 'Failure reason',
+      refund: 'Refund',
+      upstream: 'Upstream task',
+      columns: { task: 'Task' }
+    },
     keyConfigured: 'Configured: {mask}. Leave blank to keep unchanged',
     keyNotCopied: 'Original key is configured ({mask}); reused models do not copy secrets',
     invalidJSON: '{field} is not valid JSON',
@@ -43,6 +58,7 @@ export default {
     },
     apiModes: {
       openai_videos: 'OpenAI Videos API',
+      openai_videos_v2: 'OpenAI Videos API2',
       seedance_content_generation: 'Seedance Content Generation API'
     },
     columns: {
@@ -70,7 +86,7 @@ export default {
       enabled: 'Enable model'
     }
   },
-  imagePlayground: {
+  mediaPlaygroundImage: {
     title: 'Media Site Image Models',
     description: 'Configure media-site image models, upstream domains, 1k/2k/4k pricing, and enabled state',
     createModel: 'Create model',

@@ -61,7 +61,7 @@ type Handlers struct {
 	Payment          *PaymentHandler
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
-	Onyx             *OnyxHandler
+	Launch           *LaunchHandler
 	ImagePlayground  *ImagePlaygroundTaskHandler
 	BatchImage       *BatchImageHandler
 	MenuLaunch       *MenuLaunchHandler

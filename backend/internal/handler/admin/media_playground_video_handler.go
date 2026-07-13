@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -55,6 +56,24 @@ func (h *MediaPlaygroundVideoHandler) ListUpstreamRequests(c *gin.Context) {
 		path += "?" + query
 	}
 	h.proxy(c, http.MethodGet, path, nil)
+}
+
+func (h *MediaPlaygroundVideoHandler) ListTasks(c *gin.Context) {
+	query := c.Request.URL.RawQuery
+	path := "/api/admin/media/video/tasks"
+	if query != "" {
+		path += "?" + query
+	}
+	h.proxy(c, http.MethodGet, path, nil)
+}
+
+func (h *MediaPlaygroundVideoHandler) GetTask(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" || strings.Contains(id, "/") {
+		response.BadRequest(c, "invalid task id")
+		return
+	}
+	h.proxy(c, http.MethodGet, "/api/admin/media/video/tasks/"+url.PathEscape(id), nil)
 }
 
 func (h *MediaPlaygroundVideoHandler) CreateModel(c *gin.Context) {
@@ -160,10 +179,10 @@ func (h *MediaPlaygroundVideoHandler) proxy(c *gin.Context, method, path string,
 }
 
 func (h *MediaPlaygroundVideoHandler) videoPlaygroundAdminTarget(_ *gin.Context) (string, error) {
-	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
+	if baseURL := strings.TrimSpace(os.Getenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
 		return strings.TrimRight(baseURL, "/"), nil
 	}
-	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_GO_BASE_URL")); baseURL != "" {
+	if baseURL := strings.TrimSpace(os.Getenv("MEDIA_PLAYGROUND_BASE_URL")); baseURL != "" {
 		return strings.TrimRight(baseURL, "/"), nil
 	}
 	return "http://127.0.0.1:3304", nil

@@ -99,7 +99,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -207,7 +207,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -316,7 +316,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'onyx' || item.action === 'imagePlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -410,7 +410,7 @@ import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchImagePlayground, launchLobeHub, launchOnyx, launchVictoryMenu } from '@/api/onyx'
+import { launchMediaPlayground, launchLobeHub, launchVictoryMenu } from '@/api/launch'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import type { VictoryMenuItem } from '@/types'
 
@@ -428,7 +428,7 @@ interface NavItem {
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'lobehub' | 'onyx' | 'imagePlayground' | 'victoryMenu'
+  action?: 'lobehub' | 'mediaPlayground' | 'victoryMenu'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -469,8 +469,7 @@ const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 const lobeHubLaunching = ref(false)
-const onyxLaunching = ref(false)
-const imagePlaygroundLaunching = ref(false)
+const mediaPlaygroundLaunching = ref(false)
 const victoryMenuLaunching = ref<Record<string, boolean>>({})
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
@@ -952,8 +951,7 @@ const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
-const flagOnyx = makeSidebarFlag(FeatureFlags.onyx)
-const flagImagePlayground = makeSidebarFlag(FeatureFlags.imagePlayground)
+const flagMediaPlayground = makeSidebarFlag(FeatureFlags.mediaPlayground)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagRechargeSubscription = makeSidebarFlag(FeatureFlags.purchaseSubscription)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
@@ -998,8 +996,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
-    { path: '__onyx__', label: t('nav.chat'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagOnyx, action: 'onyx' },
-    { path: '__image_playground__', label: t('nav.imagePlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagImagePlayground, action: 'imagePlayground' },
+    { path: '__media_playground__', label: t('nav.mediaPlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagMediaPlayground, action: 'mediaPlayground' },
     { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
     {
       path: '__victory_menu__',
@@ -1081,7 +1078,7 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
-    { path: '/admin/media-playground/image', label: t('nav.imagePlaygroundConfig'), icon: ImageIcon, hideInSimpleMode: true },
+    { path: '/admin/media-playground/image', label: t('nav.mediaPlaygroundImageConfig'), icon: ImageIcon, hideInSimpleMode: true },
     { path: '/admin/media-playground/video', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
@@ -1173,29 +1170,6 @@ function handleMenuItemClick(itemPath: string) {
   }
 }
 
-async function handleOnyxLaunch() {
-  if (onyxLaunching.value) return
-  handleMenuItemClick('__onyx__')
-  const launchWindow = window.open('', '_blank')
-  if (launchWindow) {
-    launchWindow.opener = null
-  }
-  onyxLaunching.value = true
-  try {
-    const result = await launchOnyx()
-    if (launchWindow) {
-      launchWindow.location.href = result.redirect_url
-    } else {
-      window.location.href = result.redirect_url
-    }
-  } catch (error) {
-    launchWindow?.close()
-    appStore.showError(resolveOnyxLaunchError(error))
-  } finally {
-    onyxLaunching.value = false
-  }
-}
-
 async function handleLobeHubLaunch() {
   if (lobeHubLaunching.value) return
   handleMenuItemClick('__lobehub__')
@@ -1219,17 +1193,17 @@ async function handleLobeHubLaunch() {
   }
 }
 
-async function handleImagePlaygroundLaunch() {
-  if (imagePlaygroundLaunching.value) return
-  handleMenuItemClick('__image_playground__')
-  imagePlaygroundLaunching.value = true
+async function handleMediaPlaygroundLaunch() {
+  if (mediaPlaygroundLaunching.value) return
+  handleMenuItemClick('__media_playground__')
+  mediaPlaygroundLaunching.value = true
   try {
-    const result = await launchImagePlayground()
+    const result = await launchMediaPlayground()
     window.open(result.redirect_url, '_blank', 'noopener')
   } catch (error) {
-    appStore.showError(resolveImagePlaygroundLaunchError(error))
+    appStore.showError(resolveMediaPlaygroundLaunchError(error))
   } finally {
-    imagePlaygroundLaunching.value = false
+    mediaPlaygroundLaunching.value = false
   }
 }
 
@@ -1263,11 +1237,8 @@ function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
   if (action === 'lobehub') {
     return handleLobeHubLaunch()
   }
-  if (action === 'onyx') {
-    return handleOnyxLaunch()
-  }
-  if (action === 'imagePlayground') {
-    return handleImagePlaygroundLaunch()
+  if (action === 'mediaPlayground') {
+    return handleMediaPlaygroundLaunch()
   }
   if (action === 'victoryMenu' && item) {
     return handleVictoryMenuLaunch(item)
@@ -1276,35 +1247,22 @@ function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
 
 function isActionLaunching(action: NavItem['action'], item?: NavItem): boolean {
   if (action === 'lobehub') return lobeHubLaunching.value
-  if (action === 'onyx') return onyxLaunching.value
-  if (action === 'imagePlayground') return imagePlaygroundLaunching.value
+  if (action === 'mediaPlayground') return mediaPlaygroundLaunching.value
   if (action === 'victoryMenu' && item?.victoryMenuID) return !!victoryMenuLaunching.value[item.victoryMenuID]
   return false
 }
 
 function actionLabel(item: NavItem): string {
   if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
-  if (item.action === 'onyx' && onyxLaunching.value) return t('onyx.opening')
-  if (item.action === 'imagePlayground' && imagePlaygroundLaunching.value) return t('imagePlayground.opening')
+  if (item.action === 'mediaPlayground' && mediaPlaygroundLaunching.value) return t('mediaPlayground.opening')
   if (item.action === 'victoryMenu' && item.victoryMenuID && victoryMenuLaunching.value[item.victoryMenuID]) return t('victoryMenu.opening')
   return item.label
 }
 
-function resolveOnyxLaunchError(error: unknown): string {
-  const apiError = error as { status?: number; reason?: string; message?: string }
-  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
-    return t('onyx.noAvailableApiKey')
-  }
-  if (apiError.status === 503) {
-    return t('onyx.notConfigured')
-  }
-  return apiError.message || t('onyx.openFailed')
-}
-
 function resolveLobeHubLaunchError(error: unknown): string {
   const apiError = error as { status?: number; reason?: string; message?: string }
-  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
-    return t('onyx.noAvailableApiKey')
+  if (apiError.status === 409 || apiError.reason === 'LAUNCH_NO_ELIGIBLE_API_KEY') {
+    return t('launch.noAvailableApiKey')
   }
   if (apiError.status === 503) {
     return t('lobehub.notConfigured')
@@ -1312,21 +1270,21 @@ function resolveLobeHubLaunchError(error: unknown): string {
   return apiError.message || t('lobehub.openFailed')
 }
 
-function resolveImagePlaygroundLaunchError(error: unknown): string {
+function resolveMediaPlaygroundLaunchError(error: unknown): string {
   const apiError = error as { status?: number; reason?: string; message?: string }
-  if (apiError.status === 409 || apiError.reason === 'ONYX_NO_ELIGIBLE_API_KEY') {
-    return t('onyx.noAvailableApiKey')
+  if (apiError.status === 409 || apiError.reason === 'LAUNCH_NO_ELIGIBLE_API_KEY') {
+    return t('launch.noAvailableApiKey')
   }
   if (apiError.status === 503) {
-    return t('imagePlayground.notConfigured')
+    return t('mediaPlayground.notConfigured')
   }
-  return apiError.message || t('imagePlayground.openFailed')
+  return apiError.message || t('mediaPlayground.openFailed')
 }
 
 function resolveVictoryMenuLaunchError(error: unknown): string {
   const apiError = error as { status?: number; reason?: string; message?: string }
   if (apiError.reason === 'CHAT_API_KEY_NOT_FOUND') {
-    return t('onyx.noAvailableApiKey')
+    return t('launch.noAvailableApiKey')
   }
   return apiError.message || t('victoryMenu.openFailed')
 }

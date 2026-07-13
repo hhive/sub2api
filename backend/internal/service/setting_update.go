@@ -264,8 +264,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo
 	updates[SettingKeyDocURL] = settings.DocURL
-	updates[SettingKeyImagePlaygroundDocURL] = strings.TrimSpace(settings.ImagePlaygroundDocURL)
-	updates[SettingKeyVideoPlaygroundDocURL] = strings.TrimSpace(settings.VideoPlaygroundDocURL)
+	updates[SettingKeyMediaPlaygroundDocURL] = strings.TrimSpace(settings.MediaPlaygroundDocURL)
 	updates[SettingKeyRedeemPurchaseURL] = strings.TrimSpace(settings.RedeemPurchaseURL)
 	updates[SettingKeyHomeContent] = settings.HomeContent
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
@@ -284,33 +283,18 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
 	updates[SettingKeyVictoryMenuItems] = settings.VictoryMenuItems
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
-	updates[SettingKeyOnyxEnabled] = strconv.FormatBool(settings.OnyxEnabled)
-	updates[SettingKeyOnyxBaseURL] = strings.TrimSpace(settings.OnyxBaseURL)
-	updates[SettingKeyOnyxMenuLabel] = strings.TrimSpace(settings.OnyxMenuLabel)
-	if settings.OnyxExchangeSecret != "" {
-		updates[SettingKeyOnyxExchangeSecret] = strings.TrimSpace(settings.OnyxExchangeSecret)
+	if settings.LaunchTokenTTLSeconds <= 0 {
+		settings.LaunchTokenTTLSeconds = 60
 	}
-	if settings.OnyxLaunchTokenTTLSeconds <= 0 {
-		settings.OnyxLaunchTokenTTLSeconds = 60
-	}
-	updates[SettingKeyOnyxLaunchTokenTTLSeconds] = strconv.Itoa(settings.OnyxLaunchTokenTTLSeconds)
-	updates[SettingKeyOnyxDefaultRedirectPath] = strings.TrimSpace(settings.OnyxDefaultRedirectPath)
-	updates[SettingKeyOnyxDefaultTextModel] = strings.TrimSpace(settings.OnyxDefaultTextModel)
-	updates[SettingKeyOnyxDefaultImageModel] = strings.TrimSpace(settings.OnyxDefaultImageModel)
+	updates[SettingKeyLaunchTokenTTLSeconds] = strconv.Itoa(settings.LaunchTokenTTLSeconds)
+	updates[SettingKeyDefaultTextModel] = strings.TrimSpace(settings.DefaultTextModel)
+	updates[SettingKeyDefaultImageModel] = strings.TrimSpace(settings.DefaultImageModel)
 	updates[SettingKeyLobeHubEnabled] = strconv.FormatBool(settings.LobeHubEnabled)
 	updates[SettingKeyLobeHubBaseURL] = strings.TrimSpace(settings.LobeHubBaseURL)
 	updates[SettingKeyLobeHubMenuLabel] = strings.TrimSpace(settings.LobeHubMenuLabel)
 	updates[SettingKeyLobeHubAllowedEmails] = NormalizeLobeHubAllowedEmailsValue(settings.LobeHubAllowedEmails)
 	if settings.LobeHubExchangeSecret != "" {
 		updates[SettingKeyLobeHubExchangeSecret] = strings.TrimSpace(settings.LobeHubExchangeSecret)
-	}
-	if settings.VideoPlaygroundEnabled != nil {
-		updates[SettingKeyVideoPlaygroundEnabled] = strconv.FormatBool(*settings.VideoPlaygroundEnabled)
-	}
-	updates[SettingKeyVideoPlaygroundBaseURL] = strings.TrimSpace(settings.VideoPlaygroundBaseURL)
-	updates[SettingKeyVideoPlaygroundMenuLabel] = strings.TrimSpace(settings.VideoPlaygroundMenuLabel)
-	if settings.VideoPlaygroundExchangeSecret != "" {
-		updates[SettingKeyVideoPlaygroundExchangeSecret] = strings.TrimSpace(settings.VideoPlaygroundExchangeSecret)
 	}
 
 	// 默认配置

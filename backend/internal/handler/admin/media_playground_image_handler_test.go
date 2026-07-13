@@ -21,7 +21,7 @@ func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 func TestMediaPlaygroundImageHandlerListProbeRunsProxiesQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath, gotQuery string
-	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
 
 	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -57,7 +57,7 @@ func TestMediaPlaygroundImageHandlerListProbeRunsProxiesQuery(t *testing.T) {
 func TestMediaPlaygroundImageHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath, gotQuery string
-	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
 
 	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -87,7 +87,7 @@ func TestMediaPlaygroundImageHandlerListUpstreamRequestsProxiesQuery(t *testing.
 func TestMediaPlaygroundImageHandlerRunProbeProxiesPost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath string
-	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
 
 	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -115,7 +115,7 @@ func TestMediaPlaygroundImageHandlerRunProbeProxiesPost(t *testing.T) {
 func TestMediaPlaygroundImageHandlerRunModelProbeProxiesPost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath string
-	t.Setenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL", "http://image-playground.test")
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
 
 	handler := NewMediaPlaygroundImageHandler(nil)
 	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {

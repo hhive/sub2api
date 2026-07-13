@@ -152,11 +152,8 @@ export default {
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
     usage: 'Usage',
-    chat: 'Chat',
-    lobehub: 'New Chat',
-    imagePlayground: 'Infinite Canvas',
-    videoPlayground: 'Video Generation',
-    onyx: 'Onyx',
+    lobehub: 'Chat',
+    mediaPlayground: 'Infinite Canvas',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     affiliateManagement: 'Affiliate Rebates',
@@ -195,28 +192,19 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
-    imagePlaygroundConfig: 'Media Site Image Models',
+    mediaPlaygroundImageConfig: 'Media Site Image Models',
     videoPlaygroundConfig: 'Media Site Video Models',
     riskControl: 'Risk Control',
   },
 
-  onyx: {
-    opening: 'Opening chat',
+  launch: {
     noAvailableApiKey: 'No available API key. Create an active, unexpired API key with remaining quota first.',
-    notConfigured: 'Onyx is not configured. Contact an administrator.',
-    openFailed: 'Failed to open Onyx'
   },
 
-  imagePlayground: {
+  mediaPlayground: {
     opening: 'Opening Infinite Canvas',
     notConfigured: 'Infinite Canvas is not configured. Contact an administrator.',
     openFailed: 'Failed to open Infinite Canvas'
-  },
-
-  videoPlayground: {
-    opening: 'Opening video generation',
-    notConfigured: 'Video generation is not configured. Contact an administrator.',
-    openFailed: 'Failed to open video generation'
   },
 
   victoryMenu: {
@@ -225,9 +213,9 @@ export default {
   },
 
   lobehub: {
-    opening: 'Opening New Chat',
-    notConfigured: 'New Chat is not configured. Contact an administrator.',
-    openFailed: 'Failed to open New Chat'
+    opening: 'Opening Chat',
+    notConfigured: 'Chat is not configured. Contact an administrator.',
+    openFailed: 'Failed to open Chat'
   },
 
   // Auth

@@ -133,7 +133,7 @@ func bindAllowedImageModelRequest(c *gin.Context, out *mediaPlaygroundImageModel
 }
 
 func (h *MediaPlaygroundImageHandler) proxy(c *gin.Context, method, path string, payload any) {
-	baseURL, err := h.imagePlaygroundAdminTarget(c)
+	baseURL, err := h.mediaPlaygroundAdminTarget(c)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -176,11 +176,11 @@ func (h *MediaPlaygroundImageHandler) proxy(c *gin.Context, method, path string,
 	response.Success(c, data)
 }
 
-func (h *MediaPlaygroundImageHandler) imagePlaygroundAdminTarget(c *gin.Context) (string, error) {
-	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
+func (h *MediaPlaygroundImageHandler) mediaPlaygroundAdminTarget(c *gin.Context) (string, error) {
+	if baseURL := strings.TrimSpace(os.Getenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL")); baseURL != "" {
 		return strings.TrimRight(baseURL, "/"), nil
 	}
-	if baseURL := strings.TrimSpace(os.Getenv("IMAGE_PLAYGROUND_GO_BASE_URL")); baseURL != "" {
+	if baseURL := strings.TrimSpace(os.Getenv("MEDIA_PLAYGROUND_BASE_URL")); baseURL != "" {
 		return strings.TrimRight(baseURL, "/"), nil
 	}
 	return "http://127.0.0.1:3304", nil

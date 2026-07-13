@@ -116,18 +116,10 @@ export default {
           urlPlaceholder: 'https://pay.ldxp.cn/shop/xiaoni-ai',
           urlHint: 'Must be an absolute http(s) URL; when empty, the frontend uses the default purchase URL.'
         },
-        videoPlayground: {
-          title: 'Video Generation Entry',
-          description: 'Control whether the user sidebar shows the standalone video generation entry.',
-          enabled: 'Show Video Generation Entry',
-          enabledHint: 'When off, the video generation sidebar entry is hidden.',
-          imageDocUrl: 'Image Site Documentation URL',
-          videoDocUrl: 'Video Site Documentation URL',
-          baseUrl: 'Video Generation Base URL',
-          menuLabel: 'Menu Label',
-          exchangeSecret: 'Exchange Secret',
-          exchangeSecretConfigured: 'Configured; leave empty to keep unchanged',
-          exchangeSecretHint: 'Fill only for first-time enablement or secret rotation. It is cleared after saving.'
+        mediaPlayground: {
+          title: 'Media Site Documentation',
+          description: 'Configure the image API documentation URL for the unified media site.',
+          imageDocUrl: 'Media Site Image Documentation URL',
         },
       },
       emailTabDisabledTitle: 'Email Verification Not Enabled',

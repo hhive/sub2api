@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOnyxLaunchTokenStore_RedisError(t *testing.T) {
+func TestLaunchTokenStore_RedisError(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         "127.0.0.1:1",
 		DialTimeout:  50 * time.Millisecond,
@@ -23,7 +23,7 @@ func TestOnyxLaunchTokenStore_RedisError(t *testing.T) {
 		_ = rdb.Close()
 	})
 
-	store := NewOnyxLaunchTokenStore(rdb)
-	err := store.StoreLaunchToken(context.Background(), "token", &service.OnyxLaunchTokenData{UserID: 1, APIKeyID: 2}, time.Minute)
+	store := NewLaunchTokenStore(rdb)
+	err := store.StoreLaunchToken(context.Background(), "token", &service.LaunchTokenData{UserID: 1, APIKeyID: 2}, time.Minute)
 	require.Error(t, err)
 }

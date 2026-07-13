@@ -450,8 +450,7 @@ export interface SystemSettings {
   api_base_url: string;
   contact_info: string;
   doc_url: string;
-  image_playground_doc_url: string;
-  video_playground_doc_url: string;
+  media_playground_doc_url: string;
   redeem_purchase_url: string;
   purchase_subscription_enabled: boolean;
   purchase_subscription_url: string;
@@ -464,10 +463,6 @@ export interface SystemSettings {
   victory_menu_items: VictoryMenuItem[];
   custom_endpoints: CustomEndpoint[];
   lobehub_allowed_emails: string;
-  video_playground_enabled: boolean;
-  video_playground_base_url: string;
-  video_playground_menu_label: string;
-  video_playground_exchange_secret_configured: boolean;
   // SMTP settings
   smtp_host: string;
   smtp_port: number;
@@ -775,8 +770,7 @@ export interface UpdateSettingsRequest {
   api_base_url?: string;
   contact_info?: string;
   doc_url?: string;
-  image_playground_doc_url?: string;
-  video_playground_doc_url?: string;
+  media_playground_doc_url?: string;
   redeem_purchase_url?: string;
   purchase_subscription_enabled?: boolean;
   purchase_subscription_url?: string;
@@ -789,10 +783,6 @@ export interface UpdateSettingsRequest {
   victory_menu_items?: VictoryMenuItem[];
   custom_endpoints?: CustomEndpoint[];
   lobehub_allowed_emails?: string;
-  video_playground_enabled?: boolean;
-  video_playground_base_url?: string;
-  video_playground_menu_label?: string;
-  video_playground_exchange_secret?: string;
   smtp_host?: string;
   smtp_port?: number;
   smtp_username?: string;

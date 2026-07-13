@@ -324,6 +324,7 @@ const baseSettingsResponse = {
   api_base_url: "",
   contact_info: "",
   doc_url: "",
+  media_playground_doc_url: "https://media.example.com/docs",
   redeem_purchase_url: "https://pay.ldxp.cn/shop/xiaoni-ai",
   home_content: "",
   hide_ccs_import_button: false,
@@ -645,6 +646,22 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(payload).not.toHaveProperty("payment_visible_method_wxpay_source");
     expect(payload).not.toHaveProperty("payment_visible_method_alipay_enabled");
     expect(payload).not.toHaveProperty("payment_visible_method_wxpay_enabled");
+  });
+
+  it("submits only the unified media playground settings contract", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls[0]?.[0];
+    expect(payload).toHaveProperty("media_playground_doc_url", "https://media.example.com/docs");
+    expect(payload).not.toHaveProperty("image_playground_doc_url");
+    expect(payload).not.toHaveProperty("video_playground_enabled");
+    expect(payload).not.toHaveProperty("video_playground_base_url");
+    expect(payload).not.toHaveProperty("video_playground_menu_label");
+    expect(payload).not.toHaveProperty("video_playground_exchange_secret");
   });
 
   it("submits Anthropic cache TTL injection gateway setting", async () => {

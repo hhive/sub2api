@@ -117,6 +117,8 @@ func registerMediaPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) 
 	video := mediaPlayground.Group("/video")
 	{
 		video.GET("/models", h.Admin.MediaPlaygroundVideo.ListModels)
+		video.GET("/tasks", h.Admin.MediaPlaygroundVideo.ListTasks)
+		video.GET("/tasks/:id", h.Admin.MediaPlaygroundVideo.GetTask)
 		video.GET("/upstream-requests", h.Admin.MediaPlaygroundVideo.ListUpstreamRequests)
 		video.POST("/models", h.Admin.MediaPlaygroundVideo.CreateModel)
 		video.PATCH("/models/:id", h.Admin.MediaPlaygroundVideo.UpdateModel)

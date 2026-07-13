@@ -6674,91 +6674,22 @@
         <div class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('admin.settings.features.videoPlayground.title') }}
+              {{ t('admin.settings.features.mediaPlayground.title') }}
             </h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.settings.features.videoPlayground.description') }}
+              {{ t('admin.settings.features.mediaPlayground.description') }}
             </p>
           </div>
-          <div class="space-y-5 p-6">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t('admin.settings.features.videoPlayground.enabled') }}
-                </label>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.settings.features.videoPlayground.enabledHint') }}
-                </p>
-              </div>
-              <Toggle v-model="form.video_playground_enabled" />
-            </div>
-
-            <div class="grid gap-4 md:grid-cols-2">
-              <div>
-                <label class="input-label">
-                  {{ t('admin.settings.features.videoPlayground.imageDocUrl') }}
-                </label>
-                <input
-                  v-model="form.image_playground_doc_url"
-                  type="url"
-                  class="input font-mono text-sm"
-                  placeholder="https://example.com/image-docs"
-                />
-              </div>
-              <div>
-                <label class="input-label">
-                  {{ t('admin.settings.features.videoPlayground.videoDocUrl') }}
-                </label>
-                <input
-                  v-model="form.video_playground_doc_url"
-                  type="url"
-                  class="input font-mono text-sm"
-                  placeholder="https://example.com/video-docs"
-                />
-              </div>
-            </div>
-
-            <div v-if="form.video_playground_enabled" class="grid gap-4 md:grid-cols-2">
-              <div>
-                <label class="input-label">
-                  {{ t('admin.settings.features.videoPlayground.baseUrl') }}
-                  <span class="text-red-500">*</span>
-                </label>
-                <input
-                  v-model="form.video_playground_base_url"
-                  type="url"
-                  class="input font-mono text-sm"
-                  placeholder="https://example.com/video_playground/"
-                />
-              </div>
-              <div>
-                <label class="input-label">
-                  {{ t('admin.settings.features.videoPlayground.menuLabel') }}
-                </label>
-                <input
-                  v-model="form.video_playground_menu_label"
-                  type="text"
-                  class="input"
-                  placeholder="视频生成"
-                />
-              </div>
-              <div class="md:col-span-2">
-                <label class="input-label">
-                  {{ t('admin.settings.features.videoPlayground.exchangeSecret') }}
-                  <span v-if="!form.video_playground_exchange_secret_configured" class="text-red-500">*</span>
-                </label>
-                <input
-                  v-model="form.video_playground_exchange_secret"
-                  type="password"
-                  class="input font-mono text-sm"
-                  autocomplete="new-password"
-                  :placeholder="form.video_playground_exchange_secret_configured ? t('admin.settings.features.videoPlayground.exchangeSecretConfigured') : ''"
-                />
-                <p class="mt-1 text-xs text-gray-400">
-                  {{ t('admin.settings.features.videoPlayground.exchangeSecretHint') }}
-                </p>
-              </div>
-            </div>
+          <div class="p-6">
+            <label class="input-label">
+              {{ t('admin.settings.features.mediaPlayground.imageDocUrl') }}
+            </label>
+            <input
+              v-model="form.media_playground_doc_url"
+              type="url"
+              class="input font-mono text-sm"
+              placeholder="https://example.com/image-docs"
+            />
           </div>
         </div>
 
@@ -8642,7 +8573,6 @@ type SettingsForm = Omit<
   oidc_connect_client_secret: string;
   github_oauth_client_secret: string;
   google_oauth_client_secret: string;
-  video_playground_exchange_secret: string;
   force_email_on_third_party_signup: boolean;
   openai_advanced_scheduler_enabled: boolean;
   openai_advanced_scheduler_sticky_weighted_enabled: boolean;
@@ -8709,8 +8639,7 @@ const form = reactive<SettingsForm>({
   api_base_url: "",
   contact_info: "",
   doc_url: "",
-  image_playground_doc_url: "",
-  video_playground_doc_url: "",
+  media_playground_doc_url: "",
   redeem_purchase_url: "https://pay.ldxp.cn/shop/xiaoni-ai",
   purchase_subscription_enabled: false,
   purchase_subscription_url: "",
@@ -8776,11 +8705,6 @@ const form = reactive<SettingsForm>({
   }>,
   lobehub_allowed_emails:
     "oncethewindblows@gmail.com\n136469770@qq.com\n1643689728@qq.com\n2910703711@qq.com\n1312623967@qq.com",
-  video_playground_enabled: false,
-  video_playground_base_url: "",
-  video_playground_menu_label: "视频生成",
-  video_playground_exchange_secret: "",
-  video_playground_exchange_secret_configured: false,
   frontend_url: "",
   smtp_host: "",
   smtp_port: 587,
@@ -10076,8 +10000,7 @@ async function saveSettings() {
     // Optional URL fields: auto-clear invalid values so they don't cause backend 400 errors
     if (!isValidHttpUrl(form.frontend_url)) form.frontend_url = "";
     if (!isValidHttpUrl(form.doc_url)) form.doc_url = "";
-    if (!isValidHttpUrl(form.image_playground_doc_url)) form.image_playground_doc_url = "";
-    if (!isValidHttpUrl(form.video_playground_doc_url)) form.video_playground_doc_url = "";
+    if (!isValidHttpUrl(form.media_playground_doc_url)) form.media_playground_doc_url = "";
     if (!isValidHttpUrl(form.redeem_purchase_url)) {
       form.redeem_purchase_url = "https://pay.ldxp.cn/shop/xiaoni-ai";
     }
@@ -10089,26 +10012,6 @@ async function saveSettings() {
         ),
       );
       return;
-    }
-    if (form.video_playground_enabled) {
-      if (!isValidHttpUrl(form.video_playground_base_url)) {
-        appStore.showError(
-          localText(
-            "视频生成基础 URL 必须是完整的 http(s) 链接。",
-            "Video generation base URL must be an absolute http(s) URL.",
-          ),
-        );
-        return;
-      }
-      if (!form.video_playground_exchange_secret_configured && !form.video_playground_exchange_secret.trim()) {
-        appStore.showError(
-          localText(
-            "首次启用视频生成展示时必须填写交换密钥。",
-            "Exchange secret is required when enabling video generation for the first time.",
-          ),
-        );
-        return;
-      }
     }
     syncWeChatConnectMode();
     const wechatStoredMode = deriveWeChatConnectStoredMode(
@@ -10194,8 +10097,7 @@ async function saveSettings() {
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
       doc_url: form.doc_url,
-      image_playground_doc_url: form.image_playground_doc_url,
-      video_playground_doc_url: form.video_playground_doc_url,
+      media_playground_doc_url: form.media_playground_doc_url,
       redeem_purchase_url: form.redeem_purchase_url,
       purchase_subscription_enabled: form.purchase_subscription_enabled,
       purchase_subscription_url: form.purchase_subscription_url,
@@ -10208,10 +10110,6 @@ async function saveSettings() {
       victory_menu_items: form.victory_menu_items,
       custom_endpoints: form.custom_endpoints,
       lobehub_allowed_emails: form.lobehub_allowed_emails,
-      video_playground_enabled: form.video_playground_enabled,
-      video_playground_base_url: form.video_playground_base_url,
-      video_playground_menu_label: form.video_playground_menu_label,
-      video_playground_exchange_secret: form.video_playground_exchange_secret || undefined,
       frontend_url: form.frontend_url,
       smtp_host: form.smtp_host,
       smtp_port: form.smtp_port,
@@ -10513,7 +10411,6 @@ async function saveSettings() {
     form.wechat_connect_open_app_secret = "";
     form.wechat_connect_mp_app_secret = "";
     form.wechat_connect_mobile_app_secret = "";
-    form.video_playground_exchange_secret = "";
     const updatedWechatCapabilities = resolveWeChatConnectModeCapabilities(
       updated.wechat_connect_open_enabled,
       updated.wechat_connect_mp_enabled,

@@ -134,41 +134,31 @@ type SystemSettings struct {
 	GoogleOAuthRedirectURL            string
 	GoogleOAuthFrontendRedirectURL    string
 
-	SiteName                      string
-	SiteLogo                      string
-	SiteSubtitle                  string
-	APIBaseURL                    string
-	ContactInfo                   string
-	DocURL                        string
-	ImagePlaygroundDocURL         string
-	VideoPlaygroundDocURL         string
-	RedeemPurchaseURL             string
-	HomeContent                   string
-	HideCcsImportButton           bool
-	PurchaseSubscriptionEnabled   bool
-	PurchaseSubscriptionURL       string
-	TableDefaultPageSize          int
-	TablePageSizeOptions          []int
-	CustomMenuItems               string // JSON array of custom menu items
-	VictoryMenuItems              string // JSON array of victory menu items
-	CustomEndpoints               string // JSON array of custom endpoints
-	OnyxEnabled                   bool
-	OnyxBaseURL                   string
-	OnyxMenuLabel                 string
-	OnyxExchangeSecret            string
-	OnyxLaunchTokenTTLSeconds     int
-	OnyxDefaultRedirectPath       string
-	OnyxDefaultTextModel          string
-	OnyxDefaultImageModel         string
-	LobeHubEnabled                bool
-	LobeHubBaseURL                string
-	LobeHubMenuLabel              string
-	LobeHubExchangeSecret         string
-	LobeHubAllowedEmails          string
-	VideoPlaygroundEnabled        *bool
-	VideoPlaygroundBaseURL        string
-	VideoPlaygroundMenuLabel      string
-	VideoPlaygroundExchangeSecret string
+	SiteName                    string
+	SiteLogo                    string
+	SiteSubtitle                string
+	APIBaseURL                  string
+	ContactInfo                 string
+	DocURL                      string
+	MediaPlaygroundDocURL       string
+	RedeemPurchaseURL           string
+	HomeContent                 string
+	HideCcsImportButton         bool
+	PurchaseSubscriptionEnabled bool
+	PurchaseSubscriptionURL     string
+	TableDefaultPageSize        int
+	TablePageSizeOptions        []int
+	CustomMenuItems             string // JSON array of custom menu items
+	VictoryMenuItems            string // JSON array of victory menu items
+	CustomEndpoints             string // JSON array of custom endpoints
+	LaunchTokenTTLSeconds       int
+	DefaultTextModel            string
+	DefaultImageModel           string
+	LobeHubEnabled              bool
+	LobeHubBaseURL              string
+	LobeHubMenuLabel            string
+	LobeHubExchangeSecret       string
+	LobeHubAllowedEmails        string
 
 	DefaultConcurrency                    int
 	DefaultBalance                        float64
@@ -342,8 +332,7 @@ type PublicSettings struct {
 	APIBaseURL                       string
 	ContactInfo                      string
 	DocURL                           string
-	ImagePlaygroundDocURL            string
-	VideoPlaygroundDocURL            string
+	MediaPlaygroundDocURL            string
 	RedeemPurchaseURL                string
 	HomeContent                      string
 	HideCcsImportButton              bool
@@ -355,19 +344,13 @@ type PublicSettings struct {
 	CustomMenuItems             string // JSON array of custom menu items
 	VictoryMenuItems            string // JSON array of victory menu items
 	CustomEndpoints             string // JSON array of custom endpoints
-	OnyxEnabled                 bool
-	OnyxMenuLabel               string
-	OnyxLaunchPath              string
 	LobeHubEnabled              bool
 	LobeHubMenuLabel            string
 	LobeHubLaunchPath           string
 	LobeHubAllowedEmails        []string
-	ImagePlaygroundEnabled      bool
-	ImagePlaygroundMenuLabel    string
-	ImagePlaygroundLaunchPath   string
-	VideoPlaygroundEnabled      bool
-	VideoPlaygroundMenuLabel    string
-	VideoPlaygroundLaunchPath   string
+	MediaPlaygroundEnabled      bool
+	MediaPlaygroundMenuLabel    string
+	MediaPlaygroundLaunchPath   string
 
 	LinuxDoOAuthEnabled      bool
 	DingTalkOAuthEnabled     bool

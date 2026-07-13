@@ -3,8 +3,8 @@
     <div class="space-y-6 p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ t('admin.imagePlayground.title') }}</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.imagePlayground.description') }}</p>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ t('admin.mediaPlaygroundImage.title') }}</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.mediaPlaygroundImage.description') }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button class="btn btn-secondary" :disabled="loading" @click="loadModels">
@@ -12,17 +12,13 @@
             {{ t('common.refresh') }}
           </button>
           <button class="btn btn-secondary" type="button" @click="openCallRecordsDialog">
-            {{ t('admin.imagePlayground.callRecords.button') }}
+            {{ t('admin.mediaPlaygroundImage.callRecords.button') }}
           </button>
           <button class="btn btn-secondary" type="button" @click="openProbeRunsDialog">
-            {{ t('admin.imagePlayground.probeRuns.button') }}
-          </button>
-          <button class="btn btn-secondary" type="button" :disabled="runningProbe" @click="runModelProbe">
-            <Icon name="refresh" size="md" :class="runningProbe ? 'animate-spin' : ''" class="mr-2" />
-            {{ t('admin.imagePlayground.probeRuns.runButton') }}
+            {{ t('admin.mediaPlaygroundImage.probeRuns.button') }}
           </button>
           <button class="btn btn-primary" type="button" @click="openCreateDialog">
-            {{ t('admin.imagePlayground.createModel') }}
+            {{ t('admin.mediaPlaygroundImage.createModel') }}
           </button>
         </div>
       </div>
@@ -63,20 +59,20 @@
                   {{ healthStatusLabel(row.health_status) }}
                 </span>
                 <span v-if="row.cooldown_until" class="whitespace-nowrap">
-                  {{ t('admin.imagePlayground.health.cooldownUntil') }} {{ formatDateTime(row.cooldown_until) }}
+                  {{ t('admin.mediaPlaygroundImage.health.cooldownUntil') }} {{ formatDateTime(row.cooldown_until) }}
                 </span>
               </div>
               <div class="flex flex-wrap gap-x-3 gap-y-1 font-mono">
-                <span>{{ t('admin.imagePlayground.health.failures') }} {{ row.consecutive_failures ?? 0 }}</span>
-                <span>{{ t('admin.imagePlayground.health.cooldowns') }} {{ row.cooldown_count ?? 0 }}</span>
-                <span>{{ t('admin.imagePlayground.health.halfOpenAttempts') }} {{ row.half_open_attempts ?? 0 }}</span>
+                <span>{{ t('admin.mediaPlaygroundImage.health.failures') }} {{ row.consecutive_failures ?? 0 }}</span>
+                <span>{{ t('admin.mediaPlaygroundImage.health.cooldowns') }} {{ row.cooldown_count ?? 0 }}</span>
+                <span>{{ t('admin.mediaPlaygroundImage.health.halfOpenAttempts') }} {{ row.half_open_attempts ?? 0 }}</span>
               </div>
               <div
                 v-if="row.last_health_error"
                 class="max-w-[260px] truncate text-red-600 dark:text-red-300"
                 :title="row.last_health_error"
               >
-                {{ t('admin.imagePlayground.health.lastError') }} {{ row.last_health_error }}
+                {{ t('admin.mediaPlaygroundImage.health.lastError') }} {{ row.last_health_error }}
               </div>
             </div>
           </template>
@@ -94,10 +90,10 @@
             <div class="flex flex-wrap items-center gap-2">
               <button class="btn btn-sm btn-secondary" :disabled="probingModelIds.has(row.id)" @click="runSingleModelProbe(row)">
                 <Icon name="refresh" size="sm" :class="probingModelIds.has(row.id) ? 'animate-spin' : ''" class="mr-1" />
-                {{ t('admin.imagePlayground.probeRuns.singleRunButton') }}
+                {{ t('admin.mediaPlaygroundImage.probeRuns.singleRunButton') }}
               </button>
               <button class="btn btn-sm btn-secondary" @click="openReuseDialog(row)">
-                {{ t('admin.imagePlayground.reuse') }}
+                {{ t('admin.mediaPlaygroundImage.reuse') }}
               </button>
               <button class="btn btn-sm btn-secondary" @click="openEditDialog(row)">
                 {{ t('common.edit') }}
@@ -118,11 +114,11 @@
         :show-close-button="!saving"
         @close="closeDialog"
       >
-        <form id="image-playground-model-form" class="space-y-4" @submit.prevent="saveModel">
+        <form id="media-playground-image-model-form" class="space-y-4" @submit.prevent="saveModel">
           <label v-if="!editingId && models.length" class="block">
-            <span class="input-label">{{ t('admin.imagePlayground.reuseFrom') }}</span>
+            <span class="input-label">{{ t('admin.mediaPlaygroundImage.reuseFrom') }}</span>
             <select class="input" @change="handleReuseSelect">
-              <option value="">{{ t('admin.imagePlayground.reuseFromPlaceholder') }}</option>
+              <option value="">{{ t('admin.mediaPlaygroundImage.reuseFromPlaceholder') }}</option>
               <option v-for="model in models" :key="model.id" :value="model.id">
                 {{ model.display_name }} · {{ model.model }}
               </option>
@@ -131,31 +127,31 @@
 
           <div class="grid gap-4 lg:grid-cols-2">
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.displayName') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.displayName') }}</span>
               <input v-model.trim="form.display_name" class="input" required />
             </label>
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.model') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.model') }}</span>
               <input v-model.trim="form.model" class="input" required />
             </label>
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.apiMode') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.apiMode') }}</span>
               <select v-model="form.api_mode" class="input" required>
-                <option value="images">{{ t('admin.imagePlayground.apiModes.images') }}</option>
-                <option value="responses">{{ t('admin.imagePlayground.apiModes.responses') }}</option>
-                <option value="gemini_generate_content">{{ t('admin.imagePlayground.apiModes.geminiGenerateContent') }}</option>
+                <option value="images">{{ t('admin.mediaPlaygroundImage.apiModes.images') }}</option>
+                <option value="responses">{{ t('admin.mediaPlaygroundImage.apiModes.responses') }}</option>
+                <option value="gemini_generate_content">{{ t('admin.mediaPlaygroundImage.apiModes.geminiGenerateContent') }}</option>
               </select>
             </label>
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.providerName') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.providerName') }}</span>
               <input v-model.trim="form.provider_name" class="input" required />
             </label>
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.upstreamBaseURL') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.upstreamBaseURL') }}</span>
               <input v-model.trim="form.upstream_base_url" class="input" placeholder="https://api.example.com" required />
             </label>
             <label class="block">
-              <span class="input-label">{{ t('admin.imagePlayground.fields.upstreamAPIKey') }}</span>
+              <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.upstreamAPIKey') }}</span>
               <div class="relative">
                 <input
                   v-model.trim="form.upstream_api_key"
@@ -177,32 +173,32 @@
 
           <div class="grid gap-4 sm:grid-cols-3">
               <label class="block">
-                <span class="input-label">{{ t('admin.imagePlayground.fields.price1k') }}</span>
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.price1k') }}</span>
                 <input v-model.number="form.price_1k" class="input" type="number" min="0" step="0.000001" required />
               </label>
               <label class="block">
-                <span class="input-label">{{ t('admin.imagePlayground.fields.price2k') }}</span>
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.price2k') }}</span>
                 <input v-model.number="form.price_2k" class="input" type="number" min="0" step="0.000001" required />
               </label>
               <label class="block">
-                <span class="input-label">{{ t('admin.imagePlayground.fields.price4k') }}</span>
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.price4k') }}</span>
                 <input v-model.number="form.price_4k" class="input" type="number" min="0" step="0.000001" required />
               </label>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
-                <span class="input-label">{{ t('admin.imagePlayground.fields.timeoutSeconds') }}</span>
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.timeoutSeconds') }}</span>
                 <input v-model.number="form.timeout_seconds" class="input" type="number" min="1" required />
               </label>
               <label class="block">
-                <span class="input-label">{{ t('admin.imagePlayground.fields.sortOrder') }}</span>
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.sortOrder') }}</span>
                 <input v-model.number="form.sort_order" class="input" type="number" />
               </label>
           </div>
 
           <div>
-            <span class="input-label">{{ t('admin.imagePlayground.fields.supportedSizes') }}</span>
+            <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.supportedSizes') }}</span>
             <div class="mt-2 flex flex-wrap gap-4">
               <label v-for="size in sizeOptions" :key="size" class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                 <input v-model="form.supported_sizes" :value="size" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
@@ -214,11 +210,11 @@
           <div class="flex flex-wrap gap-4">
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
               <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-              {{ t('admin.imagePlayground.fields.enabled') }}
+              {{ t('admin.mediaPlaygroundImage.fields.enabled') }}
             </label>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
               <input v-model="form.fallback_to_responses_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-              {{ t('admin.imagePlayground.fields.fallbackToResponses') }}
+              {{ t('admin.mediaPlaygroundImage.fields.fallbackToResponses') }}
             </label>
           </div>
         </form>
@@ -228,7 +224,7 @@
             <button class="btn btn-secondary" type="button" :disabled="saving" @click="closeDialog">
               {{ t('common.cancel') }}
             </button>
-            <button class="btn btn-primary" type="submit" form="image-playground-model-form" :disabled="saving">
+            <button class="btn btn-primary" type="submit" form="media-playground-image-model-form" :disabled="saving">
               {{ saving ? t('common.saving') : t('common.save') }}
             </button>
           </div>
@@ -237,14 +233,14 @@
 
       <BaseDialog
         :show="showCallRecordsDialog"
-        :title="t('admin.imagePlayground.callRecords.title')"
+        :title="t('admin.mediaPlaygroundImage.callRecords.title')"
         width="wide"
         @close="closeCallRecordsDialog"
       >
         <div class="space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.imagePlayground.callRecords.description') }}
+              {{ t('admin.mediaPlaygroundImage.callRecords.description') }}
             </p>
             <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading" @click="loadCallRecords(callRecordsPage)">
               <Icon name="refresh" size="md" :class="callRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
@@ -297,14 +293,14 @@
 
           <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
             <div class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.imagePlayground.callRecords.pageInfo', { page: callRecordsPage, total: callRecordsTotal }) }}
+              {{ t('admin.mediaPlaygroundImage.callRecords.pageInfo', { page: callRecordsPage, total: callRecordsTotal }) }}
             </div>
             <div class="flex items-center gap-2">
               <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || callRecordsPage <= 1" @click="loadCallRecords(callRecordsPage - 1)">
-                {{ t('admin.imagePlayground.callRecords.previous') }}
+                {{ t('admin.mediaPlaygroundImage.callRecords.previous') }}
               </button>
               <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || !hasNextCallRecordsPage" @click="loadCallRecords(callRecordsPage + 1)">
-                {{ t('admin.imagePlayground.callRecords.next') }}
+                {{ t('admin.mediaPlaygroundImage.callRecords.next') }}
               </button>
             </div>
           </div>
@@ -313,14 +309,14 @@
 
       <BaseDialog
         :show="showProbeRunsDialog"
-        :title="t('admin.imagePlayground.probeRuns.title')"
+        :title="t('admin.mediaPlaygroundImage.probeRuns.title')"
         width="wide"
         @close="closeProbeRunsDialog"
       >
         <div class="space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.imagePlayground.probeRuns.description') }}
+              {{ t('admin.mediaPlaygroundImage.probeRuns.description') }}
             </p>
             <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading" @click="loadProbeRuns(probeRunsPage)">
               <Icon name="refresh" size="md" :class="probeRunsLoading ? 'animate-spin' : ''" class="mr-2" />
@@ -367,14 +363,14 @@
 
           <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
             <div class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.imagePlayground.probeRuns.pageInfo', { page: probeRunsPage, total: probeRunsTotal }) }}
+              {{ t('admin.mediaPlaygroundImage.probeRuns.pageInfo', { page: probeRunsPage, total: probeRunsTotal }) }}
             </div>
             <div class="flex items-center gap-2">
               <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading || probeRunsPage <= 1" @click="loadProbeRuns(probeRunsPage - 1)">
-                {{ t('admin.imagePlayground.probeRuns.previous') }}
+                {{ t('admin.mediaPlaygroundImage.probeRuns.previous') }}
               </button>
               <button class="btn btn-secondary" type="button" :disabled="probeRunsLoading || !hasNextProbeRunsPage" @click="loadProbeRuns(probeRunsPage + 1)">
-                {{ t('admin.imagePlayground.probeRuns.next') }}
+                {{ t('admin.mediaPlaygroundImage.probeRuns.next') }}
               </button>
             </div>
           </div>
@@ -383,8 +379,8 @@
 
       <ConfirmDialog
         :show="showDeleteDialog"
-        :title="t('admin.imagePlayground.deleteTitle')"
-        :message="t('admin.imagePlayground.deleteConfirm', { name: deletingModel?.display_name || '' })"
+        :title="t('admin.mediaPlaygroundImage.deleteTitle')"
+        :message="t('admin.mediaPlaygroundImage.deleteConfirm', { name: deletingModel?.display_name || '' })"
         :confirm-text="t('common.delete')"
         :cancel-text="t('common.cancel')"
         :danger="true"
@@ -420,7 +416,6 @@ const callRecords = ref<MediaPlaygroundImageUpstreamRequest[]>([])
 const loading = ref(false)
 const probeRunsLoading = ref(false)
 const callRecordsLoading = ref(false)
-const runningProbe = ref(false)
 const probingModelIds = ref<Set<number>>(new Set())
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
@@ -460,60 +455,60 @@ const defaultForm = (): MediaPlaygroundImageModelPayload => ({
 const form = reactive<MediaPlaygroundImageModelPayload>(defaultForm())
 
 const dialogTitle = computed(() => {
-  return editingId.value ? t('admin.imagePlayground.editModel') : t('admin.imagePlayground.createModel')
+  return editingId.value ? t('admin.mediaPlaygroundImage.editModel') : t('admin.mediaPlaygroundImage.createModel')
 })
 
 const upstreamKeyPlaceholder = computed(() => {
   if (editingId.value && editingKeyMask.value) {
-    return t('admin.imagePlayground.keyConfigured', { mask: editingKeyMask.value })
+    return t('admin.mediaPlaygroundImage.keyConfigured', { mask: editingKeyMask.value })
   }
   if (reusedKeyMask.value) {
-    return t('admin.imagePlayground.keyNotCopied', { mask: reusedKeyMask.value })
+    return t('admin.mediaPlaygroundImage.keyNotCopied', { mask: reusedKeyMask.value })
   }
   return 'sk-...'
 })
 
 const columns = computed<Column[]>(() => [
-  { key: 'display_name', label: t('admin.imagePlayground.columns.name') },
-  { key: 'api_mode', label: t('admin.imagePlayground.columns.apiMode') },
-  { key: 'provider_name', label: t('admin.imagePlayground.columns.provider') },
-  { key: 'upstream_base_url', label: t('admin.imagePlayground.columns.upstream') },
-  { key: 'prices', label: t('admin.imagePlayground.columns.prices') },
-  { key: 'supported_sizes', label: t('admin.imagePlayground.columns.sizes') },
-  { key: 'sort_order', label: t('admin.imagePlayground.columns.sortOrder') },
-  { key: 'health', label: t('admin.imagePlayground.columns.health') },
-  { key: 'enabled', label: t('admin.imagePlayground.columns.enabled') },
+  { key: 'display_name', label: t('admin.mediaPlaygroundImage.columns.name') },
+  { key: 'api_mode', label: t('admin.mediaPlaygroundImage.columns.apiMode') },
+  { key: 'provider_name', label: t('admin.mediaPlaygroundImage.columns.provider') },
+  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.columns.upstream') },
+  { key: 'prices', label: t('admin.mediaPlaygroundImage.columns.prices') },
+  { key: 'supported_sizes', label: t('admin.mediaPlaygroundImage.columns.sizes') },
+  { key: 'sort_order', label: t('admin.mediaPlaygroundImage.columns.sortOrder') },
+  { key: 'health', label: t('admin.mediaPlaygroundImage.columns.health') },
+  { key: 'enabled', label: t('admin.mediaPlaygroundImage.columns.enabled') },
   { key: 'actions', label: t('common.actions') },
 ])
 
 const probeRunColumns = computed<Column[]>(() => [
-  { key: 'created_at', label: t('admin.imagePlayground.probeRuns.columns.createdAt') },
-  { key: 'model', label: t('admin.imagePlayground.probeRuns.columns.model') },
-  { key: 'api_mode', label: t('admin.imagePlayground.probeRuns.columns.apiMode') },
-  { key: 'upstream_base_url', label: t('admin.imagePlayground.probeRuns.columns.upstream') },
-  { key: 'attempt', label: t('admin.imagePlayground.probeRuns.columns.attempt') },
-  { key: 'status', label: t('admin.imagePlayground.probeRuns.columns.status') },
-  { key: 'http_status_code', label: t('admin.imagePlayground.probeRuns.columns.httpStatus') },
-  { key: 'elapsed_ms', label: t('admin.imagePlayground.probeRuns.columns.elapsed') },
-  { key: 'response_bytes', label: t('admin.imagePlayground.probeRuns.columns.responseBytes') },
-  { key: 'image_count', label: t('admin.imagePlayground.probeRuns.columns.imageCount') },
-  { key: 'error_message', label: t('admin.imagePlayground.probeRuns.columns.error') },
+  { key: 'created_at', label: t('admin.mediaPlaygroundImage.probeRuns.columns.createdAt') },
+  { key: 'model', label: t('admin.mediaPlaygroundImage.probeRuns.columns.model') },
+  { key: 'api_mode', label: t('admin.mediaPlaygroundImage.probeRuns.columns.apiMode') },
+  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.probeRuns.columns.upstream') },
+  { key: 'attempt', label: t('admin.mediaPlaygroundImage.probeRuns.columns.attempt') },
+  { key: 'status', label: t('admin.mediaPlaygroundImage.probeRuns.columns.status') },
+  { key: 'http_status_code', label: t('admin.mediaPlaygroundImage.probeRuns.columns.httpStatus') },
+  { key: 'elapsed_ms', label: t('admin.mediaPlaygroundImage.probeRuns.columns.elapsed') },
+  { key: 'response_bytes', label: t('admin.mediaPlaygroundImage.probeRuns.columns.responseBytes') },
+  { key: 'image_count', label: t('admin.mediaPlaygroundImage.probeRuns.columns.imageCount') },
+  { key: 'error_message', label: t('admin.mediaPlaygroundImage.probeRuns.columns.error') },
 ])
 
 const hasNextProbeRunsPage = computed(() => probeRunsPage.value * probeRunsPageSize < probeRunsTotal.value)
 const hasNextCallRecordsPage = computed(() => callRecordsPage.value * callRecordsPageSize < callRecordsTotal.value)
 
 const callRecordColumns = computed<Column[]>(() => [
-  { key: 'created_at', label: t('admin.imagePlayground.callRecords.columns.createdAt') },
-  { key: 'id', label: t('admin.imagePlayground.callRecords.columns.task') },
-  { key: 'user', label: t('admin.imagePlayground.callRecords.columns.user') },
-  { key: 'model', label: t('admin.imagePlayground.callRecords.columns.model') },
-  { key: 'upstream_base_url', label: t('admin.imagePlayground.callRecords.columns.upstream') },
-  { key: 'status', label: t('admin.imagePlayground.callRecords.columns.status') },
-  { key: 'upstream_status_code', label: t('admin.imagePlayground.callRecords.columns.httpStatus') },
-  { key: 'response_bytes', label: t('admin.imagePlayground.callRecords.columns.responseBytes') },
-  { key: 'image_count', label: t('admin.imagePlayground.callRecords.columns.imageCount') },
-  { key: 'error_message', label: t('admin.imagePlayground.callRecords.columns.error') },
+  { key: 'created_at', label: t('admin.mediaPlaygroundImage.callRecords.columns.createdAt') },
+  { key: 'id', label: t('admin.mediaPlaygroundImage.callRecords.columns.task') },
+  { key: 'user', label: t('admin.mediaPlaygroundImage.callRecords.columns.user') },
+  { key: 'model', label: t('admin.mediaPlaygroundImage.callRecords.columns.model') },
+  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.callRecords.columns.upstream') },
+  { key: 'status', label: t('admin.mediaPlaygroundImage.callRecords.columns.status') },
+  { key: 'upstream_status_code', label: t('admin.mediaPlaygroundImage.callRecords.columns.httpStatus') },
+  { key: 'response_bytes', label: t('admin.mediaPlaygroundImage.callRecords.columns.responseBytes') },
+  { key: 'image_count', label: t('admin.mediaPlaygroundImage.callRecords.columns.imageCount') },
+  { key: 'error_message', label: t('admin.mediaPlaygroundImage.callRecords.columns.error') },
 ])
 
 async function loadModels() {
@@ -521,7 +516,7 @@ async function loadModels() {
   try {
     models.value = await adminAPI.mediaPlaygroundImage.listModels()
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.loadFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.loadFailed')))
   } finally {
     loading.value = false
   }
@@ -535,7 +530,7 @@ async function loadProbeRuns(page = 1) {
     probeRunsPage.value = result.page || page
     probeRunsTotal.value = result.total || 0
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.loadFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.probeRuns.loadFailed')))
   } finally {
     probeRunsLoading.value = false
   }
@@ -549,7 +544,7 @@ async function loadCallRecords(page = 1) {
     callRecordsPage.value = result.page || page
     callRecordsTotal.value = result.total || 0
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.callRecords.loadFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.callRecords.loadFailed')))
   } finally {
     callRecordsLoading.value = false
   }
@@ -592,33 +587,17 @@ function closeCallRecordsDialog() {
   showCallRecordsDialog.value = false
 }
 
-async function runModelProbe() {
-  runningProbe.value = true
-  try {
-    await adminAPI.mediaPlaygroundImage.runProbe()
-    appStore.showSuccess(t('admin.imagePlayground.probeRuns.runSuccess'))
-    await loadModels()
-    if (showProbeRunsDialog.value) {
-      await loadProbeRuns(1)
-    }
-  } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.runFailed')))
-  } finally {
-    runningProbe.value = false
-  }
-}
-
 async function runSingleModelProbe(model: MediaPlaygroundImageModel) {
   probingModelIds.value = new Set(probingModelIds.value).add(model.id)
   try {
     await adminAPI.mediaPlaygroundImage.runModelProbe(model.id)
-    appStore.showSuccess(t('admin.imagePlayground.probeRuns.singleRunSuccess', { name: model.display_name || model.model }))
+    appStore.showSuccess(t('admin.mediaPlaygroundImage.probeRuns.singleRunSuccess', { name: model.display_name || model.model }))
     await loadModels()
     if (showProbeRunsDialog.value) {
       await loadProbeRuns(1)
     }
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.probeRuns.singleRunFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.probeRuns.singleRunFailed')))
   } finally {
     const next = new Set(probingModelIds.value)
     next.delete(model.id)
@@ -656,23 +635,23 @@ function handleReuseSelect(event: Event) {
 }
 
 function apiModeLabel(mode: string) {
-  if (mode === 'responses') return t('admin.imagePlayground.apiModes.responses')
-  if (mode === 'gemini_generate_content') return t('admin.imagePlayground.apiModes.geminiGenerateContent')
-  return t('admin.imagePlayground.apiModes.images')
+  if (mode === 'responses') return t('admin.mediaPlaygroundImage.apiModes.responses')
+  if (mode === 'gemini_generate_content') return t('admin.mediaPlaygroundImage.apiModes.geminiGenerateContent')
+  return t('admin.mediaPlaygroundImage.apiModes.images')
 }
 
 function probeStatusLabel(status: string) {
   return status === 'success'
-    ? t('admin.imagePlayground.probeRuns.status.success')
-    : t('admin.imagePlayground.probeRuns.status.failed')
+    ? t('admin.mediaPlaygroundImage.probeRuns.status.success')
+    : t('admin.mediaPlaygroundImage.probeRuns.status.failed')
 }
 
 function healthStatusLabel(status: string) {
   const normalized = status || 'available'
-  if (normalized === 'temporary_unavailable') return t('admin.imagePlayground.health.status.temporaryUnavailable')
-  if (normalized === 'half_open') return t('admin.imagePlayground.health.status.halfOpen')
-  if (normalized === 'disabled') return t('admin.imagePlayground.health.status.disabled')
-  return t('admin.imagePlayground.health.status.available')
+  if (normalized === 'temporary_unavailable') return t('admin.mediaPlaygroundImage.health.status.temporaryUnavailable')
+  if (normalized === 'half_open') return t('admin.mediaPlaygroundImage.health.status.halfOpen')
+  if (normalized === 'disabled') return t('admin.mediaPlaygroundImage.health.status.disabled')
+  return t('admin.mediaPlaygroundImage.health.status.available')
 }
 
 function healthBadgeClass(status: string) {
@@ -738,9 +717,9 @@ async function toggleModelEnabled(model: MediaPlaygroundImageModel) {
   try {
     await adminAPI.mediaPlaygroundImage.updateModel(model.id, buildUpdatePayloadFromModel(model, { enabled: !model.enabled }))
     await loadModels()
-    appStore.showSuccess(model.enabled ? t('admin.imagePlayground.disabledToast') : t('admin.imagePlayground.enabledToast'))
+    appStore.showSuccess(model.enabled ? t('admin.mediaPlaygroundImage.disabledToast') : t('admin.mediaPlaygroundImage.enabledToast'))
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.saveFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.saveFailed')))
   } finally {
     togglingId.value = null
   }
@@ -748,7 +727,7 @@ async function toggleModelEnabled(model: MediaPlaygroundImageModel) {
 
 async function saveModel() {
   if (!form.supported_sizes.length) {
-    appStore.showError(t('admin.imagePlayground.sizeRequired'))
+    appStore.showError(t('admin.mediaPlaygroundImage.sizeRequired'))
     return
   }
   saving.value = true
@@ -763,7 +742,7 @@ async function saveModel() {
     await loadModels()
     appStore.showSuccess(t('common.saved'))
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.saveFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.saveFailed')))
   } finally {
     saving.value = false
   }
@@ -787,7 +766,7 @@ async function confirmDeleteModel() {
     await loadModels()
     appStore.showSuccess(t('common.deleted'))
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.imagePlayground.deleteFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.deleteFailed')))
   }
 }
 

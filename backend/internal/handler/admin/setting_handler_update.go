@@ -134,41 +134,31 @@ type UpdateSettingsRequest struct {
 	GoogleOAuthFrontendRedirectURL string `json:"google_oauth_frontend_redirect_url"`
 
 	// OEM设置
-	SiteName                      string                 `json:"site_name"`
-	SiteLogo                      string                 `json:"site_logo"`
-	SiteSubtitle                  string                 `json:"site_subtitle"`
-	APIBaseURL                    string                 `json:"api_base_url"`
-	ContactInfo                   string                 `json:"contact_info"`
-	DocURL                        string                 `json:"doc_url"`
-	ImagePlaygroundDocURL         string                 `json:"image_playground_doc_url"`
-	VideoPlaygroundDocURL         string                 `json:"video_playground_doc_url"`
-	RedeemPurchaseURL             string                 `json:"redeem_purchase_url"`
-	HomeContent                   string                 `json:"home_content"`
-	HideCcsImportButton           bool                   `json:"hide_ccs_import_button"`
-	PurchaseSubscriptionEnabled   *bool                  `json:"purchase_subscription_enabled"`
-	PurchaseSubscriptionURL       *string                `json:"purchase_subscription_url"`
-	TableDefaultPageSize          int                    `json:"table_default_page_size"`
-	TablePageSizeOptions          []int                  `json:"table_page_size_options"`
-	CustomMenuItems               *[]dto.CustomMenuItem  `json:"custom_menu_items"`
-	VictoryMenuItems              *[]dto.VictoryMenuItem `json:"victory_menu_items"`
-	CustomEndpoints               *[]dto.CustomEndpoint  `json:"custom_endpoints"`
-	OnyxEnabled                   *bool                  `json:"onyx_enabled"`
-	OnyxBaseURL                   *string                `json:"onyx_base_url"`
-	OnyxMenuLabel                 *string                `json:"onyx_menu_label"`
-	OnyxExchangeSecret            *string                `json:"onyx_exchange_secret"`
-	OnyxLaunchTokenTTLSeconds     *int                   `json:"onyx_launch_token_ttl_seconds"`
-	OnyxDefaultRedirectPath       *string                `json:"onyx_default_redirect_path"`
-	OnyxDefaultTextModel          *string                `json:"onyx_default_text_model"`
-	OnyxDefaultImageModel         *string                `json:"onyx_default_image_model"`
-	LobeHubEnabled                *bool                  `json:"lobehub_enabled"`
-	LobeHubBaseURL                *string                `json:"lobehub_base_url"`
-	LobeHubMenuLabel              *string                `json:"lobehub_menu_label"`
-	LobeHubExchangeSecret         *string                `json:"lobehub_exchange_secret"`
-	LobeHubAllowedEmails          *string                `json:"lobehub_allowed_emails"`
-	VideoPlaygroundEnabled        *bool                  `json:"video_playground_enabled"`
-	VideoPlaygroundBaseURL        *string                `json:"video_playground_base_url"`
-	VideoPlaygroundMenuLabel      *string                `json:"video_playground_menu_label"`
-	VideoPlaygroundExchangeSecret *string                `json:"video_playground_exchange_secret"`
+	SiteName                    string                 `json:"site_name"`
+	SiteLogo                    string                 `json:"site_logo"`
+	SiteSubtitle                string                 `json:"site_subtitle"`
+	APIBaseURL                  string                 `json:"api_base_url"`
+	ContactInfo                 string                 `json:"contact_info"`
+	DocURL                      string                 `json:"doc_url"`
+	MediaPlaygroundDocURL       string                 `json:"media_playground_doc_url"`
+	RedeemPurchaseURL           string                 `json:"redeem_purchase_url"`
+	HomeContent                 string                 `json:"home_content"`
+	HideCcsImportButton         bool                   `json:"hide_ccs_import_button"`
+	PurchaseSubscriptionEnabled *bool                  `json:"purchase_subscription_enabled"`
+	PurchaseSubscriptionURL     *string                `json:"purchase_subscription_url"`
+	TableDefaultPageSize        int                    `json:"table_default_page_size"`
+	TablePageSizeOptions        []int                  `json:"table_page_size_options"`
+	CustomMenuItems             *[]dto.CustomMenuItem  `json:"custom_menu_items"`
+	VictoryMenuItems            *[]dto.VictoryMenuItem `json:"victory_menu_items"`
+	CustomEndpoints             *[]dto.CustomEndpoint  `json:"custom_endpoints"`
+	LaunchTokenTTLSeconds       *int                   `json:"launch_token_ttl_seconds"`
+	DefaultTextModel            *string                `json:"default_text_model"`
+	DefaultImageModel           *string                `json:"default_image_model"`
+	LobeHubEnabled              *bool                  `json:"lobehub_enabled"`
+	LobeHubBaseURL              *string                `json:"lobehub_base_url"`
+	LobeHubMenuLabel            *string                `json:"lobehub_menu_label"`
+	LobeHubExchangeSecret       *string                `json:"lobehub_exchange_secret"`
+	LobeHubAllowedEmails        *string                `json:"lobehub_allowed_emails"`
 
 	// 默认配置
 	DefaultConcurrency                        int                               `json:"default_concurrency"`
@@ -940,65 +930,20 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		}
 	}
 
-	// Onyx 参数验证
-	onyxEnabled := previousSettings.OnyxEnabled
-	if req.OnyxEnabled != nil {
-		onyxEnabled = *req.OnyxEnabled
+	launchTokenTTLSeconds := previousSettings.LaunchTokenTTLSeconds
+	if req.LaunchTokenTTLSeconds != nil {
+		launchTokenTTLSeconds = *req.LaunchTokenTTLSeconds
 	}
-	onyxBaseURL := strings.TrimSpace(previousSettings.OnyxBaseURL)
-	if req.OnyxBaseURL != nil {
-		onyxBaseURL = strings.TrimSpace(*req.OnyxBaseURL)
+	if launchTokenTTLSeconds <= 0 {
+		launchTokenTTLSeconds = 60
 	}
-	onyxMenuLabel := strings.TrimSpace(previousSettings.OnyxMenuLabel)
-	if req.OnyxMenuLabel != nil {
-		onyxMenuLabel = strings.TrimSpace(*req.OnyxMenuLabel)
+	defaultTextModel := strings.TrimSpace(previousSettings.DefaultTextModel)
+	if req.DefaultTextModel != nil {
+		defaultTextModel = strings.TrimSpace(*req.DefaultTextModel)
 	}
-	if onyxMenuLabel == "" {
-		onyxMenuLabel = "Onyx"
-	}
-	onyxExchangeSecret := strings.TrimSpace(previousSettings.OnyxExchangeSecret)
-	if req.OnyxExchangeSecret != nil {
-		onyxExchangeSecret = strings.TrimSpace(*req.OnyxExchangeSecret)
-	}
-	onyxLaunchTokenTTLSeconds := previousSettings.OnyxLaunchTokenTTLSeconds
-	if req.OnyxLaunchTokenTTLSeconds != nil {
-		onyxLaunchTokenTTLSeconds = *req.OnyxLaunchTokenTTLSeconds
-	}
-	if onyxLaunchTokenTTLSeconds <= 0 {
-		onyxLaunchTokenTTLSeconds = 60
-	}
-	onyxDefaultRedirectPath := strings.TrimSpace(previousSettings.OnyxDefaultRedirectPath)
-	if req.OnyxDefaultRedirectPath != nil {
-		onyxDefaultRedirectPath = strings.TrimSpace(*req.OnyxDefaultRedirectPath)
-	}
-	if onyxDefaultRedirectPath == "" {
-		onyxDefaultRedirectPath = "/chat"
-	}
-	onyxDefaultTextModel := strings.TrimSpace(previousSettings.OnyxDefaultTextModel)
-	if req.OnyxDefaultTextModel != nil {
-		onyxDefaultTextModel = strings.TrimSpace(*req.OnyxDefaultTextModel)
-	}
-	onyxDefaultImageModel := strings.TrimSpace(previousSettings.OnyxDefaultImageModel)
-	if req.OnyxDefaultImageModel != nil {
-		onyxDefaultImageModel = strings.TrimSpace(*req.OnyxDefaultImageModel)
-	}
-	if onyxEnabled {
-		if onyxBaseURL == "" {
-			response.BadRequest(c, "Onyx Base URL is required when enabled")
-			return
-		}
-		if err := config.ValidateAbsoluteHTTPURL(onyxBaseURL); err != nil {
-			response.BadRequest(c, "Onyx Base URL must be an absolute http(s) URL")
-			return
-		}
-		if onyxExchangeSecret == "" {
-			response.BadRequest(c, "Onyx Exchange Secret is required when enabled")
-			return
-		}
-		if err := config.ValidateFrontendRedirectURL(onyxDefaultRedirectPath); err != nil {
-			response.BadRequest(c, "Onyx Default Redirect Path is invalid")
-			return
-		}
+	defaultImageModel := strings.TrimSpace(previousSettings.DefaultImageModel)
+	if req.DefaultImageModel != nil {
+		defaultImageModel = strings.TrimSpace(*req.DefaultImageModel)
 	}
 
 	lobeHubEnabled := previousSettings.LobeHubEnabled
@@ -1035,43 +980,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		}
 		if lobeHubExchangeSecret == "" {
 			response.BadRequest(c, "LobeHub Exchange Secret is required when enabled")
-			return
-		}
-	}
-
-	videoPlaygroundEnabled := false
-	if previousSettings.VideoPlaygroundEnabled != nil {
-		videoPlaygroundEnabled = *previousSettings.VideoPlaygroundEnabled
-	}
-	if req.VideoPlaygroundEnabled != nil {
-		videoPlaygroundEnabled = *req.VideoPlaygroundEnabled
-	}
-	videoPlaygroundBaseURL := strings.TrimSpace(previousSettings.VideoPlaygroundBaseURL)
-	if req.VideoPlaygroundBaseURL != nil {
-		videoPlaygroundBaseURL = strings.TrimSpace(*req.VideoPlaygroundBaseURL)
-	}
-	videoPlaygroundMenuLabel := strings.TrimSpace(previousSettings.VideoPlaygroundMenuLabel)
-	if req.VideoPlaygroundMenuLabel != nil {
-		videoPlaygroundMenuLabel = strings.TrimSpace(*req.VideoPlaygroundMenuLabel)
-	}
-	if videoPlaygroundMenuLabel == "" {
-		videoPlaygroundMenuLabel = "视频生成"
-	}
-	videoPlaygroundExchangeSecret := strings.TrimSpace(previousSettings.VideoPlaygroundExchangeSecret)
-	if req.VideoPlaygroundExchangeSecret != nil {
-		videoPlaygroundExchangeSecret = strings.TrimSpace(*req.VideoPlaygroundExchangeSecret)
-	}
-	if videoPlaygroundEnabled {
-		if videoPlaygroundBaseURL == "" {
-			response.BadRequest(c, "Video Playground Base URL is required when enabled")
-			return
-		}
-		if err := config.ValidateAbsoluteHTTPURL(videoPlaygroundBaseURL); err != nil {
-			response.BadRequest(c, "Video Playground Base URL must be an absolute http(s) URL")
-			return
-		}
-		if videoPlaygroundExchangeSecret == "" {
-			response.BadRequest(c, "Video Playground Exchange Secret is required when enabled")
 			return
 		}
 	}
@@ -1519,8 +1427,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                             req.APIBaseURL,
 		ContactInfo:                            req.ContactInfo,
 		DocURL:                                 req.DocURL,
-		ImagePlaygroundDocURL:                  req.ImagePlaygroundDocURL,
-		VideoPlaygroundDocURL:                  req.VideoPlaygroundDocURL,
+		MediaPlaygroundDocURL:                  req.MediaPlaygroundDocURL,
 		RedeemPurchaseURL:                      strings.TrimSpace(req.RedeemPurchaseURL),
 		HomeContent:                            req.HomeContent,
 		HideCcsImportButton:                    req.HideCcsImportButton,
@@ -1531,23 +1438,14 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomMenuItems:                        customMenuJSON,
 		VictoryMenuItems:                       victoryMenuJSON,
 		CustomEndpoints:                        customEndpointsJSON,
-		OnyxEnabled:                            onyxEnabled,
-		OnyxBaseURL:                            onyxBaseURL,
-		OnyxMenuLabel:                          onyxMenuLabel,
-		OnyxExchangeSecret:                     onyxExchangeSecret,
-		OnyxLaunchTokenTTLSeconds:              onyxLaunchTokenTTLSeconds,
-		OnyxDefaultRedirectPath:                onyxDefaultRedirectPath,
-		OnyxDefaultTextModel:                   onyxDefaultTextModel,
-		OnyxDefaultImageModel:                  onyxDefaultImageModel,
+		LaunchTokenTTLSeconds:                  launchTokenTTLSeconds,
+		DefaultTextModel:                       defaultTextModel,
+		DefaultImageModel:                      defaultImageModel,
 		LobeHubEnabled:                         lobeHubEnabled,
 		LobeHubBaseURL:                         lobeHubBaseURL,
 		LobeHubMenuLabel:                       lobeHubMenuLabel,
 		LobeHubExchangeSecret:                  lobeHubExchangeSecret,
 		LobeHubAllowedEmails:                   lobeHubAllowedEmails,
-		VideoPlaygroundEnabled:                 &videoPlaygroundEnabled,
-		VideoPlaygroundBaseURL:                 videoPlaygroundBaseURL,
-		VideoPlaygroundMenuLabel:               videoPlaygroundMenuLabel,
-		VideoPlaygroundExchangeSecret:          videoPlaygroundExchangeSecret,
 		DefaultConcurrency:                     req.DefaultConcurrency,
 		DefaultBalance:                         req.DefaultBalance,
 		BalanceCreditValidityDays:              balanceCreditValidityDays,
@@ -2056,8 +1954,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                                             updatedSettings.APIBaseURL,
 		ContactInfo:                                            updatedSettings.ContactInfo,
 		DocURL:                                                 updatedSettings.DocURL,
-		ImagePlaygroundDocURL:                                  updatedSettings.ImagePlaygroundDocURL,
-		VideoPlaygroundDocURL:                                  updatedSettings.VideoPlaygroundDocURL,
+		MediaPlaygroundDocURL:                                  updatedSettings.MediaPlaygroundDocURL,
 		RedeemPurchaseURL:                                      updatedSettings.RedeemPurchaseURL,
 		HomeContent:                                            updatedSettings.HomeContent,
 		HideCcsImportButton:                                    updatedSettings.HideCcsImportButton,
@@ -2068,23 +1965,14 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
 		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(updatedSettings.VictoryMenuItems),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
-		OnyxEnabled:                                            updatedSettings.OnyxEnabled,
-		OnyxBaseURL:                                            updatedSettings.OnyxBaseURL,
-		OnyxMenuLabel:                                          updatedSettings.OnyxMenuLabel,
-		OnyxExchangeSecretConfigured:                           updatedSettings.OnyxExchangeSecret != "",
-		OnyxLaunchTokenTTLSeconds:                              updatedSettings.OnyxLaunchTokenTTLSeconds,
-		OnyxDefaultRedirectPath:                                updatedSettings.OnyxDefaultRedirectPath,
-		OnyxDefaultTextModel:                                   updatedSettings.OnyxDefaultTextModel,
-		OnyxDefaultImageModel:                                  updatedSettings.OnyxDefaultImageModel,
+		LaunchTokenTTLSeconds:                                  updatedSettings.LaunchTokenTTLSeconds,
+		DefaultTextModel:                                       updatedSettings.DefaultTextModel,
+		DefaultImageModel:                                      updatedSettings.DefaultImageModel,
 		LobeHubEnabled:                                         updatedSettings.LobeHubEnabled,
 		LobeHubBaseURL:                                         updatedSettings.LobeHubBaseURL,
 		LobeHubMenuLabel:                                       updatedSettings.LobeHubMenuLabel,
 		LobeHubExchangeSecretConfigured:                        updatedSettings.LobeHubExchangeSecret != "",
 		LobeHubAllowedEmails:                                   updatedSettings.LobeHubAllowedEmails,
-		VideoPlaygroundEnabled:                                 updatedSettings.VideoPlaygroundEnabled != nil && *updatedSettings.VideoPlaygroundEnabled,
-		VideoPlaygroundBaseURL:                                 updatedSettings.VideoPlaygroundBaseURL,
-		VideoPlaygroundMenuLabel:                               updatedSettings.VideoPlaygroundMenuLabel,
-		VideoPlaygroundExchangeSecretConfigured:                updatedSettings.VideoPlaygroundExchangeSecret != "",
 		DefaultConcurrency:                                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                                         updatedSettings.DefaultBalance,
 		BalanceCreditValidityDays:                              updatedSettings.BalanceCreditValidityDays,
