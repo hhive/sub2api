@@ -4,11 +4,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import MediaPlaygroundVideoView from '../MediaPlaygroundVideoView.vue'
 
-const { listModels, createModel, updateModel } = vi.hoisted(() => ({
-  listModels: vi.fn(), createModel: vi.fn(), updateModel: vi.fn(),
+const { listModels, listTasks, getTask, createModel, updateModel } = vi.hoisted(() => ({
+  listModels: vi.fn(), listTasks: vi.fn(), getTask: vi.fn(), createModel: vi.fn(), updateModel: vi.fn(),
 }))
 vi.mock('@/api/admin', () => ({ adminAPI: { mediaPlaygroundVideo: {
-  listModels, createModel, updateModel, deleteModel: vi.fn(), listUpstreamRequests: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+  listModels, listTasks, getTask, createModel, updateModel, deleteModel: vi.fn(),
 } } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError: vi.fn(), showSuccess: vi.fn() }) }))
 vi.mock('@/utils/apiError', () => ({ extractApiErrorMessage: (_e: unknown, fallback: string) => fallback }))
@@ -28,7 +28,37 @@ function mountView() { return mount(MediaPlaygroundVideoView, { global: { stubs:
 function button(wrapper: ReturnType<typeof mountView>, text: string) { return wrapper.findAll('button').find(item => item.text().includes(text))! }
 
 describe('MediaPlaygroundVideoView interactions', () => {
-  beforeEach(() => { vi.clearAllMocks(); listModels.mockResolvedValue([model]); createModel.mockResolvedValue({}); updateModel.mockResolvedValue({}) })
+  beforeEach(() => {
+    vi.clearAllMocks()
+    listModels.mockResolvedValue([model])
+    listTasks.mockResolvedValue({
+      items: [{ task_id: 'local-task-1', user_id: 3, model: 'video-1', status: 'completed', progress: 100, upstream_task_id: 'upstream-task-9', duration_ms: 1500, refund_status: 'none', error_message: '', created_at: '2026-07-13T10:00:00Z' }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    })
+    getTask.mockResolvedValue({
+      task: { task_id: 'local-task-1', status: 'completed', progress: 100, upstream_task_id: 'upstream-task-9', duration_ms: 1500, refund_status: 'none', refund_reason: '', error_message: '', request: { prompt: 'safe prompt' }, upstream_response: { status: 'completed' } },
+    })
+    createModel.mockResolvedValue({})
+    updateModel.mockResolvedValue({})
+  })
+
+  it('shows one task-record entry with upstream ID and duration, without call records', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('admin.videoPlayground.callRecords.button')
+    await button(wrapper, 'admin.videoPlayground.taskRecords.button').trigger('click')
+    await flushPromises()
+    expect(listTasks).toHaveBeenCalledWith({ page: 1, page_size: 20, status: undefined })
+    expect(wrapper.text()).toContain('upstream-task-9')
+    expect(wrapper.text()).toContain('1.50s')
+    await button(wrapper, 'local-task-1').trigger('click')
+    await flushPromises()
+    expect(getTask).toHaveBeenCalledWith('local-task-1')
+    expect(wrapper.text()).toContain('safe prompt')
+    expect(wrapper.text()).toContain('completed')
+  })
 
   it('creates a model with the OpenAI Videos API2 mode', async () => {
     const wrapper = mountView(); await flushPromises(); await button(wrapper, 'admin.videoPlayground.createModel').trigger('click')

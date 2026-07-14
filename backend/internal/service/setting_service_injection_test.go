@@ -29,7 +29,7 @@ func TestSettingService_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 }
 
 func TestSettingService_GetPublicSettings_DefaultsMediaPlaygroundToImageAndVideo(t *testing.T) {
-	t.Setenv("MEDIA_PLAYGROUND_EXCHANGE_SECRET", "test-secret")
+	t.Setenv("MEDIA_PLAYGROUND_EXCHANGE_SECRET", "")
 	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, &config.Config{})
 
 	settings, err := svc.GetPublicSettings(context.Background())

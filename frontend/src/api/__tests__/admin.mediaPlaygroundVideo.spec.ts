@@ -8,7 +8,7 @@ const { get, post, patch } = vi.hoisted(() => ({
 
 vi.mock('@/api/client', () => ({ apiClient: { get, post, patch } }))
 
-import { createModel, getTask, listModels, listTasks, listUpstreamRequests, updateModel } from '@/api/admin/mediaPlaygroundVideo'
+import { createModel, getTask, listModels, listTasks, updateModel } from '@/api/admin/mediaPlaygroundVideo'
 import type { MediaPlaygroundVideoModelPayload } from '@/api/admin/mediaPlaygroundVideo'
 
 const payload: MediaPlaygroundVideoModelPayload = {
@@ -36,9 +36,6 @@ describe('admin media playground video api', () => {
 
     const page = { items: [], total: 0, page: 2, page_size: 20 }
     get.mockResolvedValue({ data: page })
-    await listUpstreamRequests({ page: 2, page_size: 20 })
-    expect(get).toHaveBeenCalledWith('/admin/media-playground/video/upstream-requests', { params: { page: 2, page_size: 20 } })
-
     await listTasks({ page: 1, page_size: 20, status: 'failed' })
     expect(get).toHaveBeenCalledWith('/admin/media-playground/video/tasks', { params: { page: 1, page_size: 20, status: 'failed' } })
     await getTask('task-1')

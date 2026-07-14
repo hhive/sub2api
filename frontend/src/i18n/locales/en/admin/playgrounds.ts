@@ -14,26 +14,6 @@ export default {
     saveFailed: 'Failed to save video model',
     deleteFailed: 'Failed to delete video model',
     deleteConfirm: 'Delete video model "{name}"?',
-    callRecords: {
-      button: 'Call records',
-      title: 'Call records',
-      description: 'Latest media-site video upstream calls in reverse chronological order.',
-      loadFailed: 'Failed to load call records',
-      previous: 'Previous',
-      next: 'Next',
-      pageInfo: 'Page {page}, {total} records',
-      columns: {
-        createdAt: 'Time',
-        task: 'Task',
-        user: 'User',
-        model: 'Model',
-        endpoint: 'Endpoint',
-        httpStatus: 'HTTP',
-        elapsed: 'Elapsed',
-        responseBytes: 'Response size',
-        error: 'Error'
-      }
-    },
     taskRecords: {
       button: 'Task records',
       title: 'Video task records',
@@ -47,7 +27,16 @@ export default {
       error: 'Failure reason',
       refund: 'Refund',
       upstream: 'Upstream task',
-      columns: { task: 'Task' }
+      duration: 'Total duration',
+      request: 'Request summary',
+      result: 'Result summary',
+      columns: {
+        task: 'Local task',
+        createdAt: 'Created',
+        user: 'User',
+        model: 'Model',
+        upstreamTask: 'Upstream task ID'
+      }
     },
     keyConfigured: 'Configured: {mask}. Leave blank to keep unchanged',
     keyNotCopied: 'Original key is configured ({mask}); reused models do not copy secrets',
@@ -103,11 +92,11 @@ export default {
     saveFailed: 'Failed to save image model',
     deleteFailed: 'Failed to delete image model',
     deleteConfirm: 'Delete image model "{name}"?',
-    callRecords: {
-      button: 'Call records',
-      title: 'Call records',
-      description: 'Latest media-site image upstream calls in reverse chronological order.',
-      loadFailed: 'Failed to load call records',
+    taskRecords: {
+      button: 'Task records',
+      title: 'Image task records',
+      description: 'Image generation tasks in reverse chronological order, one record per task.',
+      loadFailed: 'Failed to load task records',
       previous: 'Previous',
       next: 'Next',
       pageInfo: 'Page {page}, {total} records',
@@ -119,6 +108,7 @@ export default {
         upstream: 'Upstream',
         status: 'Status',
         httpStatus: 'HTTP',
+        duration: 'Total duration',
         responseBytes: 'Response size',
         imageCount: 'Images',
         error: 'Error'
@@ -199,6 +189,7 @@ export default {
       },
       status: {
         success: 'Success',
+        running: 'Probing',
         failed: 'Failed'
       }
     }

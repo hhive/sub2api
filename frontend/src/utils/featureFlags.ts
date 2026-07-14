@@ -131,7 +131,7 @@ export const FeatureFlags = {
   }),
   mediaPlayground: defineFlag({
     key: 'media_playground_enabled',
-    mode: 'opt-in',
+    mode: 'opt-out',
     label: 'Media Playground',
   }),
 } as const

@@ -58,13 +58,17 @@ func (h *MediaPlaygroundImageHandler) ListProbeRuns(c *gin.Context) {
 	h.proxy(c, http.MethodGet, path, nil)
 }
 
-func (h *MediaPlaygroundImageHandler) ListUpstreamRequests(c *gin.Context) {
+func (h *MediaPlaygroundImageHandler) ListTasks(c *gin.Context) {
 	query := c.Request.URL.RawQuery
 	path := "/api/admin/media/upstream-requests"
 	if query != "" {
 		path += "?" + query
 	}
 	h.proxy(c, http.MethodGet, path, nil)
+}
+
+func (h *MediaPlaygroundImageHandler) ListUpstreamRequests(c *gin.Context) {
+	h.ListTasks(c)
 }
 
 func (h *MediaPlaygroundImageHandler) RunProbe(c *gin.Context) {

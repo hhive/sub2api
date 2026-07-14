@@ -54,7 +54,7 @@ export interface MediaPlaygroundImageProbeRunPage {
   page_size: number
 }
 
-export interface MediaPlaygroundImageUpstreamRequest {
+export interface MediaPlaygroundImageTaskRecord {
   id: string
   user_id: number
   api_key_id: number
@@ -74,10 +74,11 @@ export interface MediaPlaygroundImageUpstreamRequest {
   created_at: string
   updated_at: string
   completed_at?: string | null
+  duration_ms?: number | null
 }
 
-export interface MediaPlaygroundImageUpstreamRequestPage {
-  items: MediaPlaygroundImageUpstreamRequest[]
+export interface MediaPlaygroundImageTaskRecordPage {
+  items: MediaPlaygroundImageTaskRecord[]
   total: number
   page: number
   page_size: number
@@ -106,8 +107,8 @@ export async function listProbeRuns(params: { page?: number; page_size?: number 
   return data
 }
 
-export async function listUpstreamRequests(params: { page?: number; page_size?: number } = {}): Promise<MediaPlaygroundImageUpstreamRequestPage> {
-  const { data } = await apiClient.get<MediaPlaygroundImageUpstreamRequestPage>('/admin/media-playground/image/upstream-requests', { params })
+export async function listTasks(params: { page?: number; page_size?: number } = {}): Promise<MediaPlaygroundImageTaskRecordPage> {
+  const { data } = await apiClient.get<MediaPlaygroundImageTaskRecordPage>('/admin/media-playground/image/tasks', { params })
   return data
 }
 
@@ -139,7 +140,7 @@ export async function deleteModel(id: number): Promise<{ ok: boolean }> {
 const mediaPlaygroundImageAPI = {
   listModels,
   listProbeRuns,
-  listUpstreamRequests,
+  listTasks,
   runProbe,
   runModelProbe,
   createModel,

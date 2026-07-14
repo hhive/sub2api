@@ -66,6 +66,12 @@ describe('AppSidebar chat menu wiring', () => {
 })
 
 describe('AppSidebar media playground menu wiring', () => {
+  it('keeps the image and video entry enabled by default', () => {
+    expect(componentSource).toContain('FeatureFlags.mediaPlayground')
+    expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../utils/featureFlags.ts'), 'utf8')).toContain("mode: 'opt-out'")
+    expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../stores/app.ts'), 'utf8')).toContain('media_playground_enabled: true')
+  })
+
   it('adds an authenticated launch action next to the chat menu', () => {
     expect(componentSource).toContain("action?: 'lobehub' | 'mediaPlayground' | 'victoryMenu'")
     expect(componentSource).toContain("label: t('nav.mediaPlayground')")

@@ -11,9 +11,6 @@
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
             {{ t('common.refresh') }}
           </button>
-          <button class="btn btn-secondary" type="button" @click="openCallRecordsDialog">
-            {{ t('admin.videoPlayground.callRecords.button') }}
-          </button>
           <button class="btn btn-secondary" type="button" @click="openTaskRecordsDialog">
             {{ t('admin.videoPlayground.taskRecords.button') }}
           </button>
@@ -103,6 +100,15 @@
             <template #cell-status="{ row }">
               <span :class="row.status === 'completed' ? 'badge badge-success' : row.status === 'failed' ? 'badge badge-danger' : 'badge badge-gray'">{{ row.status }}</span>
             </template>
+            <template #cell-created_at="{ value }">
+              <span class="whitespace-nowrap text-sm">{{ formatDateTime(value) }}</span>
+            </template>
+            <template #cell-upstream_task_id="{ value }">
+              <span class="font-mono text-xs">{{ value || '-' }}</span>
+            </template>
+            <template #cell-duration_ms="{ value }">
+              <span class="font-mono text-xs">{{ formatDurationMs(value) }}</span>
+            </template>
             <template #cell-error_message="{ value }">
               <span class="inline-block max-w-[260px] truncate text-sm" :title="value || ''">{{ value || '-' }}</span>
             </template>
@@ -125,11 +131,18 @@
           <div class="grid gap-2 sm:grid-cols-2">
             <div><strong>{{ t('admin.videoPlayground.taskRecords.status') }}:</strong> {{ taskDetail.task.status }} ({{ taskDetail.task.progress }}%)</div>
             <div><strong>{{ t('admin.videoPlayground.taskRecords.refund') }}:</strong> {{ taskDetail.task.refund_status }} {{ taskDetail.task.refund_reason }}</div>
+            <div><strong>{{ t('admin.videoPlayground.taskRecords.duration') }}:</strong> {{ formatDurationMs(taskDetail.task.duration_ms) }}</div>
             <div class="sm:col-span-2"><strong>{{ t('admin.videoPlayground.taskRecords.error') }}:</strong> {{ taskDetail.task.error_message || '-' }}</div>
             <div class="sm:col-span-2"><strong>{{ t('admin.videoPlayground.taskRecords.upstream') }}:</strong> {{ taskDetail.task.upstream_task_id || '-' }}</div>
           </div>
-          <pre class="max-h-52 overflow-auto rounded border border-gray-200 p-3 text-xs dark:border-dark-700">{{ JSON.stringify(taskDetail.task.upstream_response || {}, null, 2) }}</pre>
-          <DataTable :columns="callRecordColumns" :data="taskDetail.upstream_requests" :loading="false" />
+          <div>
+            <div class="mb-1 font-medium">{{ t('admin.videoPlayground.taskRecords.request') }}</div>
+            <pre class="max-h-52 overflow-auto rounded border border-gray-200 p-3 text-xs dark:border-dark-700">{{ JSON.stringify(taskDetail.task.request || {}, null, 2) }}</pre>
+          </div>
+          <div>
+            <div class="mb-1 font-medium">{{ t('admin.videoPlayground.taskRecords.result') }}</div>
+            <pre class="max-h-52 overflow-auto rounded border border-gray-200 p-3 text-xs dark:border-dark-700">{{ JSON.stringify(taskDetail.task.upstream_response || {}, null, 2) }}</pre>
+          </div>
         </div>
       </BaseDialog>
 
@@ -243,83 +256,6 @@
         </template>
       </BaseDialog>
 
-      <BaseDialog
-        :show="showCallRecordsDialog"
-        :title="t('admin.videoPlayground.callRecords.title')"
-        width="wide"
-        @close="closeCallRecordsDialog"
-      >
-        <div class="space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.videoPlayground.callRecords.description') }}
-            </p>
-            <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading" @click="loadCallRecords(callRecordsPage)">
-              <Icon name="refresh" size="md" :class="callRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
-              {{ t('common.refresh') }}
-            </button>
-          </div>
-
-          <DataTable :columns="callRecordColumns" :data="callRecords" :loading="callRecordsLoading">
-            <template #cell-created_at="{ value }">
-              <span class="whitespace-nowrap text-sm text-gray-600 dark:text-dark-300">{{ formatDateTime(value) }}</span>
-            </template>
-            <template #cell-task_id="{ row }">
-              <div>
-                <div class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ row.model_config_id }}</div>
-                <div class="font-mono text-xs text-gray-900 dark:text-white">{{ row.task_id || '-' }}</div>
-              </div>
-            </template>
-            <template #cell-model="{ row }">
-              <div>
-                <div class="font-medium text-gray-900 dark:text-white">{{ row.model || '-' }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ row.provider_name || '-' }}</div>
-              </div>
-            </template>
-            <template #cell-endpoint="{ row }">
-              <div>
-                <div class="font-mono text-xs">{{ row.method || '-' }} {{ row.endpoint || '-' }}</div>
-                <div class="max-w-[220px] truncate text-xs text-gray-500 dark:text-gray-400" :title="row.upstream_base_url || '-'">{{ row.upstream_base_url || '-' }}</div>
-              </div>
-            </template>
-            <template #cell-http_status_code="{ value }">
-              <span class="font-mono text-xs">{{ value || '-' }}</span>
-            </template>
-            <template #cell-user_id="{ row }">
-              <div class="font-mono text-xs">
-                <div>用户ID {{ row.user_id || '-' }}</div>
-                <div>API Key {{ row.api_key_suffix || '-' }}</div>
-              </div>
-            </template>
-            <template #cell-elapsed_ms="{ value }">
-              <span class="font-mono text-xs">{{ formatDurationMs(value) }}</span>
-            </template>
-            <template #cell-response_bytes="{ value }">
-              <span class="font-mono text-xs">{{ formatBytes(value || 0) }}</span>
-            </template>
-            <template #cell-error_message="{ value }">
-              <span class="inline-block max-w-[260px] truncate text-sm text-gray-600 dark:text-gray-300" :title="value || ''">
-                {{ value || '-' }}
-              </span>
-            </template>
-          </DataTable>
-
-          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.videoPlayground.callRecords.pageInfo', { page: callRecordsPage, total: callRecordsTotal }) }}
-            </div>
-            <div class="flex items-center gap-2">
-              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || callRecordsPage <= 1" @click="loadCallRecords(callRecordsPage - 1)">
-                {{ t('admin.videoPlayground.callRecords.previous') }}
-              </button>
-              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || !hasNextCallRecordsPage" @click="loadCallRecords(callRecordsPage + 1)">
-                {{ t('admin.videoPlayground.callRecords.next') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </BaseDialog>
-
       <ConfirmDialog
         :show="showDeleteDialog"
         :title="t('admin.videoPlayground.deleteTitle')"
@@ -339,7 +275,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail, MediaPlaygroundVideoUpstreamRequest } from '@/api/admin'
+import type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -347,17 +283,15 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { formatBytes, formatDateTime } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 
 const models = ref<MediaPlaygroundVideoModel[]>([])
-const callRecords = ref<MediaPlaygroundVideoUpstreamRequest[]>([])
 const taskRecords = ref<MediaPlaygroundVideoTask[]>([])
 const taskDetail = ref<MediaPlaygroundVideoTaskDetail | null>(null)
 const loading = ref(false)
-const callRecordsLoading = ref(false)
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
 const editingId = ref<number | null>(null)
@@ -366,13 +300,9 @@ const reusedUpstreamKeyMask = ref('')
 const upstreamKeyVisible = ref(false)
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
-const showCallRecordsDialog = ref(false)
 const showTaskRecordsDialog = ref(false)
 const showTaskDetailDialog = ref(false)
 const deletingModel = ref<MediaPlaygroundVideoModel | null>(null)
-const callRecordsPage = ref(1)
-const callRecordsPageSize = 20
-const callRecordsTotal = ref(0)
 const taskRecordsLoading = ref(false)
 const taskRecordsPage = ref(1)
 const taskRecordsTotal = ref(0)
@@ -421,29 +351,18 @@ const columns = computed<Column[]>(() => [
   { key: 'actions', label: t('common.actions') },
 ])
 
-const callRecordColumns = computed<Column[]>(() => [
-  { key: 'created_at', label: t('admin.videoPlayground.callRecords.columns.createdAt') },
-  { key: 'task_id', label: t('admin.videoPlayground.callRecords.columns.task') },
-  { key: 'user_id', label: t('admin.videoPlayground.callRecords.columns.user') },
-  { key: 'model', label: t('admin.videoPlayground.callRecords.columns.model') },
-  { key: 'endpoint', label: t('admin.videoPlayground.callRecords.columns.endpoint') },
-  { key: 'http_status_code', label: t('admin.videoPlayground.callRecords.columns.httpStatus') },
-  { key: 'elapsed_ms', label: t('admin.videoPlayground.callRecords.columns.elapsed') },
-  { key: 'response_bytes', label: t('admin.videoPlayground.callRecords.columns.responseBytes') },
-  { key: 'error_message', label: t('admin.videoPlayground.callRecords.columns.error') },
-])
-
 const taskRecordColumns = computed<Column[]>(() => [
   { key: 'task_id', label: t('admin.videoPlayground.taskRecords.columns.task') },
-  { key: 'created_at', label: t('admin.videoPlayground.callRecords.columns.createdAt') },
-  { key: 'user_id', label: t('admin.videoPlayground.callRecords.columns.user') },
-  { key: 'model', label: t('admin.videoPlayground.callRecords.columns.model') },
+  { key: 'created_at', label: t('admin.videoPlayground.taskRecords.columns.createdAt') },
+  { key: 'user_id', label: t('admin.videoPlayground.taskRecords.columns.user') },
+  { key: 'model', label: t('admin.videoPlayground.taskRecords.columns.model') },
+  { key: 'upstream_task_id', label: t('admin.videoPlayground.taskRecords.columns.upstreamTask') },
   { key: 'status', label: t('admin.videoPlayground.taskRecords.status') },
+  { key: 'duration_ms', label: t('admin.videoPlayground.taskRecords.duration') },
   { key: 'error_message', label: t('admin.videoPlayground.taskRecords.error') },
   { key: 'refund_status', label: t('admin.videoPlayground.taskRecords.refund') },
 ])
 
-const hasNextCallRecordsPage = computed(() => callRecordsPage.value * callRecordsPageSize < callRecordsTotal.value)
 const hasNextTaskRecordsPage = computed(() => taskRecordsPage.value * 20 < taskRecordsTotal.value)
 
 async function loadModels() {
@@ -454,20 +373,6 @@ async function loadModels() {
     appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.loadFailed')))
   } finally {
     loading.value = false
-  }
-}
-
-async function loadCallRecords(page = 1) {
-  callRecordsLoading.value = true
-  try {
-    const result = await adminAPI.mediaPlaygroundVideo.listUpstreamRequests({ page, page_size: callRecordsPageSize })
-    callRecords.value = result.items || []
-    callRecordsPage.value = result.page || page
-    callRecordsTotal.value = result.total || 0
-  } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.videoPlayground.callRecords.loadFailed')))
-  } finally {
-    callRecordsLoading.value = false
   }
 }
 
@@ -503,17 +408,8 @@ function closeTaskRecordsDialog() {
   showTaskRecordsDialog.value = false
 }
 
-function openCallRecordsDialog() {
-  showCallRecordsDialog.value = true
-  void loadCallRecords(1)
-}
-
-function closeCallRecordsDialog() {
-  showCallRecordsDialog.value = false
-}
-
-function formatDurationMs(value: number) {
-  if (!value || value < 0) return '-'
+function formatDurationMs(value?: number | null) {
+  if (value == null || value < 0) return '-'
   if (value < 1000) return `${value}ms`
   return `${(value / 1000).toFixed(2)}s`
 }

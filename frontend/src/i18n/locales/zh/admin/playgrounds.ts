@@ -14,26 +14,6 @@ export default {
     saveFailed: '保存视频模型失败',
     deleteFailed: '删除视频模型失败',
     deleteConfirm: '确定删除视频模型“{name}”？',
-    callRecords: {
-      button: '调用记录',
-      title: '调用记录',
-      description: '按时间倒序展示媒体站视频最近请求上游的记录。',
-      loadFailed: '加载调用记录失败',
-      previous: '上一页',
-      next: '下一页',
-      pageInfo: '第 {page} 页，共 {total} 条',
-      columns: {
-        createdAt: '时间',
-        task: '任务',
-        user: '用户',
-        model: '模型',
-        endpoint: '端点',
-        httpStatus: 'HTTP',
-        elapsed: '耗时',
-        responseBytes: '响应大小',
-        error: '错误'
-      }
-    },
     taskRecords: {
       button: '任务记录',
       title: '视频任务记录',
@@ -47,7 +27,16 @@ export default {
       error: '失败原因',
       refund: '退款',
       upstream: '上游任务',
-      columns: { task: '任务' }
+      duration: '总耗时',
+      request: '请求摘要',
+      result: '结果摘要',
+      columns: {
+        task: '本地任务',
+        createdAt: '创建时间',
+        user: '用户',
+        model: '模型',
+        upstreamTask: '上游任务 ID'
+      }
     },
     keyConfigured: '已配置：{mask}，留空则不变',
     keyNotCopied: '原配置已设置 Key（{mask}），复用时不会复制密钥',
@@ -103,11 +92,11 @@ export default {
     saveFailed: '保存图片模型失败',
     deleteFailed: '删除图片模型失败',
     deleteConfirm: '确定删除图片模型“{name}”？',
-    callRecords: {
-      button: '调用记录',
-      title: '调用记录',
-      description: '按时间倒序展示媒体站图片最近请求上游的记录。',
-      loadFailed: '加载调用记录失败',
+    taskRecords: {
+      button: '任务记录',
+      title: '图片任务记录',
+      description: '按时间倒序展示媒体站图片生成任务，每个任务仅一条记录。',
+      loadFailed: '加载任务记录失败',
       previous: '上一页',
       next: '下一页',
       pageInfo: '第 {page} 页，共 {total} 条',
@@ -119,6 +108,7 @@ export default {
         upstream: '上游域名',
         status: '状态',
         httpStatus: 'HTTP',
+        duration: '总耗时',
         responseBytes: '响应大小',
         imageCount: '图片数',
         error: '错误'
@@ -199,6 +189,7 @@ export default {
       },
       status: {
         success: '成功',
+        running: '探测中',
         failed: '失败'
       }
     }

@@ -128,6 +128,7 @@ func registerMediaPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) 
 	{
 		image.GET("/models", h.Admin.MediaPlaygroundImage.ListModels)
 		image.GET("/model-probe-runs", h.Admin.MediaPlaygroundImage.ListProbeRuns)
+		image.GET("/tasks", h.Admin.MediaPlaygroundImage.ListTasks)
 		image.GET("/upstream-requests", h.Admin.MediaPlaygroundImage.ListUpstreamRequests)
 		image.POST("/model-probe-runs/run", h.Admin.MediaPlaygroundImage.RunProbe)
 		image.POST("/models/:id/probe", h.Admin.MediaPlaygroundImage.RunModelProbe)

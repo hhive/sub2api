@@ -4,9 +4,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import MediaPlaygroundImageView from '../MediaPlaygroundImageView.vue'
 
-const { listModels, listProbeRuns, runModelProbe, showError, showSuccess } = vi.hoisted(() => ({
+const { listModels, listProbeRuns, listTasks, runModelProbe, showError, showSuccess } = vi.hoisted(() => ({
   listModels: vi.fn(),
   listProbeRuns: vi.fn(),
+  listTasks: vi.fn(),
   runModelProbe: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock('@/api/admin', () => ({
     mediaPlaygroundImage: {
       listModels,
       listProbeRuns,
+      listTasks,
       runModelProbe,
       createModel: vi.fn(),
       updateModel: vi.fn(),
@@ -50,6 +52,23 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.createModel': '新建模型',
     'admin.mediaPlaygroundImage.reuse': '复用',
     'admin.mediaPlaygroundImage.probeRuns.button': '探测记录',
+    'admin.mediaPlaygroundImage.taskRecords.button': '任务记录',
+    'admin.mediaPlaygroundImage.taskRecords.title': '图片任务记录',
+    'admin.mediaPlaygroundImage.taskRecords.description': '任务描述',
+    'admin.mediaPlaygroundImage.taskRecords.previous': '上一页',
+    'admin.mediaPlaygroundImage.taskRecords.next': '下一页',
+    'admin.mediaPlaygroundImage.taskRecords.pageInfo': '第 {page} 页，共 {total} 条',
+    'admin.mediaPlaygroundImage.taskRecords.columns.createdAt': '时间',
+    'admin.mediaPlaygroundImage.taskRecords.columns.task': '任务',
+    'admin.mediaPlaygroundImage.taskRecords.columns.user': '用户 / API Key',
+    'admin.mediaPlaygroundImage.taskRecords.columns.model': '模型',
+    'admin.mediaPlaygroundImage.taskRecords.columns.upstream': '上游域名',
+    'admin.mediaPlaygroundImage.taskRecords.columns.status': '状态',
+    'admin.mediaPlaygroundImage.taskRecords.columns.httpStatus': 'HTTP',
+    'admin.mediaPlaygroundImage.taskRecords.columns.duration': '总耗时',
+    'admin.mediaPlaygroundImage.taskRecords.columns.responseBytes': '响应大小',
+    'admin.mediaPlaygroundImage.taskRecords.columns.imageCount': '图片数',
+    'admin.mediaPlaygroundImage.taskRecords.columns.error': '错误',
     'admin.mediaPlaygroundImage.probeRuns.runButton': '主动探测',
     'admin.mediaPlaygroundImage.probeRuns.singleRunButton': '探测',
     'admin.mediaPlaygroundImage.probeRuns.title': '探测记录',
@@ -92,6 +111,7 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.probeRuns.columns.imageCount': '图片数',
     'admin.mediaPlaygroundImage.probeRuns.columns.error': '错误',
     'admin.mediaPlaygroundImage.probeRuns.status.success': '成功',
+    'admin.mediaPlaygroundImage.probeRuns.status.running': '探测中',
     'admin.mediaPlaygroundImage.probeRuns.status.failed': '失败',
   }
   return {
@@ -189,6 +209,7 @@ describe('MediaPlaygroundImageView', () => {
   beforeEach(() => {
     listModels.mockReset()
     listProbeRuns.mockReset()
+    listTasks.mockReset()
     runModelProbe.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
@@ -216,6 +237,15 @@ describe('MediaPlaygroundImageView', () => {
       page: 1,
       page_size: 20,
     })
+    listTasks.mockResolvedValue({
+      items: [
+        { id: 'image-task-1', user_id: 3, api_key_suffix: '1234', model_config_id: 7, model: 'gpt-image-2', api_mode: 'images', upstream_base_url: 'https://upstream.test', size_tier: '1k', status: 'completed', upstream_status_code: 200, duration_ms: 1250, response_bytes: 2048, image_count: 1, error_code: '', error_message: '', created_at: '2026-07-13T10:00:00Z' },
+        { id: 'image-task-2', user_id: 3, api_key_suffix: '1234', model_config_id: 7, model: 'gpt-image-2', api_mode: 'images', upstream_base_url: 'https://upstream.test', size_tier: '1k', status: 'running', upstream_status_code: 0, duration_ms: null, response_bytes: 0, image_count: 0, error_code: '', error_message: '', created_at: '2026-07-13T10:01:00Z' },
+      ],
+      total: 2,
+      page: 1,
+      page_size: 20,
+    })
     runModelProbe.mockResolvedValue({ ok: true, running: true })
   })
 
@@ -231,7 +261,30 @@ describe('MediaPlaygroundImageView', () => {
     expect(wrapper.text()).toContain('upstream status 524')
   })
 
-  it('loads probe records, pages, and refreshes the current page', async () => {
+  it('loads probe records, displays running probes, pages, and refreshes the current page', async () => {
+    listProbeRuns.mockResolvedValueOnce({
+      items: [
+        {
+          id: 2,
+          run_id: 'run-2',
+          model_config_id: 7,
+          model: 'gpt-image-2',
+          api_mode: 'images',
+          upstream_base_url: 'https://upstream.test',
+          attempt: 1,
+          status: 'running',
+          http_status_code: 0,
+          error_message: '',
+          elapsed_ms: 0,
+          response_bytes: 0,
+          image_count: 0,
+          created_at: '2026-07-13T11:37:08Z',
+        },
+      ],
+      total: 21,
+      page: 1,
+      page_size: 20,
+    })
     const wrapper = mountView()
     await flushPromises()
 
@@ -240,7 +293,8 @@ describe('MediaPlaygroundImageView', () => {
 	expect(listProbeRuns).toHaveBeenLastCalledWith({ page: 1, page_size: 20 })
 	expect(wrapper.text()).toContain('#7')
 	expect(wrapper.text()).toContain('gpt-image-2')
-	expect(wrapper.text()).toContain('成功')
+	const runningBadge = wrapper.findAll('span').find((item) => item.text() === '探测中')
+	expect(runningBadge?.classes()).toContain('badge-gray')
 
     listProbeRuns.mockResolvedValueOnce({ items: [], total: 21, page: 2, page_size: 20 })
     await wrapper.findAll('button').find((button) => button.text() === '下一页')!.trigger('click')
@@ -250,6 +304,18 @@ describe('MediaPlaygroundImageView', () => {
     await wrapper.findAll('button').filter((button) => button.text() === '刷新').at(-1)!.trigger('click')
     await flushPromises()
     expect(listProbeRuns).toHaveBeenLastCalledWith({ page: 2, page_size: 20 })
+  })
+
+  it('loads task records and formats terminal and running durations', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '任务记录')!.trigger('click')
+    await flushPromises()
+    expect(listTasks).toHaveBeenCalledWith({ page: 1, page_size: 20 })
+    expect(wrapper.text()).toContain('图片任务记录')
+    expect(wrapper.text()).toContain('1.25s')
+    expect(wrapper.text()).toContain('image-task-2')
+    expect(wrapper.text()).not.toContain('调用记录')
   })
 
   it('runs a single model probe from the config row', async () => {

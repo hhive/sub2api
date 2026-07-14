@@ -12,7 +12,7 @@ vi.mock('@/api/client', () => ({
   },
 }))
 
-import { listProbeRuns, runModelProbe, runProbe } from '@/api/admin/mediaPlaygroundImage'
+import { listProbeRuns, listTasks, runModelProbe, runProbe } from '@/api/admin/mediaPlaygroundImage'
 
 describe('admin image playground api', () => {
   beforeEach(() => {
@@ -30,6 +30,15 @@ describe('admin image playground api', () => {
       params: { page: 2, page_size: 20 },
     })
     expect(result).toEqual(page)
+  })
+
+  it('requests image task records with pagination params', async () => {
+    const page = { items: [], total: 0, page: 3, page_size: 20 }
+    get.mockResolvedValue({ data: page })
+    expect(await listTasks({ page: 3, page_size: 20 })).toEqual(page)
+    expect(get).toHaveBeenCalledWith('/admin/media-playground/image/tasks', {
+      params: { page: 3, page_size: 20 },
+    })
   })
 
   it('posts the manual probe endpoint', async () => {

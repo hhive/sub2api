@@ -29,6 +29,8 @@ func TestMediaPlaygroundAdminRoutesReplaceLegacyRoutes(t *testing.T) {
 	for _, route := range []string{
 		"GET /api/admin/media-playground/image/models",
 		"GET /api/admin/media-playground/image/model-probe-runs",
+		"GET /api/admin/media-playground/image/tasks",
+		"GET /api/admin/media-playground/image/upstream-requests",
 		"GET /api/admin/media-playground/video/models",
 		"GET /api/admin/media-playground/video/tasks",
 		"GET /api/admin/media-playground/video/tasks/:id",

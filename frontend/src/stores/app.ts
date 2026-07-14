@@ -398,7 +398,7 @@ export const useAppStore = defineStore('app', () => {
           '2910703711@qq.com',
           '1312623967@qq.com',
         ],
-        media_playground_enabled: false,
+        media_playground_enabled: true,
         media_playground_menu_label: '图片与视频',
 		media_playground_launch_path: '/api/v1/media-playground/launch',
         allow_user_view_error_requests: false,

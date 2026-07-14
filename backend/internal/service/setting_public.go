@@ -271,7 +271,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	gitHubEnabled := s.emailOAuthPublicEnabled(settings, "github")
 	googleEnabled := s.emailOAuthPublicEnabled(settings, "google")
 	weChatEnabled, weChatOpenEnabled, weChatMPEnabled, weChatMobileEnabled := s.weChatOAuthCapabilitiesFromSettings(settings)
-	mediaPlaygroundEnabled := mediaPlaygroundLaunchBaseURL() != "" && MediaPlaygroundExchangeSecret() != ""
+	// Keep the user menu visible by default. Launch requests still validate the
+	// media service URL and exchange secret and return a clear service error when
+	// the integration is not configured.
+	mediaPlaygroundEnabled := true
 
 	// Password reset requires email verification to be enabled
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"

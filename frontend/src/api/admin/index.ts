@@ -120,15 +120,15 @@ export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from 
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
-export type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail, MediaPlaygroundVideoTaskPage, MediaPlaygroundVideoUpstreamRequest, MediaPlaygroundVideoUpstreamRequestPage, VideoAPIMode } from './mediaPlaygroundVideo'
+export type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail, MediaPlaygroundVideoTaskPage, VideoAPIMode } from './mediaPlaygroundVideo'
 export type {
   MediaPlaygroundImageHealthStatus,
   MediaPlaygroundImageModel,
   MediaPlaygroundImageModelPayload,
   MediaPlaygroundImageProbeRun,
   MediaPlaygroundImageProbeRunPage,
-  MediaPlaygroundImageUpstreamRequest,
-  MediaPlaygroundImageUpstreamRequestPage,
+  MediaPlaygroundImageTaskRecord,
+  MediaPlaygroundImageTaskRecordPage,
   ImageSizeTier
 } from './mediaPlaygroundImage'
 export type { DefaultModelPricingItem, DefaultModelPricingResponse, DefaultModelPricingParams } from './defaultModelPricing'

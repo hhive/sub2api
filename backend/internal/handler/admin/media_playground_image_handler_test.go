@@ -54,7 +54,7 @@ func TestMediaPlaygroundImageHandlerListProbeRunsProxiesQuery(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"run_id":"run-1"`)
 }
 
-func TestMediaPlaygroundImageHandlerListUpstreamRequestsProxiesQuery(t *testing.T) {
+func TestMediaPlaygroundImageHandlerListTasksProxiesQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var gotPath, gotQuery string
 	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
@@ -72,16 +72,33 @@ func TestMediaPlaygroundImageHandlerListUpstreamRequestsProxiesQuery(t *testing.
 		}, nil
 	})}
 	router := gin.New()
-	router.GET("/upstream-requests", handler.ListUpstreamRequests)
+	router.GET("/tasks", handler.ListTasks)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/upstream-requests?page=3&page_size=20", nil)
+	req := httptest.NewRequest(http.MethodGet, "/tasks?page=3&page_size=20", nil)
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "/api/admin/media/upstream-requests", gotPath)
 	require.Equal(t, "page=3&page_size=20", gotQuery)
 	require.Contains(t, rec.Body.String(), `"task-1"`)
+}
+
+func TestMediaPlaygroundImageHandlerLegacyUpstreamRequestsUsesTaskEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var gotPath string
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
+	handler := NewMediaPlaygroundImageHandler(nil)
+	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		gotPath = r.URL.Path
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"items":[]}`)), Header: make(http.Header)}, nil
+	})}
+	router := gin.New()
+	router.GET("/upstream-requests", handler.ListUpstreamRequests)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/upstream-requests", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "/api/admin/media/upstream-requests", gotPath)
 }
 
 func TestMediaPlaygroundImageHandlerRunProbeProxiesPost(t *testing.T) {

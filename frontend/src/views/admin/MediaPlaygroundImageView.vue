@@ -11,8 +11,8 @@
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" class="mr-2" />
             {{ t('common.refresh') }}
           </button>
-          <button class="btn btn-secondary" type="button" @click="openCallRecordsDialog">
-            {{ t('admin.mediaPlaygroundImage.callRecords.button') }}
+          <button class="btn btn-secondary" type="button" @click="openTaskRecordsDialog">
+            {{ t('admin.mediaPlaygroundImage.taskRecords.button') }}
           </button>
           <button class="btn btn-secondary" type="button" @click="openProbeRunsDialog">
             {{ t('admin.mediaPlaygroundImage.probeRuns.button') }}
@@ -232,23 +232,23 @@
       </BaseDialog>
 
       <BaseDialog
-        :show="showCallRecordsDialog"
-        :title="t('admin.mediaPlaygroundImage.callRecords.title')"
+        :show="showTaskRecordsDialog"
+        :title="t('admin.mediaPlaygroundImage.taskRecords.title')"
         width="wide"
-        @close="closeCallRecordsDialog"
+        @close="closeTaskRecordsDialog"
       >
         <div class="space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.mediaPlaygroundImage.callRecords.description') }}
+              {{ t('admin.mediaPlaygroundImage.taskRecords.description') }}
             </p>
-            <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading" @click="loadCallRecords(callRecordsPage)">
-              <Icon name="refresh" size="md" :class="callRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
+            <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading" @click="loadTaskRecords(taskRecordsPage)">
+              <Icon name="refresh" size="md" :class="taskRecordsLoading ? 'animate-spin' : ''" class="mr-2" />
               {{ t('common.refresh') }}
             </button>
           </div>
 
-          <DataTable :columns="callRecordColumns" :data="callRecords" :loading="callRecordsLoading">
+          <DataTable :columns="taskRecordColumns" :data="taskRecords" :loading="taskRecordsLoading">
             <template #cell-created_at="{ value }">
               <span class="whitespace-nowrap text-sm text-gray-600 dark:text-dark-300">{{ formatDateTime(value) }}</span>
             </template>
@@ -284,6 +284,9 @@
             <template #cell-response_bytes="{ value }">
               <span class="font-mono text-xs">{{ formatBytes(value || 0) }}</span>
             </template>
+            <template #cell-duration_ms="{ value }">
+              <span class="font-mono text-xs">{{ formatDurationMs(value) }}</span>
+            </template>
             <template #cell-error_message="{ row }">
               <span class="inline-block max-w-[260px] truncate text-sm text-gray-600 dark:text-gray-300" :title="row.error_message || row.error_code || ''">
                 {{ row.error_message || row.error_code || '-' }}
@@ -293,14 +296,14 @@
 
           <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-dark-700">
             <div class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.mediaPlaygroundImage.callRecords.pageInfo', { page: callRecordsPage, total: callRecordsTotal }) }}
+              {{ t('admin.mediaPlaygroundImage.taskRecords.pageInfo', { page: taskRecordsPage, total: taskRecordsTotal }) }}
             </div>
             <div class="flex items-center gap-2">
-              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || callRecordsPage <= 1" @click="loadCallRecords(callRecordsPage - 1)">
-                {{ t('admin.mediaPlaygroundImage.callRecords.previous') }}
+              <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading || taskRecordsPage <= 1" @click="loadTaskRecords(taskRecordsPage - 1)">
+                {{ t('admin.mediaPlaygroundImage.taskRecords.previous') }}
               </button>
-              <button class="btn btn-secondary" type="button" :disabled="callRecordsLoading || !hasNextCallRecordsPage" @click="loadCallRecords(callRecordsPage + 1)">
-                {{ t('admin.mediaPlaygroundImage.callRecords.next') }}
+              <button class="btn btn-secondary" type="button" :disabled="taskRecordsLoading || !hasNextTaskRecordsPage" @click="loadTaskRecords(taskRecordsPage + 1)">
+                {{ t('admin.mediaPlaygroundImage.taskRecords.next') }}
               </button>
             </div>
           </div>
@@ -341,7 +344,7 @@
               <span class="inline-block max-w-[220px] truncate" :title="value || '-'">{{ value || '-' }}</span>
             </template>
             <template #cell-status="{ row }">
-              <span :class="row.status === 'success' ? 'badge badge-success' : 'badge badge-danger'">
+              <span :class="probeStatusClass(row.status)">
                 {{ probeStatusLabel(row.status) }}
               </span>
             </template>
@@ -396,7 +399,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { MediaPlaygroundImageModel, MediaPlaygroundImageModelPayload, MediaPlaygroundImageProbeRun, MediaPlaygroundImageUpstreamRequest, ImageSizeTier } from '@/api/admin'
+import type { MediaPlaygroundImageModel, MediaPlaygroundImageModelPayload, MediaPlaygroundImageProbeRun, MediaPlaygroundImageTaskRecord, ImageSizeTier } from '@/api/admin'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -412,10 +415,10 @@ const sizeOptions: ImageSizeTier[] = ['1k', '2k', '4k']
 
 const models = ref<MediaPlaygroundImageModel[]>([])
 const probeRuns = ref<MediaPlaygroundImageProbeRun[]>([])
-const callRecords = ref<MediaPlaygroundImageUpstreamRequest[]>([])
+const taskRecords = ref<MediaPlaygroundImageTaskRecord[]>([])
 const loading = ref(false)
 const probeRunsLoading = ref(false)
-const callRecordsLoading = ref(false)
+const taskRecordsLoading = ref(false)
 const probingModelIds = ref<Set<number>>(new Set())
 const saving = ref(false)
 const togglingId = ref<number | null>(null)
@@ -426,14 +429,14 @@ const upstreamKeyVisible = ref(false)
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showProbeRunsDialog = ref(false)
-const showCallRecordsDialog = ref(false)
+const showTaskRecordsDialog = ref(false)
 const deletingModel = ref<MediaPlaygroundImageModel | null>(null)
 const probeRunsPage = ref(1)
 const probeRunsPageSize = 20
 const probeRunsTotal = ref(0)
-const callRecordsPage = ref(1)
-const callRecordsPageSize = 20
-const callRecordsTotal = ref(0)
+const taskRecordsPage = ref(1)
+const taskRecordsPageSize = 20
+const taskRecordsTotal = ref(0)
 
 const defaultForm = (): MediaPlaygroundImageModelPayload => ({
   display_name: '',
@@ -496,19 +499,20 @@ const probeRunColumns = computed<Column[]>(() => [
 ])
 
 const hasNextProbeRunsPage = computed(() => probeRunsPage.value * probeRunsPageSize < probeRunsTotal.value)
-const hasNextCallRecordsPage = computed(() => callRecordsPage.value * callRecordsPageSize < callRecordsTotal.value)
+const hasNextTaskRecordsPage = computed(() => taskRecordsPage.value * taskRecordsPageSize < taskRecordsTotal.value)
 
-const callRecordColumns = computed<Column[]>(() => [
-  { key: 'created_at', label: t('admin.mediaPlaygroundImage.callRecords.columns.createdAt') },
-  { key: 'id', label: t('admin.mediaPlaygroundImage.callRecords.columns.task') },
-  { key: 'user', label: t('admin.mediaPlaygroundImage.callRecords.columns.user') },
-  { key: 'model', label: t('admin.mediaPlaygroundImage.callRecords.columns.model') },
-  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.callRecords.columns.upstream') },
-  { key: 'status', label: t('admin.mediaPlaygroundImage.callRecords.columns.status') },
-  { key: 'upstream_status_code', label: t('admin.mediaPlaygroundImage.callRecords.columns.httpStatus') },
-  { key: 'response_bytes', label: t('admin.mediaPlaygroundImage.callRecords.columns.responseBytes') },
-  { key: 'image_count', label: t('admin.mediaPlaygroundImage.callRecords.columns.imageCount') },
-  { key: 'error_message', label: t('admin.mediaPlaygroundImage.callRecords.columns.error') },
+const taskRecordColumns = computed<Column[]>(() => [
+  { key: 'created_at', label: t('admin.mediaPlaygroundImage.taskRecords.columns.createdAt') },
+  { key: 'id', label: t('admin.mediaPlaygroundImage.taskRecords.columns.task') },
+  { key: 'user', label: t('admin.mediaPlaygroundImage.taskRecords.columns.user') },
+  { key: 'model', label: t('admin.mediaPlaygroundImage.taskRecords.columns.model') },
+  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.taskRecords.columns.upstream') },
+  { key: 'status', label: t('admin.mediaPlaygroundImage.taskRecords.columns.status') },
+  { key: 'upstream_status_code', label: t('admin.mediaPlaygroundImage.taskRecords.columns.httpStatus') },
+  { key: 'duration_ms', label: t('admin.mediaPlaygroundImage.taskRecords.columns.duration') },
+  { key: 'response_bytes', label: t('admin.mediaPlaygroundImage.taskRecords.columns.responseBytes') },
+  { key: 'image_count', label: t('admin.mediaPlaygroundImage.taskRecords.columns.imageCount') },
+  { key: 'error_message', label: t('admin.mediaPlaygroundImage.taskRecords.columns.error') },
 ])
 
 async function loadModels() {
@@ -536,17 +540,17 @@ async function loadProbeRuns(page = 1) {
   }
 }
 
-async function loadCallRecords(page = 1) {
-  callRecordsLoading.value = true
+async function loadTaskRecords(page = 1) {
+  taskRecordsLoading.value = true
   try {
-    const result = await adminAPI.mediaPlaygroundImage.listUpstreamRequests({ page, page_size: callRecordsPageSize })
-    callRecords.value = result.items || []
-    callRecordsPage.value = result.page || page
-    callRecordsTotal.value = result.total || 0
+    const result = await adminAPI.mediaPlaygroundImage.listTasks({ page, page_size: taskRecordsPageSize })
+    taskRecords.value = result.items || []
+    taskRecordsPage.value = result.page || page
+    taskRecordsTotal.value = result.total || 0
   } catch (err) {
-    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.callRecords.loadFailed')))
+    appStore.showError(extractApiErrorMessage(err, t('admin.mediaPlaygroundImage.taskRecords.loadFailed')))
   } finally {
-    callRecordsLoading.value = false
+    taskRecordsLoading.value = false
   }
 }
 
@@ -578,13 +582,13 @@ function closeProbeRunsDialog() {
   showProbeRunsDialog.value = false
 }
 
-function openCallRecordsDialog() {
-  showCallRecordsDialog.value = true
-  void loadCallRecords(1)
+function openTaskRecordsDialog() {
+  showTaskRecordsDialog.value = true
+  void loadTaskRecords(1)
 }
 
-function closeCallRecordsDialog() {
-  showCallRecordsDialog.value = false
+function closeTaskRecordsDialog() {
+  showTaskRecordsDialog.value = false
 }
 
 async function runSingleModelProbe(model: MediaPlaygroundImageModel) {
@@ -641,9 +645,15 @@ function apiModeLabel(mode: string) {
 }
 
 function probeStatusLabel(status: string) {
-  return status === 'success'
-    ? t('admin.mediaPlaygroundImage.probeRuns.status.success')
-    : t('admin.mediaPlaygroundImage.probeRuns.status.failed')
+  if (status === 'success') return t('admin.mediaPlaygroundImage.probeRuns.status.success')
+  if (status === 'running') return t('admin.mediaPlaygroundImage.probeRuns.status.running')
+  return t('admin.mediaPlaygroundImage.probeRuns.status.failed')
+}
+
+function probeStatusClass(status: string) {
+  if (status === 'success') return 'badge badge-success'
+  if (status === 'running') return 'badge badge-gray'
+  return 'badge badge-danger'
 }
 
 function healthStatusLabel(status: string) {
@@ -660,8 +670,8 @@ function healthBadgeClass(status: string) {
   return 'badge badge-success'
 }
 
-function formatDurationMs(value: number) {
-  if (!value || value < 0) return '-'
+function formatDurationMs(value?: number | null) {
+  if (value == null || value < 0) return '-'
   if (value < 1000) return `${value}ms`
   return `${(value / 1000).toFixed(2)}s`
 }
