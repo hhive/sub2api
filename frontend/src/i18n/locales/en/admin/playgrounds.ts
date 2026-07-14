@@ -97,6 +97,7 @@ export default {
       title: 'Image task records',
       description: 'Image generation tasks in reverse chronological order, one record per task.',
       loadFailed: 'Failed to load task records',
+      userId: 'User ID',
       previous: 'Previous',
       next: 'Next',
       pageInfo: 'Page {page}, {total} records',

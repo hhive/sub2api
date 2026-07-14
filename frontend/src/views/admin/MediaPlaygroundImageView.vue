@@ -260,7 +260,7 @@
             </template>
             <template #cell-user="{ row }">
               <div class="font-mono text-xs">
-                <div>用户ID {{ row.user_id || '-' }}</div>
+                <div>{{ t('admin.mediaPlaygroundImage.taskRecords.userId') }} {{ row.user_id || '-' }}</div>
                 <div>API Key {{ row.api_key_suffix || '-' }}</div>
               </div>
             </template>

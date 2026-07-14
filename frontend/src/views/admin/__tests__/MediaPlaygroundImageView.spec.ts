@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
+import enPlaygrounds from '@/i18n/locales/en/admin/playgrounds'
+import zhPlaygrounds from '@/i18n/locales/zh/admin/playgrounds'
 import MediaPlaygroundImageView from '../MediaPlaygroundImageView.vue'
 
 const { listModels, listProbeRuns, listTasks, runModelProbe, showError, showSuccess } = vi.hoisted(() => ({
@@ -69,6 +71,7 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.taskRecords.columns.responseBytes': '响应大小',
     'admin.mediaPlaygroundImage.taskRecords.columns.imageCount': '图片数',
     'admin.mediaPlaygroundImage.taskRecords.columns.error': '错误',
+    'admin.mediaPlaygroundImage.taskRecords.userId': '用户 ID',
     'admin.mediaPlaygroundImage.probeRuns.runButton': '主动探测',
     'admin.mediaPlaygroundImage.probeRuns.singleRunButton': '探测',
     'admin.mediaPlaygroundImage.probeRuns.title': '探测记录',
@@ -139,7 +142,11 @@ const DataTableStub = defineComponent({
             h(
               'tr',
               (props.columns as any[]).map((column) =>
-                h('td', slots[`cell-${column.key}`]?.({ row, value: row[column.key] }) ?? row[column.key] ?? '')
+                h(
+                  'td',
+                  { 'data-column': column.key, 'data-row': row.id ?? row.run_id },
+                  slots[`cell-${column.key}`]?.({ row, value: row[column.key] }) ?? row[column.key] ?? ''
+                )
               )
             )
           )
@@ -315,6 +322,10 @@ describe('MediaPlaygroundImageView', () => {
     expect(wrapper.text()).toContain('图片任务记录')
     expect(wrapper.text()).toContain('1.25s')
     expect(wrapper.text()).toContain('image-task-2')
+    expect(wrapper.get('[data-row="image-task-2"][data-column="duration_ms"]').text()).toBe('-')
+    expect(wrapper.get('[data-row="image-task-1"][data-column="user"]').text()).toContain('用户 ID 3')
+    expect(zhPlaygrounds.mediaPlaygroundImage.taskRecords.userId).toBe('用户 ID')
+    expect(enPlaygrounds.mediaPlaygroundImage.taskRecords.userId).toBe('User ID')
     expect(wrapper.text()).not.toContain('调用记录')
   })
 

@@ -19,7 +19,17 @@ vi.mock('vue-i18n', async () => {
 
 const DataTableStub = defineComponent({
   props: { columns: Array, data: Array },
-  setup(props, { slots }) { return () => h('div', (props.data as any[] || []).flatMap(row => (props.columns as any[] || []).map(col => h('div', slots[`cell-${col.key}`]?.({ row, value: row[col.key] }) || row[col.key] || '')))) },
+  setup(props, { slots }) {
+    return () => h('div', (props.data as any[] || []).flatMap(row =>
+      (props.columns as any[] || []).map(col =>
+        h(
+          'div',
+          { 'data-column': col.key, 'data-row': row.task_id },
+          slots[`cell-${col.key}`]?.({ row, value: row[col.key] }) || row[col.key] || ''
+        )
+      )
+    ))
+  },
 })
 const DialogStub = defineComponent({ props: { show: Boolean }, setup(props, { slots }) { return () => props.show ? h('section', [slots.default?.(), slots.footer?.()]) : null } })
 const model = { id: 7, media_type: 'video', display_name: 'Video', model: 'video-1', provider_name: 'OpenAI', api_mode: 'openai_videos_v2', upstream_base_url: 'https://upstream.test', upstream_api_key: '', upstream_api_key_mask: '123456', price_quota: 2, billing_mode: 'balance_prepaid', refund_enabled: true, timeout_seconds: 90, enabled: true, sort_order: 4 }
@@ -32,8 +42,11 @@ describe('MediaPlaygroundVideoView interactions', () => {
     vi.clearAllMocks()
     listModels.mockResolvedValue([model])
     listTasks.mockResolvedValue({
-      items: [{ task_id: 'local-task-1', user_id: 3, model: 'video-1', status: 'completed', progress: 100, upstream_task_id: 'upstream-task-9', duration_ms: 1500, refund_status: 'none', error_message: '', created_at: '2026-07-13T10:00:00Z' }],
-      total: 1,
+      items: [
+        { task_id: 'local-task-1', user_id: 3, model: 'video-1', status: 'completed', progress: 100, upstream_task_id: 'upstream-task-9', duration_ms: 1500, refund_status: 'none', error_message: '', created_at: '2026-07-13T10:00:00Z' },
+        { task_id: 'local-task-2', user_id: 4, model: 'video-1', status: 'running', progress: 10, upstream_task_id: '', duration_ms: null, refund_status: 'none', error_message: '', created_at: '2026-07-13T10:01:00Z' },
+      ],
+      total: 2,
       page: 1,
       page_size: 20,
     })
@@ -53,6 +66,7 @@ describe('MediaPlaygroundVideoView interactions', () => {
     expect(listTasks).toHaveBeenCalledWith({ page: 1, page_size: 20, status: undefined })
     expect(wrapper.text()).toContain('upstream-task-9')
     expect(wrapper.text()).toContain('1.50s')
+    expect(wrapper.get('[data-row="local-task-2"][data-column="duration_ms"]').text()).toBe('-')
     await button(wrapper, 'local-task-1').trigger('click')
     await flushPromises()
     expect(getTask).toHaveBeenCalledWith('local-task-1')

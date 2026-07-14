@@ -97,6 +97,7 @@ export default {
       title: '图片任务记录',
       description: '按时间倒序展示媒体站图片生成任务，每个任务仅一条记录。',
       loadFailed: '加载任务记录失败',
+      userId: '用户 ID',
       previous: '上一页',
       next: '下一页',
       pageInfo: '第 {page} 页，共 {total} 条',

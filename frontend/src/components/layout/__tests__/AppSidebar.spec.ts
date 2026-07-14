@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { useAppStore } from '@/stores/app'
+import type { PublicSettings } from '@/types'
+import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 
 const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppSidebar.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
@@ -66,10 +71,19 @@ describe('AppSidebar chat menu wiring', () => {
 })
 
 describe('AppSidebar media playground menu wiring', () => {
-  it('keeps the image and video entry enabled by default', () => {
-    expect(componentSource).toContain('FeatureFlags.mediaPlayground')
-    expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../utils/featureFlags.ts'), 'utf8')).toContain("mode: 'opt-out'")
-    expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../stores/app.ts'), 'utf8')).toContain('media_playground_enabled: true')
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('resolves the media playground flag from missing and explicit public settings', () => {
+    const appStore = useAppStore()
+    const mediaPlaygroundEnabled = makeSidebarFlag(FeatureFlags.mediaPlayground)
+
+    appStore.cachedPublicSettings = {} as PublicSettings
+    expect(mediaPlaygroundEnabled()).toBe(true)
+
+    appStore.cachedPublicSettings = { media_playground_enabled: false } as PublicSettings
+    expect(mediaPlaygroundEnabled()).toBe(false)
   })
 
   it('adds an authenticated launch action next to the chat menu', () => {
