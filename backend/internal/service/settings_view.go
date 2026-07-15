@@ -181,6 +181,7 @@ type SystemSettings struct {
 	FirstRechargeBonusEnabled             bool
 	FirstRechargeBonusAmount              float64
 	FirstRechargeBonusValidityDays        int
+	AdminRechargeRebateEnabled            bool
 	DefaultUserRPMLimit                   int
 	DefaultSubscriptions                  []DefaultSubscriptionSetting
 

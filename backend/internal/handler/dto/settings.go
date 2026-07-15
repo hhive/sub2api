@@ -187,6 +187,7 @@ type SystemSettings struct {
 	FirstRechargeBonusEnabled             bool                         `json:"first_recharge_bonus_enabled"`
 	FirstRechargeBonusAmount              float64                      `json:"first_recharge_bonus_amount"`
 	FirstRechargeBonusValidityDays        int                          `json:"first_recharge_bonus_validity_days"`
+	AdminRechargeRebateEnabled            bool                         `json:"affiliate_admin_recharge_enabled"`
 	DefaultUserRPMLimit                   int                          `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                  []DefaultSubscriptionSetting `json:"default_subscriptions"`
 
