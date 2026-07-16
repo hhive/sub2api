@@ -36,6 +36,7 @@ import adminComplianceAPI from './compliance'
 import mediaPlaygroundVideoAPI from './mediaPlaygroundVideo'
 import mediaPlaygroundImageAPI from './mediaPlaygroundImage'
 import defaultModelPricingAPI from './defaultModelPricing'
+import auditAPI from './audit'
 
 /**
  * Unified admin API object for convenient access
@@ -73,7 +74,8 @@ export const adminAPI = {
   compliance: adminComplianceAPI,
   mediaPlaygroundVideo: mediaPlaygroundVideoAPI,
   mediaPlaygroundImage: mediaPlaygroundImageAPI,
-  defaultModelPricing: defaultModelPricingAPI
+  defaultModelPricing: defaultModelPricingAPI,
+  audit: auditAPI
 }
 
 export {
@@ -109,13 +111,15 @@ export {
   adminComplianceAPI,
   mediaPlaygroundVideoAPI,
   mediaPlaygroundImageAPI,
-  defaultModelPricingAPI
+  defaultModelPricingAPI,
+  auditAPI
 }
 
 export default adminAPI
 
 // Re-export types used by components
 export type { BalanceCreditsResponse, BalanceHistoryItem, ManualBalanceSettlementResult, UserBalanceCredit } from './users'
+export type { AuditLog, AuditLogQuery, AuditLogListResponse } from './audit'
 export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'

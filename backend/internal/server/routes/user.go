@@ -16,14 +16,27 @@ func RegisterUserRoutes(
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
 	apiKeyAuth middleware.APIKeyAuthMiddleware,
+	auditLog middleware.AuditLogMiddleware,
 	settingService *service.SettingService,
 ) {
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))
 	authenticated.Use(middleware.BackendModeUserGuard(settingService))
+
+	// Chat requests can contain prompts and attachments, so they stay outside
+	// the management-operation audit middleware while retaining user auth.
+	chat := authenticated.Group("/chat")
+	{
+		chat.GET("/models", h.Chat.ListModels)
+		chat.POST("/completions", h.Chat.CreateCompletion)
+	}
+
+	// 用户管理面变更类操作入审计（含 TOTP 启用/禁用、step-up 验证、密码修改等安全事件）
+	audited := authenticated.Group("")
+	audited.Use(gin.HandlerFunc(auditLog))
 	{
 		// 用户接口
-		user := authenticated.Group("/user")
+		user := audited.Group("/user")
 		{
 			user.GET("/profile", h.User.GetProfile)
 			user.GET("/balance-credits", h.User.GetBalanceCredits)
@@ -56,11 +69,13 @@ func RegisterUserRoutes(
 				totp.POST("/setup", h.Totp.InitiateSetup)
 				totp.POST("/enable", h.Totp.Enable)
 				totp.POST("/disable", h.Totp.Disable)
+				// 敏感操作二次验证：授予当前会话一段时间的 step-up 权限
+				totp.POST("/step-up", h.Totp.StepUp)
 			}
 		}
 
 		// API Key管理
-		keys := authenticated.Group("/keys")
+		keys := audited.Group("/keys")
 		{
 			keys.GET("", h.APIKey.List)
 			keys.GET("/:id", h.APIKey.GetByID)
@@ -70,32 +85,25 @@ func RegisterUserRoutes(
 		}
 
 		// 用户可用分组（非管理员接口）
-		groups := authenticated.Group("/groups")
+		groups := audited.Group("/groups")
 		{
 			groups.GET("/available", h.APIKey.GetAvailableGroups)
 			groups.GET("/rates", h.APIKey.GetUserGroupRates)
 		}
 
 		// 用户可用渠道（非管理员接口）
-		channels := authenticated.Group("/channels")
+		channels := audited.Group("/channels")
 		{
 			channels.GET("/available", h.AvailableChannel.List)
 		}
 
-		// Chat console
-		chat := authenticated.Group("/chat")
-		{
-			chat.GET("/models", h.Chat.ListModels)
-			chat.POST("/completions", h.Chat.CreateCompletion)
-		}
-
-		menuLaunch := authenticated.Group("/menu-launch")
+		menuLaunch := audited.Group("/menu-launch")
 		{
 			menuLaunch.POST("/victory", h.MenuLaunch.Victory)
 		}
 
 		// Usage records
-		usage := authenticated.Group("/usage")
+		usage := audited.Group("/usage")
 		{
 			usage.GET("", h.Usage.List)
 			usage.GET("/errors", h.Usage.ListErrors)
@@ -111,14 +119,14 @@ func RegisterUserRoutes(
 		}
 
 		// 卡密兑换
-		redeem := authenticated.Group("/redeem")
+		redeem := audited.Group("/redeem")
 		{
 			redeem.POST("", h.Redeem.Redeem)
 			redeem.GET("/history", h.Redeem.GetHistory)
 		}
 
 		// 用户订阅
-		subscriptions := authenticated.Group("/subscriptions")
+		subscriptions := audited.Group("/subscriptions")
 		{
 			subscriptions.GET("", h.Subscription.List)
 			subscriptions.GET("/active", h.Subscription.GetActive)
@@ -127,7 +135,7 @@ func RegisterUserRoutes(
 		}
 
 		// 渠道监控（用户只读）
-		monitors := authenticated.Group("/channel-monitors")
+		monitors := audited.Group("/channel-monitors")
 		{
 			monitors.GET("", h.ChannelMonitor.List)
 			monitors.GET("/:id/status", h.ChannelMonitor.GetStatus)
@@ -137,6 +145,7 @@ func RegisterUserRoutes(
 	announcements := v1.Group("/announcements")
 	announcements.Use(announcementAuth(jwtAuth, apiKeyAuth))
 	announcements.Use(middleware.BackendModeUserGuard(settingService))
+	announcements.Use(gin.HandlerFunc(auditLog))
 	{
 		announcements.GET("", h.Announcement.List)
 		announcements.POST("/:id/read", h.Announcement.MarkRead)
@@ -150,6 +159,9 @@ func announcementAuth(jwtAuth middleware.JWTAuthMiddleware, apiKeyAuth middlewar
 			token = strings.TrimSpace(token[len("bearer "):])
 		}
 		if strings.HasPrefix(strings.ToLower(token), "sk-") {
+			// API Key announcement reads are not management operations and the
+			// audit contract has no API Key auth-method classification.
+			middleware.SkipAudit(c)
 			gin.HandlerFunc(apiKeyAuth)(c)
 			return
 		}

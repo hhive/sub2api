@@ -40,6 +40,7 @@ type AdminHandlers struct {
 	Compliance             *admin.ComplianceHandler
 	MediaPlaygroundVideo   *admin.MediaPlaygroundVideoHandler
 	MediaPlaygroundImage   *admin.MediaPlaygroundImageHandler
+	AuditLog               *admin.AuditLogHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -63,6 +64,7 @@ type Handlers struct {
 	AvailableChannel *AvailableChannelHandler
 	Launch           *LaunchHandler
 	ImagePlayground  *ImagePlaygroundTaskHandler
+	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler
 	MenuLaunch       *MenuLaunchHandler
 }

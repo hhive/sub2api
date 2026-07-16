@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import enAdminAccounts from '../locales/en/admin/accounts'
+import enAdminAudit from '../locales/en/admin/audit'
 import enAdminChannels from '../locales/en/admin/channels'
 import enAdminOps from '../locales/en/admin/ops'
 import enAdminOverview from '../locales/en/admin/overview'
@@ -12,6 +13,7 @@ import enDashboard from '../locales/en/dashboard'
 import enLanding from '../locales/en/landing'
 import enMisc from '../locales/en/misc'
 import zhAdminAccounts from '../locales/zh/admin/accounts'
+import zhAdminAudit from '../locales/zh/admin/audit'
 import zhAdminChannels from '../locales/zh/admin/channels'
 import zhAdminOps from '../locales/zh/admin/ops'
 import zhAdminOverview from '../locales/zh/admin/overview'
@@ -56,7 +58,8 @@ const admins: Record<string, Modules> = {
     resources: zhAdminResources,
     ops: zhAdminOps,
     settings: zhAdminSettings,
-    playgrounds: zhAdminPlaygrounds
+    playgrounds: zhAdminPlaygrounds,
+    audit: zhAdminAudit
   },
   en: {
     overview: enAdminOverview,
@@ -65,7 +68,8 @@ const admins: Record<string, Modules> = {
     resources: enAdminResources,
     ops: enAdminOps,
     settings: enAdminSettings,
-    playgrounds: enAdminPlaygrounds
+    playgrounds: enAdminPlaygrounds,
+    audit: enAdminAudit
   }
 }
 
