@@ -311,6 +311,25 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 	settings.AffiliateRebateRate = clampAffiliateRebateRate(settings.AffiliateRebateRate)
 	updates[SettingKeyAffiliateRebateRate] = strconv.FormatFloat(settings.AffiliateRebateRate, 'f', 8, 64)
+	settings.AffiliateSubscriptionRebateMultiplier = clampPercentOrDefault(settings.AffiliateSubscriptionRebateMultiplier, AffiliateSubscriptionRebateMultiplierDefault)
+	updates[SettingKeyAffiliateSubscriptionRebateMultiplier] = strconv.FormatFloat(settings.AffiliateSubscriptionRebateMultiplier, 'f', 8, 64)
+	tieredCfg := normalizeAffiliateTieredRebateConfig(AffiliateTieredRebateConfig{
+		Enabled:                settings.AffiliateTieredRebateEnabled,
+		Tier2MinPaidInvitees:   settings.AffiliateTier2MinPaidInvitees,
+		Tier3MinPaidInvitees:   settings.AffiliateTier3MinPaidInvitees,
+		Tier2MultiplierPercent: settings.AffiliateTier2MultiplierPercent,
+		Tier3MultiplierPercent: settings.AffiliateTier3MultiplierPercent,
+	})
+	settings.AffiliateTieredRebateEnabled = tieredCfg.Enabled
+	settings.AffiliateTier2MinPaidInvitees = tieredCfg.Tier2MinPaidInvitees
+	settings.AffiliateTier3MinPaidInvitees = tieredCfg.Tier3MinPaidInvitees
+	settings.AffiliateTier2MultiplierPercent = tieredCfg.Tier2MultiplierPercent
+	settings.AffiliateTier3MultiplierPercent = tieredCfg.Tier3MultiplierPercent
+	updates[SettingKeyAffiliateTieredRebateEnabled] = strconv.FormatBool(tieredCfg.Enabled)
+	updates[SettingKeyAffiliateTier2MinPaidInvitees] = strconv.Itoa(tieredCfg.Tier2MinPaidInvitees)
+	updates[SettingKeyAffiliateTier3MinPaidInvitees] = strconv.Itoa(tieredCfg.Tier3MinPaidInvitees)
+	updates[SettingKeyAffiliateTier2MultiplierPercent] = strconv.FormatFloat(tieredCfg.Tier2MultiplierPercent, 'f', 8, 64)
+	updates[SettingKeyAffiliateTier3MultiplierPercent] = strconv.FormatFloat(tieredCfg.Tier3MultiplierPercent, 'f', 8, 64)
 	if settings.AffiliateRebateFreezeHours < 0 {
 		settings.AffiliateRebateFreezeHours = AffiliateRebateFreezeHoursDefault
 	}
@@ -329,6 +348,15 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 		settings.AffiliateRebatePerInviteeCap = AffiliateRebatePerInviteeCapDefault
 	}
 	updates[SettingKeyAffiliateRebatePerInviteeCap] = strconv.FormatFloat(settings.AffiliateRebatePerInviteeCap, 'f', 8, 64)
+	updates[SettingKeyFirstRechargeBonusEnabled] = strconv.FormatBool(settings.FirstRechargeBonusEnabled)
+	if settings.FirstRechargeBonusAmount < 0 {
+		settings.FirstRechargeBonusAmount = 0
+	}
+	updates[SettingKeyFirstRechargeBonusAmount] = strconv.FormatFloat(settings.FirstRechargeBonusAmount, 'f', 8, 64)
+	if settings.FirstRechargeBonusValidityDays < 0 {
+		settings.FirstRechargeBonusValidityDays = 0
+	}
+	updates[SettingKeyFirstRechargeBonusValidityDays] = strconv.Itoa(settings.FirstRechargeBonusValidityDays)
 	updates[SettingKeyAffiliateAdminRechargeEnabled] = strconv.FormatBool(settings.AdminRechargeRebateEnabled)
 	updates[SettingKeyDefaultUserRPMLimit] = strconv.Itoa(settings.DefaultUserRPMLimit)
 	defaultSubsJSON, err := json.Marshal(settings.DefaultSubscriptions)

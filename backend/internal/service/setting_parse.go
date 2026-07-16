@@ -135,9 +135,18 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyBalanceCreditValidityDays:                 "0",
 		SettingKeyBalanceCreditDailySettlementHour:          "",
 		SettingKeyAffiliateRebateRate:                       strconv.FormatFloat(AffiliateRebateRateDefault, 'f', 8, 64),
+		SettingKeyAffiliateSubscriptionRebateMultiplier:     strconv.FormatFloat(AffiliateSubscriptionRebateMultiplierDefault, 'f', 8, 64),
+		SettingKeyAffiliateTieredRebateEnabled:              strconv.FormatBool(AffiliateTieredRebateEnabledDefault),
+		SettingKeyAffiliateTier2MinPaidInvitees:             strconv.Itoa(AffiliateTier2MinPaidInviteesDefault),
+		SettingKeyAffiliateTier3MinPaidInvitees:             strconv.Itoa(AffiliateTier3MinPaidInviteesDefault),
+		SettingKeyAffiliateTier2MultiplierPercent:           strconv.FormatFloat(AffiliateTier2MultiplierPercentDefault, 'f', 8, 64),
+		SettingKeyAffiliateTier3MultiplierPercent:           strconv.FormatFloat(AffiliateTier3MultiplierPercentDefault, 'f', 8, 64),
 		SettingKeyAffiliateRebateFreezeHours:                strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:               strconv.Itoa(AffiliateRebateDurationDaysDefault),
 		SettingKeyAffiliateRebatePerInviteeCap:              strconv.FormatFloat(AffiliateRebatePerInviteeCapDefault, 'f', 2, 64),
+		SettingKeyFirstRechargeBonusEnabled:                 strconv.FormatBool(FirstRechargeBonusEnabledDefault),
+		SettingKeyFirstRechargeBonusAmount:                  strconv.FormatFloat(FirstRechargeBonusAmountDefault, 'f', 8, 64),
+		SettingKeyFirstRechargeBonusValidityDays:            strconv.Itoa(FirstRechargeBonusValidityDaysDefault),
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -373,6 +382,17 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	} else {
 		result.AffiliateRebateRate = AffiliateRebateRateDefault
 	}
+	if subscriptionMultiplier, err := strconv.ParseFloat(settings[SettingKeyAffiliateSubscriptionRebateMultiplier], 64); err == nil {
+		result.AffiliateSubscriptionRebateMultiplier = clampPercentOrDefault(subscriptionMultiplier, AffiliateSubscriptionRebateMultiplierDefault)
+	} else {
+		result.AffiliateSubscriptionRebateMultiplier = AffiliateSubscriptionRebateMultiplierDefault
+	}
+	tieredCfg := parseAffiliateTieredRebateConfig(settings)
+	result.AffiliateTieredRebateEnabled = tieredCfg.Enabled
+	result.AffiliateTier2MinPaidInvitees = tieredCfg.Tier2MinPaidInvitees
+	result.AffiliateTier3MinPaidInvitees = tieredCfg.Tier3MinPaidInvitees
+	result.AffiliateTier2MultiplierPercent = tieredCfg.Tier2MultiplierPercent
+	result.AffiliateTier3MultiplierPercent = tieredCfg.Tier3MultiplierPercent
 	if freezeHours, err := strconv.Atoi(settings[SettingKeyAffiliateRebateFreezeHours]); err == nil && freezeHours >= 0 {
 		if freezeHours > AffiliateRebateFreezeHoursMax {
 			freezeHours = AffiliateRebateFreezeHoursMax
@@ -387,6 +407,17 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	}
 	if perInviteeCap, err := strconv.ParseFloat(settings[SettingKeyAffiliateRebatePerInviteeCap], 64); err == nil && perInviteeCap >= 0 {
 		result.AffiliateRebatePerInviteeCap = perInviteeCap
+	}
+	result.FirstRechargeBonusEnabled = settings[SettingKeyFirstRechargeBonusEnabled] == "true"
+	if amount, err := strconv.ParseFloat(settings[SettingKeyFirstRechargeBonusAmount], 64); err == nil && amount >= 0 {
+		result.FirstRechargeBonusAmount = amount
+	} else {
+		result.FirstRechargeBonusAmount = FirstRechargeBonusAmountDefault
+	}
+	if days, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyFirstRechargeBonusValidityDays])); err == nil && days >= 0 {
+		result.FirstRechargeBonusValidityDays = days
+	} else {
+		result.FirstRechargeBonusValidityDays = FirstRechargeBonusValidityDaysDefault
 	}
 	result.AdminRechargeRebateEnabled = settings[SettingKeyAffiliateAdminRechargeEnabled] == "true"
 	result.DefaultSubscriptions = parseDefaultSubscriptions(settings[SettingKeyDefaultSubscriptions])
@@ -952,9 +983,26 @@ func parseAffiliateTieredRebateConfig(settings map[string]string) AffiliateTiere
 	return normalizeAffiliateTieredRebateConfig(cfg)
 }
 
+const maxJavaScriptSafeInteger int64 = 1<<53 - 1
+
+func affiliateTier3MinPaidInviteesMax() int {
+	if int64(math.MaxInt) > maxJavaScriptSafeInteger {
+		maxSafeInteger := maxJavaScriptSafeInteger
+		return int(maxSafeInteger)
+	}
+	return math.MaxInt
+}
+
 func normalizeAffiliateTieredRebateConfig(cfg AffiliateTieredRebateConfig) AffiliateTieredRebateConfig {
+	tier3Max := affiliateTier3MinPaidInviteesMax()
 	if cfg.Tier2MinPaidInvitees <= 0 {
 		cfg.Tier2MinPaidInvitees = AffiliateTier2MinPaidInviteesDefault
+	}
+	if cfg.Tier2MinPaidInvitees > tier3Max-1 {
+		cfg.Tier2MinPaidInvitees = tier3Max - 1
+	}
+	if cfg.Tier3MinPaidInvitees > tier3Max {
+		cfg.Tier3MinPaidInvitees = tier3Max
 	}
 	if cfg.Tier3MinPaidInvitees <= cfg.Tier2MinPaidInvitees {
 		cfg.Tier3MinPaidInvitees = AffiliateTier3MinPaidInviteesDefault

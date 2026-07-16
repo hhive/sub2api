@@ -299,6 +299,24 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.AffiliateRebateRate != after.AffiliateRebateRate {
 		changed = append(changed, "affiliate_rebate_rate")
 	}
+	if before.AffiliateSubscriptionRebateMultiplier != after.AffiliateSubscriptionRebateMultiplier {
+		changed = append(changed, "affiliate_subscription_rebate_multiplier")
+	}
+	if before.AffiliateTieredRebateEnabled != after.AffiliateTieredRebateEnabled {
+		changed = append(changed, "affiliate_tiered_rebate_enabled")
+	}
+	if before.AffiliateTier2MinPaidInvitees != after.AffiliateTier2MinPaidInvitees {
+		changed = append(changed, "affiliate_tier2_min_paid_invitees")
+	}
+	if before.AffiliateTier3MinPaidInvitees != after.AffiliateTier3MinPaidInvitees {
+		changed = append(changed, "affiliate_tier3_min_paid_invitees")
+	}
+	if before.AffiliateTier2MultiplierPercent != after.AffiliateTier2MultiplierPercent {
+		changed = append(changed, "affiliate_tier2_multiplier_percent")
+	}
+	if before.AffiliateTier3MultiplierPercent != after.AffiliateTier3MultiplierPercent {
+		changed = append(changed, "affiliate_tier3_multiplier_percent")
+	}
 	if before.AffiliateRebateFreezeHours != after.AffiliateRebateFreezeHours {
 		changed = append(changed, "affiliate_rebate_freeze_hours")
 	}
@@ -307,6 +325,15 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.AffiliateRebatePerInviteeCap != after.AffiliateRebatePerInviteeCap {
 		changed = append(changed, "affiliate_rebate_per_invitee_cap")
+	}
+	if before.FirstRechargeBonusEnabled != after.FirstRechargeBonusEnabled {
+		changed = append(changed, "first_recharge_bonus_enabled")
+	}
+	if before.FirstRechargeBonusAmount != after.FirstRechargeBonusAmount {
+		changed = append(changed, "first_recharge_bonus_amount")
+	}
+	if before.FirstRechargeBonusValidityDays != after.FirstRechargeBonusValidityDays {
+		changed = append(changed, "first_recharge_bonus_validity_days")
 	}
 	if before.AdminRechargeRebateEnabled != after.AdminRechargeRebateEnabled {
 		changed = append(changed, "affiliate_admin_recharge_enabled")

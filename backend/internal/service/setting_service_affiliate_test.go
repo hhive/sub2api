@@ -5,6 +5,8 @@ package service
 import (
 	"context"
 	"errors"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -88,6 +90,11 @@ func TestGetAffiliateSubscriptionRebateMultiplierPercent(t *testing.T) {
 
 func TestGetAffiliateTieredRebateConfig(t *testing.T) {
 	t.Parallel()
+	tier3Max := math.MaxInt
+	if int64(tier3Max) > maxJavaScriptSafeIntegerForTest {
+		maxSafeInteger := maxJavaScriptSafeIntegerForTest
+		tier3Max = int(maxSafeInteger)
+	}
 	tests := []struct {
 		name   string
 		values map[string]string
@@ -136,6 +143,20 @@ func TestGetAffiliateTieredRebateConfig(t *testing.T) {
 				Tier3MinPaidInvitees:   AffiliateTier3MinPaidInviteesDefault,
 				Tier2MultiplierPercent: AffiliateTier2MultiplierPercentDefault,
 				Tier3MultiplierPercent: 250,
+			},
+		},
+		{
+			name: "legacy platform maximum values normalized to cross JSON safe bounds",
+			values: map[string]string{
+				SettingKeyAffiliateTier2MinPaidInvitees: strconv.Itoa(math.MaxInt),
+				SettingKeyAffiliateTier3MinPaidInvitees: strconv.Itoa(math.MaxInt),
+			},
+			want: AffiliateTieredRebateConfig{
+				Enabled:                AffiliateTieredRebateEnabledDefault,
+				Tier2MinPaidInvitees:   tier3Max - 1,
+				Tier3MinPaidInvitees:   tier3Max,
+				Tier2MultiplierPercent: AffiliateTier2MultiplierPercentDefault,
+				Tier3MultiplierPercent: AffiliateTier3MultiplierPercentDefault,
 			},
 		},
 		{

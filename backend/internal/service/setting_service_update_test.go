@@ -5,6 +5,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -13,8 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const maxJavaScriptSafeIntegerForTest int64 = 1<<53 - 1
+
 type settingUpdateRepoStub struct {
-	updates map[string]string
+	updates     map[string]string
+	getValueErr error
 }
 
 func (s *settingUpdateRepoStub) Get(ctx context.Context, key string) (*Setting, error) {
@@ -22,6 +27,9 @@ func (s *settingUpdateRepoStub) Get(ctx context.Context, key string) (*Setting, 
 }
 
 func (s *settingUpdateRepoStub) GetValue(ctx context.Context, key string) (string, error) {
+	if s.getValueErr != nil {
+		return "", s.getValueErr
+	}
 	panic("unexpected GetValue call")
 }
 
@@ -154,6 +162,189 @@ func TestSettingService_AffiliateAdminRechargeSetting(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, "true", repo.updates[SettingKeyAffiliateAdminRechargeEnabled])
+	})
+}
+
+func TestSettingService_LocalBillingSettingsDefaults(t *testing.T) {
+	repo := &settingUpdateRepoStub{getValueErr: ErrSettingNotFound}
+	svc := NewSettingService(repo, &config.Config{})
+
+	require.NoError(t, svc.InitializeDefaultSettings(context.Background()))
+	require.Equal(t, "false", repo.updates[SettingKeyFirstRechargeBonusEnabled])
+	require.Equal(t, "5.00000000", repo.updates[SettingKeyFirstRechargeBonusAmount])
+	require.Equal(t, "3", repo.updates[SettingKeyFirstRechargeBonusValidityDays])
+	require.Equal(t, "80.00000000", repo.updates[SettingKeyAffiliateSubscriptionRebateMultiplier])
+	require.Equal(t, "false", repo.updates[SettingKeyAffiliateTieredRebateEnabled])
+	require.Equal(t, "10", repo.updates[SettingKeyAffiliateTier2MinPaidInvitees])
+	require.Equal(t, "30", repo.updates[SettingKeyAffiliateTier3MinPaidInvitees])
+	require.Equal(t, "120.00000000", repo.updates[SettingKeyAffiliateTier2MultiplierPercent])
+	require.Equal(t, "150.00000000", repo.updates[SettingKeyAffiliateTier3MultiplierPercent])
+}
+
+func TestSettingService_LocalBillingSettingsRoundTrip(t *testing.T) {
+	t.Run("parses non-default values", func(t *testing.T) {
+		svc := NewSettingService(&settingGetAllRepoStub{values: map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:             "true",
+			SettingKeyFirstRechargeBonusAmount:              "12.5",
+			SettingKeyFirstRechargeBonusValidityDays:        "45",
+			SettingKeyAffiliateSubscriptionRebateMultiplier: "75.5",
+			SettingKeyAffiliateTieredRebateEnabled:          "true",
+			SettingKeyAffiliateTier2MinPaidInvitees:         "12",
+			SettingKeyAffiliateTier3MinPaidInvitees:         "40",
+			SettingKeyAffiliateTier2MultiplierPercent:       "135.5",
+			SettingKeyAffiliateTier3MultiplierPercent:       "175.25",
+		}}, &config.Config{})
+
+		settings, err := svc.GetAllSettings(context.Background())
+		require.NoError(t, err)
+		require.True(t, settings.FirstRechargeBonusEnabled)
+		require.InDelta(t, 12.5, settings.FirstRechargeBonusAmount, 1e-9)
+		require.Equal(t, 45, settings.FirstRechargeBonusValidityDays)
+		require.InDelta(t, 75.5, settings.AffiliateSubscriptionRebateMultiplier, 1e-9)
+		require.True(t, settings.AffiliateTieredRebateEnabled)
+		require.Equal(t, 12, settings.AffiliateTier2MinPaidInvitees)
+		require.Equal(t, 40, settings.AffiliateTier3MinPaidInvitees)
+		require.InDelta(t, 135.5, settings.AffiliateTier2MultiplierPercent, 1e-9)
+		require.InDelta(t, 175.25, settings.AffiliateTier3MultiplierPercent, 1e-9)
+	})
+
+	t.Run("persists all keys", func(t *testing.T) {
+		repo := &settingUpdateRepoStub{}
+		svc := NewSettingService(repo, &config.Config{})
+
+		err := svc.UpdateSettings(context.Background(), &SystemSettings{
+			FirstRechargeBonusEnabled:             true,
+			FirstRechargeBonusAmount:              12.5,
+			FirstRechargeBonusValidityDays:        45,
+			AffiliateSubscriptionRebateMultiplier: 75.5,
+			AffiliateTieredRebateEnabled:          true,
+			AffiliateTier2MinPaidInvitees:         12,
+			AffiliateTier3MinPaidInvitees:         40,
+			AffiliateTier2MultiplierPercent:       135.5,
+			AffiliateTier3MultiplierPercent:       175.25,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "true", repo.updates[SettingKeyFirstRechargeBonusEnabled])
+		require.Equal(t, "12.50000000", repo.updates[SettingKeyFirstRechargeBonusAmount])
+		require.Equal(t, "45", repo.updates[SettingKeyFirstRechargeBonusValidityDays])
+		require.Equal(t, "75.50000000", repo.updates[SettingKeyAffiliateSubscriptionRebateMultiplier])
+		require.Equal(t, "true", repo.updates[SettingKeyAffiliateTieredRebateEnabled])
+		require.Equal(t, "12", repo.updates[SettingKeyAffiliateTier2MinPaidInvitees])
+		require.Equal(t, "40", repo.updates[SettingKeyAffiliateTier3MinPaidInvitees])
+		require.Equal(t, "135.50000000", repo.updates[SettingKeyAffiliateTier2MultiplierPercent])
+		require.Equal(t, "175.25000000", repo.updates[SettingKeyAffiliateTier3MultiplierPercent])
+	})
+}
+
+func TestSettingService_LocalBillingSettingsExplicitZero(t *testing.T) {
+	t.Run("parses explicit zero values", func(t *testing.T) {
+		svc := NewSettingService(&settingGetAllRepoStub{values: map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:             "false",
+			SettingKeyFirstRechargeBonusAmount:              "0",
+			SettingKeyFirstRechargeBonusValidityDays:        "0",
+			SettingKeyAffiliateSubscriptionRebateMultiplier: "0",
+			SettingKeyAffiliateTieredRebateEnabled:          "false",
+			SettingKeyAffiliateTier2MinPaidInvitees:         "1",
+			SettingKeyAffiliateTier3MinPaidInvitees:         "2",
+			SettingKeyAffiliateTier2MultiplierPercent:       "0",
+			SettingKeyAffiliateTier3MultiplierPercent:       "0",
+		}}, &config.Config{})
+
+		settings, err := svc.GetAllSettings(context.Background())
+		require.NoError(t, err)
+		require.False(t, settings.FirstRechargeBonusEnabled)
+		require.Zero(t, settings.FirstRechargeBonusAmount)
+		require.Zero(t, settings.FirstRechargeBonusValidityDays)
+		require.Zero(t, settings.AffiliateSubscriptionRebateMultiplier)
+		require.False(t, settings.AffiliateTieredRebateEnabled)
+		require.Equal(t, 1, settings.AffiliateTier2MinPaidInvitees)
+		require.Equal(t, 2, settings.AffiliateTier3MinPaidInvitees)
+		require.Zero(t, settings.AffiliateTier2MultiplierPercent)
+		require.Zero(t, settings.AffiliateTier3MultiplierPercent)
+	})
+
+	t.Run("persists explicit false and zero values for all keys", func(t *testing.T) {
+		repo := &settingUpdateRepoStub{}
+		svc := NewSettingService(repo, &config.Config{})
+
+		err := svc.UpdateSettings(context.Background(), &SystemSettings{
+			FirstRechargeBonusEnabled:             false,
+			FirstRechargeBonusAmount:              0,
+			FirstRechargeBonusValidityDays:        0,
+			AffiliateSubscriptionRebateMultiplier: 0,
+			AffiliateTieredRebateEnabled:          false,
+			AffiliateTier2MinPaidInvitees:         0,
+			AffiliateTier3MinPaidInvitees:         0,
+			AffiliateTier2MultiplierPercent:       0,
+			AffiliateTier3MultiplierPercent:       0,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "false", repo.updates[SettingKeyFirstRechargeBonusEnabled])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyFirstRechargeBonusAmount])
+		require.Equal(t, "0", repo.updates[SettingKeyFirstRechargeBonusValidityDays])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyAffiliateSubscriptionRebateMultiplier])
+		require.Equal(t, "false", repo.updates[SettingKeyAffiliateTieredRebateEnabled])
+		require.Equal(t, "10", repo.updates[SettingKeyAffiliateTier2MinPaidInvitees])
+		require.Equal(t, "30", repo.updates[SettingKeyAffiliateTier3MinPaidInvitees])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyAffiliateTier2MultiplierPercent])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyAffiliateTier3MultiplierPercent])
+	})
+
+	t.Run("normalizes negative lower bounds", func(t *testing.T) {
+		repo := &settingUpdateRepoStub{}
+		svc := NewSettingService(repo, &config.Config{})
+
+		err := svc.UpdateSettings(context.Background(), &SystemSettings{
+			FirstRechargeBonusAmount:              -1,
+			FirstRechargeBonusValidityDays:        -1,
+			AffiliateSubscriptionRebateMultiplier: -1,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyFirstRechargeBonusAmount])
+		require.Equal(t, "0", repo.updates[SettingKeyFirstRechargeBonusValidityDays])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyAffiliateSubscriptionRebateMultiplier])
+	})
+
+	t.Run("normalizes upper and tiered bounds", func(t *testing.T) {
+		repo := &settingUpdateRepoStub{}
+		svc := NewSettingService(repo, &config.Config{})
+
+		err := svc.UpdateSettings(context.Background(), &SystemSettings{
+			AffiliateSubscriptionRebateMultiplier: 150,
+			AffiliateTier2MinPaidInvitees:         50,
+			AffiliateTier3MinPaidInvitees:         40,
+			AffiliateTier2MultiplierPercent:       -1,
+			AffiliateTier3MultiplierPercent:       600,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "100.00000000", repo.updates[SettingKeyAffiliateSubscriptionRebateMultiplier])
+		require.Equal(t, "50", repo.updates[SettingKeyAffiliateTier2MinPaidInvitees])
+		require.Equal(t, "51", repo.updates[SettingKeyAffiliateTier3MinPaidInvitees])
+		require.Equal(t, "0.00000000", repo.updates[SettingKeyAffiliateTier2MultiplierPercent])
+		require.Equal(t, "500.00000000", repo.updates[SettingKeyAffiliateTier3MultiplierPercent])
+	})
+
+	t.Run("normalizes cross JSON safe maximum", func(t *testing.T) {
+		repo := &settingUpdateRepoStub{}
+		svc := NewSettingService(repo, &config.Config{})
+		tier3Max := math.MaxInt
+		if int64(tier3Max) > maxJavaScriptSafeIntegerForTest {
+			maxSafeInteger := maxJavaScriptSafeIntegerForTest
+			tier3Max = int(maxSafeInteger)
+		}
+
+		err := svc.UpdateSettings(context.Background(), &SystemSettings{
+			AffiliateTier2MinPaidInvitees: math.MaxInt,
+			AffiliateTier3MinPaidInvitees: math.MaxInt,
+		})
+		require.NoError(t, err)
+		require.Equal(t,
+			[]string{strconv.Itoa(tier3Max - 1), strconv.Itoa(tier3Max)},
+			[]string{
+				repo.updates[SettingKeyAffiliateTier2MinPaidInvitees],
+				repo.updates[SettingKeyAffiliateTier3MinPaidInvitees],
+			},
+		)
 	})
 }
 

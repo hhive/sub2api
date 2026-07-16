@@ -519,6 +519,25 @@ async function openUsersTab(wrapper: ReturnType<typeof mountView>) {
   await flushPromises();
 }
 
+function findInputByLabel(
+  wrapper: ReturnType<typeof mountView>,
+  labelText: string,
+): HTMLInputElement {
+  const label = wrapper.findAll("label").find((node) => node.text() === labelText);
+  expect(label).toBeDefined();
+
+  let container = label?.element.parentElement;
+  while (container && container !== wrapper.element) {
+    const input = container.querySelector("input");
+    if (input instanceof HTMLInputElement) {
+      return input;
+    }
+    container = container.parentElement;
+  }
+
+  throw new Error(`Input not found for label: ${labelText}`);
+}
+
 describe("admin SettingsView payment visible method controls", () => {
   beforeEach(() => {
     getSettings.mockReset();
@@ -776,6 +795,132 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         antigravity_user_agent_version: "1.23.2",
+      }),
+    );
+  });
+
+  it("loads and preserves the complete recharge bonus and affiliate tier contract", async () => {
+    const contractSettings = {
+      first_recharge_bonus_enabled: true,
+      first_recharge_bonus_amount: 12.34,
+      first_recharge_bonus_validity_days: 14,
+      affiliate_subscription_rebate_multiplier: 67.5,
+      affiliate_tiered_rebate_enabled: true,
+      affiliate_tier2_min_paid_invitees: 12,
+      affiliate_tier3_min_paid_invitees: 44,
+      affiliate_tier2_multiplier_percent: 135.5,
+      affiliate_tier3_multiplier_percent: 175.25,
+    };
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      affiliate_enabled: true,
+      ...contractSettings,
+    });
+
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.defaults.firstRechargeBonusEnabled",
+      ).checked,
+    ).toBe(true);
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.defaults.firstRechargeBonusAmount",
+      ).value,
+    ).toBe("12.34");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.defaults.firstRechargeBonusValidityDays",
+      ).value,
+    ).toBe("14");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.subscriptionRebateMultiplier",
+      ).value,
+    ).toBe("67.5");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tieredEnabled",
+      ).checked,
+    ).toBe(true);
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier2MinPaidInvitees",
+      ).value,
+    ).toBe("12");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier3MinPaidInvitees",
+      ).value,
+    ).toBe("44");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier2MultiplierPercent",
+      ).value,
+    ).toBe("135.5");
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier3MultiplierPercent",
+      ).value,
+    ).toBe("175.25");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining(contractSettings),
+    );
+  });
+
+  it("preserves cross JSON safe affiliate tier thresholds", async () => {
+    const tier2 = Number.MAX_SAFE_INTEGER - 1;
+    const tier3 = Number.MAX_SAFE_INTEGER;
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      affiliate_enabled: true,
+      affiliate_tiered_rebate_enabled: true,
+      affiliate_tier2_min_paid_invitees: tier2,
+      affiliate_tier3_min_paid_invitees: tier3,
+    });
+
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier2MinPaidInvitees",
+      ).value,
+    ).toBe(String(tier2));
+    expect(
+      findInputByLabel(
+        wrapper,
+        "admin.settings.features.affiliate.tier3MinPaidInvitees",
+      ).value,
+    ).toBe(String(tier3));
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        affiliate_tier2_min_paid_invitees: tier2,
+        affiliate_tier3_min_paid_invitees: tier3,
       }),
     );
   });

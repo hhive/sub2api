@@ -166,9 +166,18 @@ type UpdateSettingsRequest struct {
 	BalanceCreditValidityDays                 *int                              `json:"balance_credit_validity_days"`
 	BalanceCreditDailySettlementHour          *int                              `json:"balance_credit_daily_settlement_hour"`
 	AffiliateRebateRate                       *float64                          `json:"affiliate_rebate_rate"`
+	AffiliateSubscriptionRebateMultiplier     *float64                          `json:"affiliate_subscription_rebate_multiplier"`
+	AffiliateTieredRebateEnabled              *bool                             `json:"affiliate_tiered_rebate_enabled"`
+	AffiliateTier2MinPaidInvitees             *int                              `json:"affiliate_tier2_min_paid_invitees"`
+	AffiliateTier3MinPaidInvitees             *int                              `json:"affiliate_tier3_min_paid_invitees"`
+	AffiliateTier2MultiplierPercent           *float64                          `json:"affiliate_tier2_multiplier_percent"`
+	AffiliateTier3MultiplierPercent           *float64                          `json:"affiliate_tier3_multiplier_percent"`
 	AffiliateRebateFreezeHours                *int                              `json:"affiliate_rebate_freeze_hours"`
 	AffiliateRebateDurationDays               *int                              `json:"affiliate_rebate_duration_days"`
 	AffiliateRebatePerInviteeCap              *float64                          `json:"affiliate_rebate_per_invitee_cap"`
+	FirstRechargeBonusEnabled                 *bool                             `json:"first_recharge_bonus_enabled"`
+	FirstRechargeBonusAmount                  *float64                          `json:"first_recharge_bonus_amount"`
+	FirstRechargeBonusValidityDays            *int                              `json:"first_recharge_bonus_validity_days"`
 	AdminRechargeRebateEnabled                *bool                             `json:"affiliate_admin_recharge_enabled"`
 	DefaultUserRPMLimit                       int                               `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                      []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
@@ -404,6 +413,36 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	if affiliateRebateRate > service.AffiliateRebateRateMax {
 		affiliateRebateRate = service.AffiliateRebateRateMax
 	}
+	affiliateSubscriptionRebateMultiplier := previousSettings.AffiliateSubscriptionRebateMultiplier
+	if req.AffiliateSubscriptionRebateMultiplier != nil {
+		affiliateSubscriptionRebateMultiplier = *req.AffiliateSubscriptionRebateMultiplier
+	}
+	affiliateTieredRebateEnabled := previousSettings.AffiliateTieredRebateEnabled
+	if req.AffiliateTieredRebateEnabled != nil {
+		affiliateTieredRebateEnabled = *req.AffiliateTieredRebateEnabled
+	}
+	affiliateTier2MinPaidInvitees := previousSettings.AffiliateTier2MinPaidInvitees
+	if req.AffiliateTier2MinPaidInvitees != nil {
+		affiliateTier2MinPaidInvitees = *req.AffiliateTier2MinPaidInvitees
+	}
+	affiliateTier3MinPaidInvitees := previousSettings.AffiliateTier3MinPaidInvitees
+	if req.AffiliateTier3MinPaidInvitees != nil {
+		affiliateTier3MinPaidInvitees = *req.AffiliateTier3MinPaidInvitees
+	}
+	affiliateTier2MultiplierPercent := previousSettings.AffiliateTier2MultiplierPercent
+	if req.AffiliateTier2MultiplierPercent != nil {
+		affiliateTier2MultiplierPercent = *req.AffiliateTier2MultiplierPercent
+	}
+	affiliateTier3MultiplierPercent := previousSettings.AffiliateTier3MultiplierPercent
+	if req.AffiliateTier3MultiplierPercent != nil {
+		affiliateTier3MultiplierPercent = *req.AffiliateTier3MultiplierPercent
+	}
+	if affiliateSubscriptionRebateMultiplier < 0 {
+		affiliateSubscriptionRebateMultiplier = 0
+	}
+	if affiliateSubscriptionRebateMultiplier > 100 {
+		affiliateSubscriptionRebateMultiplier = 100
+	}
 	affiliateRebateFreezeHours := previousSettings.AffiliateRebateFreezeHours
 	if req.AffiliateRebateFreezeHours != nil {
 		affiliateRebateFreezeHours = *req.AffiliateRebateFreezeHours
@@ -430,6 +469,24 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	if affiliateRebatePerInviteeCap < 0 {
 		affiliateRebatePerInviteeCap = service.AffiliateRebatePerInviteeCapDefault
+	}
+	firstRechargeBonusEnabled := previousSettings.FirstRechargeBonusEnabled
+	if req.FirstRechargeBonusEnabled != nil {
+		firstRechargeBonusEnabled = *req.FirstRechargeBonusEnabled
+	}
+	firstRechargeBonusAmount := previousSettings.FirstRechargeBonusAmount
+	if req.FirstRechargeBonusAmount != nil {
+		firstRechargeBonusAmount = *req.FirstRechargeBonusAmount
+	}
+	if firstRechargeBonusAmount < 0 {
+		firstRechargeBonusAmount = 0
+	}
+	firstRechargeBonusValidityDays := previousSettings.FirstRechargeBonusValidityDays
+	if req.FirstRechargeBonusValidityDays != nil {
+		firstRechargeBonusValidityDays = *req.FirstRechargeBonusValidityDays
+	}
+	if firstRechargeBonusValidityDays < 0 {
+		firstRechargeBonusValidityDays = 0
 	}
 	adminRechargeRebateEnabled := previousSettings.AdminRechargeRebateEnabled
 	if req.AdminRechargeRebateEnabled != nil {
@@ -1456,9 +1513,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		BalanceCreditValidityDays:              balanceCreditValidityDays,
 		BalanceCreditDailySettlementHour:       balanceCreditDailySettlementHour,
 		AffiliateRebateRate:                    affiliateRebateRate,
+		AffiliateSubscriptionRebateMultiplier:  affiliateSubscriptionRebateMultiplier,
+		AffiliateTieredRebateEnabled:           affiliateTieredRebateEnabled,
+		AffiliateTier2MinPaidInvitees:          affiliateTier2MinPaidInvitees,
+		AffiliateTier3MinPaidInvitees:          affiliateTier3MinPaidInvitees,
+		AffiliateTier2MultiplierPercent:        affiliateTier2MultiplierPercent,
+		AffiliateTier3MultiplierPercent:        affiliateTier3MultiplierPercent,
 		AffiliateRebateFreezeHours:             affiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:            affiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:           affiliateRebatePerInviteeCap,
+		FirstRechargeBonusEnabled:              firstRechargeBonusEnabled,
+		FirstRechargeBonusAmount:               firstRechargeBonusAmount,
+		FirstRechargeBonusValidityDays:         firstRechargeBonusValidityDays,
 		AdminRechargeRebateEnabled:             adminRechargeRebateEnabled,
 		DefaultUserRPMLimit:                    req.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
@@ -1984,9 +2050,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		BalanceCreditValidityDays:                              updatedSettings.BalanceCreditValidityDays,
 		BalanceCreditDailySettlementHour:                       updatedSettings.BalanceCreditDailySettlementHour,
 		AffiliateRebateRate:                                    updatedSettings.AffiliateRebateRate,
+		AffiliateSubscriptionRebateMultiplier:                  updatedSettings.AffiliateSubscriptionRebateMultiplier,
+		AffiliateTieredRebateEnabled:                           updatedSettings.AffiliateTieredRebateEnabled,
+		AffiliateTier2MinPaidInvitees:                          updatedSettings.AffiliateTier2MinPaidInvitees,
+		AffiliateTier3MinPaidInvitees:                          updatedSettings.AffiliateTier3MinPaidInvitees,
+		AffiliateTier2MultiplierPercent:                        updatedSettings.AffiliateTier2MultiplierPercent,
+		AffiliateTier3MultiplierPercent:                        updatedSettings.AffiliateTier3MultiplierPercent,
 		AffiliateRebateFreezeHours:                             updatedSettings.AffiliateRebateFreezeHours,
 		AffiliateRebateDurationDays:                            updatedSettings.AffiliateRebateDurationDays,
 		AffiliateRebatePerInviteeCap:                           updatedSettings.AffiliateRebatePerInviteeCap,
+		FirstRechargeBonusEnabled:                              updatedSettings.FirstRechargeBonusEnabled,
+		FirstRechargeBonusAmount:                               updatedSettings.FirstRechargeBonusAmount,
+		FirstRechargeBonusValidityDays:                         updatedSettings.FirstRechargeBonusValidityDays,
 		AdminRechargeRebateEnabled:                             updatedSettings.AdminRechargeRebateEnabled,
 		DefaultUserRPMLimit:                                    updatedSettings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                                   updatedDefaultSubscriptions,
