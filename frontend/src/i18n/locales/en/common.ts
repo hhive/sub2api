@@ -198,6 +198,9 @@ export default {
     mediaPlaygroundImageConfig: 'Media Site Image Models',
     videoPlaygroundConfig: 'Media Site Video Models',
     riskControl: 'Risk Control',
+    securityAudit: 'Security Audit',
+    contentModeration: 'Content Moderation',
+    promptAudit: 'Prompt Audit',
     auditLogs: 'Audit Logs',
   },
 
