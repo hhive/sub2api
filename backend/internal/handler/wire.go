@@ -43,7 +43,10 @@ func ProvideAdminHandlers(
 	complianceHandler *admin.ComplianceHandler,
 	mediaPlaygroundVideoHandler *admin.MediaPlaygroundVideoHandler,
 	mediaPlaygroundImageHandler *admin.MediaPlaygroundImageHandler,
+	auditLogHandler *admin.AuditLogHandler,
+	upstreamBillingProbe *service.UpstreamBillingProbeService,
 ) *AdminHandlers {
+	accountHandler.SetUpstreamBillingProbeService(upstreamBillingProbe)
 	return &AdminHandlers{
 		Dashboard:              dashboardHandler,
 		User:                   userHandler,
@@ -79,6 +82,7 @@ func ProvideAdminHandlers(
 		Compliance:             complianceHandler,
 		MediaPlaygroundVideo:   mediaPlaygroundVideoHandler,
 		MediaPlaygroundImage:   mediaPlaygroundImageHandler,
+		AuditLog:               auditLogHandler,
 	}
 }
 
@@ -127,6 +131,7 @@ func ProvideHandlers(
 	availableChannelHandler *AvailableChannelHandler,
 	launchHandler *LaunchHandler,
 	imagePlaygroundHandler *ImagePlaygroundTaskHandler,
+	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
 	menuLaunchHandler *MenuLaunchHandler,
 	_ *service.IdempotencyCoordinator,
@@ -152,6 +157,7 @@ func ProvideHandlers(
 		AvailableChannel: availableChannelHandler,
 		Launch:           launchHandler,
 		ImagePlayground:  imagePlaygroundHandler,
+		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
 		MenuLaunch:       menuLaunchHandler,
 	}
@@ -180,6 +186,7 @@ var ProviderSet = wire.NewSet(
 	NewLaunchHandler,
 	NewImagePlaygroundOpenAIImagesTaskExecutor,
 	NewImagePlaygroundTaskHandler,
+	NewAsyncImageHandler,
 	NewBatchImageHandler,
 	NewMenuLaunchHandler,
 
@@ -187,7 +194,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewDashboardHandler,
 	admin.NewUserHandler,
 	admin.NewGroupHandler,
-	admin.NewAccountHandler,
+	admin.ProvideAccountHandler,
 	admin.NewAnnouncementHandler,
 	admin.NewDataManagementHandler,
 	admin.NewBackupHandler,
@@ -218,6 +225,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewComplianceHandler,
 	admin.NewMediaPlaygroundVideoHandler,
 	admin.NewMediaPlaygroundImageHandler,
+	admin.NewAuditLogHandler,
 
 	// AdminHandlers and Handlers constructors
 	ProvideAdminHandlers,
