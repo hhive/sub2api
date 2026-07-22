@@ -6,13 +6,15 @@ import enPlaygrounds from '@/i18n/locales/en/admin/playgrounds'
 import zhPlaygrounds from '@/i18n/locales/zh/admin/playgrounds'
 import MediaPlaygroundImageView from '../MediaPlaygroundImageView.vue'
 
-const { listModels, listProbeRuns, listTasks, runModelProbe, showError, showSuccess } = vi.hoisted(() => ({
+const { createModel, listModels, listProbeRuns, listTasks, runModelProbe, showError, showSuccess, updateModel } = vi.hoisted(() => ({
+  createModel: vi.fn(),
   listModels: vi.fn(),
   listProbeRuns: vi.fn(),
   listTasks: vi.fn(),
   runModelProbe: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
+  updateModel: vi.fn(),
 }))
 
 vi.mock('@/api/admin', () => ({
@@ -22,8 +24,8 @@ vi.mock('@/api/admin', () => ({
       listProbeRuns,
       listTasks,
       runModelProbe,
-      createModel: vi.fn(),
-      updateModel: vi.fn(),
+      createModel,
+      updateModel,
       deleteModel: vi.fn(),
     },
   },
@@ -87,6 +89,7 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.columns.upstream': '上游域名',
     'admin.mediaPlaygroundImage.columns.prices': '档位价格',
     'admin.mediaPlaygroundImage.columns.sizes': '尺寸',
+    'admin.mediaPlaygroundImage.columns.quality': 'Quality',
     'admin.mediaPlaygroundImage.columns.sortOrder': '排序',
     'admin.mediaPlaygroundImage.columns.health': '健康状态',
     'admin.mediaPlaygroundImage.columns.enabled': '启用',
@@ -97,6 +100,16 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.sections.upstream': '上游连接',
     'admin.mediaPlaygroundImage.sections.billingRuntime': '计费与运行',
     'admin.mediaPlaygroundImage.sections.status': '状态',
+    'admin.mediaPlaygroundImage.fields.qualitySupported': '支持 quality',
+    'admin.mediaPlaygroundImage.fields.qualityMultiplierLow': '低质量倍率',
+    'admin.mediaPlaygroundImage.fields.qualityMultiplierMedium': '中质量倍率',
+    'admin.mediaPlaygroundImage.fields.qualityMultiplierHigh': '高质量倍率',
+    'admin.mediaPlaygroundImage.qualityMultiplierInvalid': 'quality 倍率必须是非负有限数',
+    'admin.mediaPlaygroundImage.quality.supported': '支持',
+    'admin.mediaPlaygroundImage.quality.unsupported': '不支持',
+    'admin.mediaPlaygroundImage.quality.low': '低',
+    'admin.mediaPlaygroundImage.quality.medium': '中',
+    'admin.mediaPlaygroundImage.quality.high': '高',
     'admin.mediaPlaygroundImage.apiModes.images': 'Images API',
     'admin.mediaPlaygroundImage.apiModes.responses': 'Responses API',
     'admin.mediaPlaygroundImage.apiModes.geminiGenerateContent': 'Gemini GenerateContent API',
@@ -217,6 +230,10 @@ const model = {
   supported_sizes: ['1k', '2k', '4k'],
   timeout_seconds: 600,
   fallback_to_responses_enabled: true,
+  quality_supported: true,
+  quality_multiplier_low: 0.8,
+  quality_multiplier_medium: 1.2,
+  quality_multiplier_high: 1.8,
   health_status: 'temporary_unavailable',
   consecutive_failures: 2,
   half_open_attempts: 1,
@@ -260,6 +277,8 @@ describe('MediaPlaygroundImageView', () => {
     listProbeRuns.mockReset()
     listTasks.mockReset()
     runModelProbe.mockReset()
+    createModel.mockReset()
+    updateModel.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
     listModels.mockResolvedValue([model])
@@ -296,6 +315,8 @@ describe('MediaPlaygroundImageView', () => {
       page_size: 20,
     })
     runModelProbe.mockResolvedValue({ ok: true, running: true })
+    createModel.mockResolvedValue(model)
+    updateModel.mockResolvedValue(model)
   })
 
   it('shows image model health and error state in the config table', async () => {
@@ -373,6 +394,106 @@ describe('MediaPlaygroundImageView', () => {
     await wrapper.findAll('button').find((item) => item.text() === '清空筛选')!.trigger('click')
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
     expect(wrapper.text()).toContain('2 / 2')
+  })
+
+  it('shows quality capability and multipliers compactly and includes them in local filtering', async () => {
+    listModels.mockResolvedValue([
+      model,
+      {
+        ...secondModel,
+        quality_supported: false,
+        quality_multiplier_low: 1,
+        quality_multiplier_medium: 1,
+        quality_multiplier_high: 1,
+      },
+    ])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const qualityCell = wrapper.get('[data-row="7"][data-column="quality_supported"]')
+    expect(qualityCell.text()).toContain('支持')
+    expect(qualityCell.text()).toContain('低 0.8')
+    expect(qualityCell.text()).toContain('中 1.2')
+    expect(qualityCell.text()).toContain('高 1.8')
+
+    await wrapper.get('input[type="search"]').setValue('不支持')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Image Backup')
+  })
+
+  it('defaults quality support off and reveals multiplier inputs only when enabled', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '新建模型')!.trigger('click')
+
+    const qualityToggle = wrapper.get('[data-testid="quality-supported"]')
+    expect((qualityToggle.element as HTMLInputElement).checked).toBe(false)
+    expect(wrapper.find('[data-testid="quality-multipliers"]').exists()).toBe(false)
+
+    await qualityToggle.setValue(true)
+    const multiplierInputs = wrapper.get('[data-testid="quality-multipliers"]').findAll('input')
+    expect(multiplierInputs.map((input) => (input.element as HTMLInputElement).value)).toEqual(['1', '1', '1'])
+  })
+
+  it('submits explicit quality capability and multiplier values', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '新建模型')!.trigger('click')
+
+    const form = wrapper.get('#media-playground-image-model-form')
+    const textInputs = form.findAll('input:not([type="number"]):not([type="checkbox"])')
+    await textInputs[0].setValue('Quality Model')
+    await textInputs[1].setValue('gpt-image-quality')
+    await textInputs[2].setValue('OpenAI')
+    await textInputs[3].setValue('https://quality.test')
+    await wrapper.get('[data-testid="quality-supported"]').setValue(true)
+    const multiplierInputs = wrapper.get('[data-testid="quality-multipliers"]').findAll('input')
+    await multiplierInputs[0].setValue('0.75')
+    await multiplierInputs[1].setValue('1.25')
+    await multiplierInputs[2].setValue('2')
+    await form.trigger('submit')
+    await flushPromises()
+
+    expect(createModel).toHaveBeenCalledWith(expect.objectContaining({
+      quality_supported: true,
+      quality_multiplier_low: 0.75,
+      quality_multiplier_medium: 1.25,
+      quality_multiplier_high: 2,
+    }))
+  })
+
+  it('hydrates quality settings when editing and preserves them in the update payload', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '编辑')!.trigger('click')
+
+    expect((wrapper.get('[data-testid="quality-supported"]').element as HTMLInputElement).checked).toBe(true)
+    expect(wrapper.get('[data-testid="quality-multipliers"]').findAll('input').map((input) => (
+      input.element as HTMLInputElement
+    ).value)).toEqual(['0.8', '1.2', '1.8'])
+
+    await wrapper.get('#media-playground-image-model-form').trigger('submit')
+    await flushPromises()
+    expect(updateModel).toHaveBeenCalledWith(7, expect.objectContaining({
+      quality_supported: true,
+      quality_multiplier_low: 0.8,
+      quality_multiplier_medium: 1.2,
+      quality_multiplier_high: 1.8,
+    }))
+  })
+
+  it('rejects invalid quality multipliers before submitting', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '新建模型')!.trigger('click')
+    await wrapper.get('[data-testid="quality-supported"]').setValue(true)
+    await wrapper.get('[data-testid="quality-multipliers"]').findAll('input')[0].setValue('-0.1')
+
+    await wrapper.get('#media-playground-image-model-form').trigger('submit')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith('quality 倍率必须是非负有限数')
+    expect(createModel).not.toHaveBeenCalled()
   })
 
   it('sorts image rows ascending and descending from the same header', async () => {

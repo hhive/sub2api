@@ -17,6 +17,10 @@ export interface MediaPlaygroundImageModel {
   price_1k: number
   price_2k: number
   price_4k: number
+  quality_supported: boolean
+  quality_multiplier_low: number
+  quality_multiplier_medium: number
+  quality_multiplier_high: number
   supported_sizes: ImageSizeTier[]
   timeout_seconds: number
   fallback_to_responses_enabled: boolean

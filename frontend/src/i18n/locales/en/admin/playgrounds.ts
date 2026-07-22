@@ -127,6 +127,7 @@ export default {
       }
     },
     sizeRequired: 'Select at least one supported size',
+    qualityMultiplierInvalid: 'Quality multipliers must be finite non-negative numbers',
     filters: {
       searchPlaceholder: 'Filter image models',
       clear: 'Clear filter',
@@ -145,6 +146,7 @@ export default {
       upstream: 'Upstream',
       prices: 'Tier prices',
       sizes: 'Sizes',
+      quality: 'Quality',
       sortOrder: 'Sort order',
       health: 'Health',
       enabled: 'Enabled'
@@ -159,11 +161,22 @@ export default {
       price1k: '1k price',
       price2k: '2k price',
       price4k: '4k price',
+      qualitySupported: 'Support quality',
+      qualityMultiplierLow: 'Low quality multiplier',
+      qualityMultiplierMedium: 'Medium quality multiplier',
+      qualityMultiplierHigh: 'High quality multiplier',
       supportedSizes: 'Supported sizes',
       timeoutSeconds: 'Timeout seconds',
       sortOrder: 'Sort order',
       enabled: 'Enable model',
       fallbackToResponses: 'Retry once with Responses API config when generation fails'
+    },
+    quality: {
+      supported: 'Supported',
+      unsupported: 'Unsupported',
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High'
     },
     apiModes: {
       images: 'Images API',

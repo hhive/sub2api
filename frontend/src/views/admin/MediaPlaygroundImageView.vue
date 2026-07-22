@@ -66,6 +66,18 @@
               <span v-for="size in row.supported_sizes" :key="size" class="badge badge-gray">{{ size }}</span>
             </div>
           </template>
+          <template #cell-quality_supported="{ row }">
+            <div class="min-w-[150px] space-y-1 text-xs">
+              <span :class="row.quality_supported ? 'badge badge-success' : 'badge badge-gray'">
+                {{ row.quality_supported ? t('admin.mediaPlaygroundImage.quality.supported') : t('admin.mediaPlaygroundImage.quality.unsupported') }}
+              </span>
+              <div v-if="row.quality_supported" class="flex flex-wrap gap-x-2 font-mono text-gray-600 dark:text-gray-300">
+                <span>{{ t('admin.mediaPlaygroundImage.quality.low') }} {{ row.quality_multiplier_low }}</span>
+                <span>{{ t('admin.mediaPlaygroundImage.quality.medium') }} {{ row.quality_multiplier_medium }}</span>
+                <span>{{ t('admin.mediaPlaygroundImage.quality.high') }} {{ row.quality_multiplier_high }}</span>
+              </div>
+            </div>
+          </template>
           <template #cell-sort_order="{ row }">
             <span class="font-mono text-xs text-gray-600 dark:text-gray-300">{{ row.sort_order }}</span>
           </template>
@@ -233,6 +245,32 @@
                 {{ size }}
               </label>
             </div>
+            </div>
+
+            <div class="space-y-3">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input
+                  v-model="form.quality_supported"
+                  data-testid="quality-supported"
+                  type="checkbox"
+                  class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                {{ t('admin.mediaPlaygroundImage.fields.qualitySupported') }}
+              </label>
+              <div v-if="form.quality_supported" data-testid="quality-multipliers" class="grid gap-4 sm:grid-cols-3">
+                <label class="block">
+                  <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.qualityMultiplierLow') }}</span>
+                  <input v-model.number="form.quality_multiplier_low" class="input" type="number" min="0" step="0.000001" required />
+                </label>
+                <label class="block">
+                  <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.qualityMultiplierMedium') }}</span>
+                  <input v-model.number="form.quality_multiplier_medium" class="input" type="number" min="0" step="0.000001" required />
+                </label>
+                <label class="block">
+                  <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.qualityMultiplierHigh') }}</span>
+                  <input v-model.number="form.quality_multiplier_high" class="input" type="number" min="0" step="0.000001" required />
+                </label>
+              </div>
             </div>
 
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -480,6 +518,10 @@ const defaultForm = (): MediaPlaygroundImageModelPayload => ({
   price_1k: 1,
   price_2k: 2,
   price_4k: 4,
+  quality_supported: false,
+  quality_multiplier_low: 1,
+  quality_multiplier_medium: 1,
+  quality_multiplier_high: 1,
   supported_sizes: ['1k', '2k', '4k'],
   timeout_seconds: 600,
   fallback_to_responses_enabled: true,
@@ -516,6 +558,16 @@ const filteredModels = computed(() => {
     model.upstream_base_url,
     model.health_status,
     healthStatusLabel(model.health_status),
+    model.quality_supported
+      ? t('admin.mediaPlaygroundImage.quality.supported')
+      : t('admin.mediaPlaygroundImage.quality.unsupported'),
+    model.quality_supported ? t('admin.mediaPlaygroundImage.fields.qualitySupported') : '',
+    model.quality_supported ? t('admin.mediaPlaygroundImage.quality.low') : '',
+    model.quality_supported ? t('admin.mediaPlaygroundImage.quality.medium') : '',
+    model.quality_supported ? t('admin.mediaPlaygroundImage.quality.high') : '',
+    model.quality_supported ? model.quality_multiplier_low : '',
+    model.quality_supported ? model.quality_multiplier_medium : '',
+    model.quality_supported ? model.quality_multiplier_high : '',
     ...(model.supported_sizes ?? []),
   ].some((value) => String(value ?? '').trim().toLocaleLowerCase().includes(query)))
 })
@@ -527,6 +579,7 @@ const columns = computed<Column[]>(() => [
   { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.columns.upstream'), sortable: true },
   { key: 'price_1k', label: t('admin.mediaPlaygroundImage.columns.prices'), sortable: true },
   { key: 'supported_sizes', label: t('admin.mediaPlaygroundImage.columns.sizes') },
+  { key: 'quality_supported', label: t('admin.mediaPlaygroundImage.columns.quality') },
   { key: 'sort_order', label: t('admin.mediaPlaygroundImage.columns.sortOrder'), sortable: true },
   { key: 'health_status', label: t('admin.mediaPlaygroundImage.columns.health'), sortable: true },
   { key: 'enabled', label: t('admin.mediaPlaygroundImage.columns.enabled'), sortable: true },
@@ -614,6 +667,10 @@ function assignFormFromModel(model: MediaPlaygroundImageModel, options: { copyKe
     price_1k: model.price_1k,
     price_2k: model.price_2k,
     price_4k: model.price_4k,
+    quality_supported: model.quality_supported ?? false,
+    quality_multiplier_low: model.quality_multiplier_low ?? 1,
+    quality_multiplier_medium: model.quality_multiplier_medium ?? 1,
+    quality_multiplier_high: model.quality_multiplier_high ?? 1,
     supported_sizes: model.supported_sizes?.length ? [...model.supported_sizes] : [...sizeOptions],
     timeout_seconds: model.timeout_seconds,
     fallback_to_responses_enabled: model.fallback_to_responses_enabled ?? true,
@@ -762,6 +819,10 @@ function buildUpdatePayloadFromModel(model: MediaPlaygroundImageModel, overrides
     price_1k: model.price_1k,
     price_2k: model.price_2k,
     price_4k: model.price_4k,
+    quality_supported: model.quality_supported ?? false,
+    quality_multiplier_low: model.quality_multiplier_low ?? 1,
+    quality_multiplier_medium: model.quality_multiplier_medium ?? 1,
+    quality_multiplier_high: model.quality_multiplier_high ?? 1,
     supported_sizes: model.supported_sizes?.length ? [...model.supported_sizes] : [...sizeOptions],
     timeout_seconds: model.timeout_seconds,
     fallback_to_responses_enabled: model.fallback_to_responses_enabled ?? true,
@@ -787,6 +848,15 @@ async function toggleModelEnabled(model: MediaPlaygroundImageModel) {
 async function saveModel() {
   if (!form.supported_sizes.length) {
     appStore.showError(t('admin.mediaPlaygroundImage.sizeRequired'))
+    return
+  }
+  const qualityMultipliers = [
+    form.quality_multiplier_low,
+    form.quality_multiplier_medium,
+    form.quality_multiplier_high,
+  ]
+  if (qualityMultipliers.some((value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+    appStore.showError(t('admin.mediaPlaygroundImage.qualityMultiplierInvalid'))
     return
   }
   saving.value = true

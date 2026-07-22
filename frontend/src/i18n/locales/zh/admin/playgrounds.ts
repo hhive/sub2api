@@ -127,6 +127,7 @@ export default {
       }
     },
     sizeRequired: '至少选择一个支持尺寸',
+    qualityMultiplierInvalid: 'quality 倍率必须是非负有限数',
     filters: {
       searchPlaceholder: '筛选图片模型',
       clear: '清空筛选',
@@ -145,6 +146,7 @@ export default {
       upstream: '上游域名',
       prices: '档位价格',
       sizes: '尺寸',
+      quality: 'Quality',
       sortOrder: '排序',
       health: '健康状态',
       enabled: '启用'
@@ -159,11 +161,22 @@ export default {
       price1k: '1k 价格',
       price2k: '2k 价格',
       price4k: '4k 价格',
+      qualitySupported: '支持 quality',
+      qualityMultiplierLow: '低质量倍率',
+      qualityMultiplierMedium: '中质量倍率',
+      qualityMultiplierHigh: '高质量倍率',
       supportedSizes: '支持尺寸',
       timeoutSeconds: '超时秒数',
       sortOrder: '排序',
       enabled: '启用模型',
       fallbackToResponses: '生成失败时使用 Responses API 配置兜底重试一次'
+    },
+    quality: {
+      supported: '支持',
+      unsupported: '不支持',
+      low: '低',
+      medium: '中',
+      high: '高'
     },
     apiModes: {
       images: 'Images API',
