@@ -120,6 +120,7 @@
             v-for="(column, index) in columns"
             :key="column.key"
             scope="col"
+            :tabindex="column.sortable ? 0 : undefined"
             :aria-sort="column.sortable ? getColumnAriaSort(column.key) : undefined"
             :class="[
               'sticky-header-cell py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-dark-400',
@@ -129,6 +130,7 @@
               column.class
             ]"
             @click="column.sortable && handleSort(column.key)"
+            @keydown="handleHeaderKeydown($event, column)"
           >
             <div :class="['flex items-center space-x-1', getHeaderContentAlignmentClass(column)]">
               <slot
@@ -683,6 +685,12 @@ const handleSort = (key: string) => {
     sortKey.value = key
     sortOrder.value = newOrder
   }
+}
+
+const handleHeaderKeydown = (event: KeyboardEvent, column: Column) => {
+  if (!column.sortable || (event.key !== 'Enter' && event.key !== ' ')) return
+  event.preventDefault()
+  handleSort(column.key)
 }
 
 const sortedData = computed(() => {

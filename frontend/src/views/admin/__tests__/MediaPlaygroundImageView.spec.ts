@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { computed, defineComponent, h, nextTick, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import enPlaygrounds from '@/i18n/locales/en/admin/playgrounds'
@@ -90,6 +90,13 @@ vi.mock('vue-i18n', async () => {
     'admin.mediaPlaygroundImage.columns.sortOrder': '排序',
     'admin.mediaPlaygroundImage.columns.health': '健康状态',
     'admin.mediaPlaygroundImage.columns.enabled': '启用',
+    'admin.mediaPlaygroundImage.filters.searchPlaceholder': '筛选图片模型',
+    'admin.mediaPlaygroundImage.filters.clear': '清空筛选',
+    'admin.mediaPlaygroundImage.filters.resultCount': '{visible} / {total}',
+    'admin.mediaPlaygroundImage.sections.basic': '基础信息',
+    'admin.mediaPlaygroundImage.sections.upstream': '上游连接',
+    'admin.mediaPlaygroundImage.sections.billingRuntime': '计费与运行',
+    'admin.mediaPlaygroundImage.sections.status': '状态',
     'admin.mediaPlaygroundImage.apiModes.images': 'Images API',
     'admin.mediaPlaygroundImage.apiModes.responses': 'Responses API',
     'admin.mediaPlaygroundImage.apiModes.geminiGenerateContent': 'Gemini GenerateContent API',
@@ -133,12 +140,42 @@ const DataTableStub = defineComponent({
     loading: { type: Boolean, default: false },
   },
   setup(props, { slots }) {
+    const sortKey = ref('')
+    const sortOrder = ref<'asc' | 'desc'>('asc')
+    const sortedData = computed(() => {
+      const rows = [...(props.data as any[])]
+      if (!sortKey.value) return rows
+      return rows.sort((left, right) => {
+        const result = String(left[sortKey.value] ?? '').localeCompare(String(right[sortKey.value] ?? ''), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        })
+        return sortOrder.value === 'asc' ? result : -result
+      })
+    })
+    const sort = (column: any) => {
+      if (!column.sortable) return
+      if (sortKey.value === column.key) sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+      else {
+        sortKey.value = column.key
+        sortOrder.value = 'asc'
+      }
+    }
     return () =>
       h('table', [
-        h('thead', [h('tr', (props.columns as any[]).map((column) => h('th', column.label)))]),
+        h('thead', [h('tr', (props.columns as any[]).map((column) => h('th', {
+          'data-column': column.key,
+          'data-sortable': String(Boolean(column.sortable)),
+          'aria-sort': column.sortable
+            ? sortKey.value === column.key
+              ? sortOrder.value === 'asc' ? 'ascending' : 'descending'
+              : 'none'
+            : undefined,
+          onClick: () => sort(column),
+        }, column.label)))]),
         h(
           'tbody',
-          (props.data as any[]).map((row) =>
+          sortedData.value.map((row) =>
             h(
               'tr',
               (props.columns as any[]).map((column) =>
@@ -195,6 +232,11 @@ const secondModel = {
   id: 8,
   display_name: 'Image Backup',
   model: 'gpt-image-backup',
+  provider_name: 'Stability',
+  api_mode: 'responses',
+  upstream_base_url: 'https://backup.test',
+  price_1k: 0.5,
+  health_status: 'available',
   sort_order: 2,
 }
 
@@ -266,6 +308,96 @@ describe('MediaPlaygroundImageView', () => {
     expect(wrapper.text()).toContain('冷却 1')
     expect(wrapper.text()).toContain('半开 1')
     expect(wrapper.text()).toContain('upstream status 524')
+  })
+
+  it('groups the image model form into four semantic sections', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find((item) => item.text() === '新建模型')!.trigger('click')
+
+    expect(wrapper.findAll('fieldset').map((section) => section.attributes('data-testid'))).toEqual([
+      'model-section-basic',
+      'model-section-upstream',
+      'model-section-billing-runtime',
+      'model-section-status',
+    ])
+    expect(wrapper.findAll('legend').map((legend) => legend.text())).toEqual([
+      '基础信息',
+      '上游连接',
+      '计费与运行',
+      '状态',
+    ])
+  })
+
+  it('uses the shared leading column order and only marks supported image columns sortable', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const columns = wrapper.findComponent(DataTableStub).props('columns') as any[]
+    expect(columns.slice(0, 4).map((column) => column.key)).toEqual([
+      'display_name',
+      'provider_name',
+      'api_mode',
+      'upstream_base_url',
+    ])
+    expect(columns.filter((column) => column.sortable).map((column) => column.key)).toEqual([
+      'display_name',
+      'provider_name',
+      'api_mode',
+      'upstream_base_url',
+      'price_1k',
+      'sort_order',
+      'health_status',
+      'enabled',
+    ])
+    expect(columns.find((column) => column.key === 'actions')?.sortable).not.toBe(true)
+  })
+
+  it('filters image models locally, reports counts, and restores all rows when cleared', async () => {
+    listModels.mockResolvedValue([model, secondModel])
+    const wrapper = mountView()
+    await flushPromises()
+    const callsAfterLoad = listModels.mock.calls.length
+
+    const search = wrapper.get('input[type="search"]')
+    expect(search.attributes('aria-label')).toBe('筛选图片模型')
+    expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite')
+    await search.setValue('GPT-IMAGE-BACKUP')
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Image Backup')
+    expect(wrapper.text()).not.toContain('Image Fast')
+    expect(wrapper.text()).toContain('1 / 2')
+    expect(listModels).toHaveBeenCalledTimes(callsAfterLoad)
+
+    await wrapper.findAll('button').find((item) => item.text() === '清空筛选')!.trigger('click')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    expect(wrapper.text()).toContain('2 / 2')
+  })
+
+  it('sorts image rows ascending and descending from the same header', async () => {
+    listModels.mockResolvedValue([
+      model,
+      secondModel,
+      { ...model, id: 9, display_name: 'Zeta Local', upstream_base_url: 'https://local.invalid' },
+    ])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rowIds = () => wrapper.findAll('tbody [data-column="display_name"]').map((cell) => cell.attributes('data-row'))
+    const header = wrapper.get('thead [data-column="display_name"]')
+    await wrapper.get('input[type="search"]').setValue('.test')
+    await header.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('ascending')
+    expect(rowIds()).toEqual(['8', '7'])
+
+    await header.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('descending')
+    expect(rowIds()).toEqual(['7', '8'])
+
+    await wrapper.findAll('button').find((item) => item.text() === '清空筛选')!.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('descending')
+    expect(rowIds()).toEqual(['9', '7', '8'])
   })
 
   it('loads probe records, displays running probes, pages, and refreshes the current page', async () => {

@@ -83,6 +83,30 @@ describe('DataTable', () => {
     expect(nameHeader.findAll('svg')[1].classes()).toContain('text-primary-600')
   })
 
+  it('activates sortable headers with Enter and Space, but ignores non-sortable headers', async () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [
+          { key: 'name', label: 'Name', sortable: true },
+          { key: 'status', label: 'Status', sortable: false }
+        ],
+        data: [{ id: 1, name: 'Alpha', status: 'ready' }]
+      }
+    })
+
+    const [nameHeader, statusHeader] = wrapper.findAll('th')
+    expect(nameHeader.attributes('tabindex')).toBe('0')
+    expect(statusHeader.attributes('tabindex')).toBeUndefined()
+
+    await nameHeader.trigger('keydown', { key: 'Enter' })
+    expect(nameHeader.attributes('aria-sort')).toBe('ascending')
+    await nameHeader.trigger('keydown', { key: ' ' })
+    expect(nameHeader.attributes('aria-sort')).toBe('descending')
+
+    await statusHeader.trigger('keydown', { key: 'Enter' })
+    expect(statusHeader.attributes('aria-sort')).toBeUndefined()
+  })
+
   it('renders every row with no virtual padding spacer for small datasets (virtualization off)', async () => {
     const data = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: `Row ${i + 1}` }))
     const wrapper = mount(DataTable, {

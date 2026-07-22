@@ -24,7 +24,24 @@
       </div>
 
       <section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-        <DataTable :columns="columns" :data="models" :loading="loading">
+        <div class="flex flex-col gap-3 border-b border-gray-200 p-4 dark:border-dark-700 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            v-model="filterQuery"
+            type="search"
+            class="input sm:max-w-sm"
+            :aria-label="t('admin.mediaPlaygroundImage.filters.searchPlaceholder')"
+            :placeholder="t('admin.mediaPlaygroundImage.filters.searchPlaceholder')"
+          />
+          <div class="flex items-center justify-between gap-3 sm:justify-end">
+            <span class="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+              {{ t('admin.mediaPlaygroundImage.filters.resultCount', { visible: filteredModels.length, total: models.length }) }}
+            </span>
+            <button v-if="filterQuery" class="btn btn-secondary" type="button" @click="filterQuery = ''">
+              {{ t('admin.mediaPlaygroundImage.filters.clear') }}
+            </button>
+          </div>
+        </div>
+        <DataTable :columns="columns" :data="filteredModels" :loading="loading">
           <template #cell-display_name="{ row }">
             <div>
               <div class="font-medium text-gray-900 dark:text-white">{{ row.display_name }}</div>
@@ -37,7 +54,7 @@
           <template #cell-api_mode="{ row }">
             <span class="badge badge-gray">{{ apiModeLabel(row.api_mode) }}</span>
           </template>
-          <template #cell-prices="{ row }">
+          <template #cell-price_1k="{ row }">
             <div class="space-y-1 font-mono text-xs">
               <div>1k {{ row.price_1k }}</div>
               <div>2k {{ row.price_2k }}</div>
@@ -52,7 +69,7 @@
           <template #cell-sort_order="{ row }">
             <span class="font-mono text-xs text-gray-600 dark:text-gray-300">{{ row.sort_order }}</span>
           </template>
-          <template #cell-health="{ row }">
+          <template #cell-health_status="{ row }">
             <div class="min-w-[220px] space-y-1 text-xs text-gray-600 dark:text-gray-300">
               <div class="flex flex-wrap items-center gap-2">
                 <span :class="healthBadgeClass(row.health_status)">
@@ -125,32 +142,44 @@
             </select>
           </label>
 
-          <div class="grid gap-4 lg:grid-cols-2">
-            <label class="block">
+          <fieldset data-testid="model-section-basic" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.mediaPlaygroundImage.sections.basic') }}</legend>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.displayName') }}</span>
               <input v-model.trim="form.display_name" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.model') }}</span>
               <input v-model.trim="form.model" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.apiMode') }}</span>
               <select v-model="form.api_mode" class="input" required>
                 <option value="images">{{ t('admin.mediaPlaygroundImage.apiModes.images') }}</option>
                 <option value="responses">{{ t('admin.mediaPlaygroundImage.apiModes.responses') }}</option>
                 <option value="gemini_generate_content">{{ t('admin.mediaPlaygroundImage.apiModes.geminiGenerateContent') }}</option>
               </select>
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.providerName') }}</span>
               <input v-model.trim="form.provider_name" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
+                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.sortOrder') }}</span>
+                <input v-model.number="form.sort_order" class="input" type="number" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset data-testid="model-section-upstream" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.mediaPlaygroundImage.sections.upstream') }}</legend>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.upstreamBaseURL') }}</span>
               <input v-model.trim="form.upstream_base_url" class="input" placeholder="https://api.example.com" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.upstreamAPIKey') }}</span>
               <div class="relative">
                 <input
@@ -168,10 +197,13 @@
                   <Icon :name="upstreamKeyVisible ? 'eyeOff' : 'eye'" size="md" />
                 </button>
               </div>
-            </label>
-          </div>
+              </label>
+            </div>
+          </fieldset>
 
-          <div class="grid gap-4 sm:grid-cols-3">
+          <fieldset data-testid="model-section-billing-runtime" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.mediaPlaygroundImage.sections.billingRuntime') }}</legend>
+            <div class="grid gap-4 sm:grid-cols-3">
               <label class="block">
                 <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.price1k') }}</span>
                 <input v-model.number="form.price_1k" class="input" type="number" min="0" step="0.000001" required />
@@ -184,20 +216,16 @@
                 <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.price4k') }}</span>
                 <input v-model.number="form.price_4k" class="input" type="number" min="0" step="0.000001" required />
               </label>
-          </div>
+            </div>
 
-          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
                 <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.timeoutSeconds') }}</span>
                 <input v-model.number="form.timeout_seconds" class="input" type="number" min="1" required />
               </label>
-              <label class="block">
-                <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.sortOrder') }}</span>
-                <input v-model.number="form.sort_order" class="input" type="number" />
-              </label>
-          </div>
+            </div>
 
-          <div>
+            <div>
             <span class="input-label">{{ t('admin.mediaPlaygroundImage.fields.supportedSizes') }}</span>
             <div class="mt-2 flex flex-wrap gap-4">
               <label v-for="size in sizeOptions" :key="size" class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -205,18 +233,21 @@
                 {{ size }}
               </label>
             </div>
-          </div>
+            </div>
 
-          <div class="flex flex-wrap gap-4">
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-              <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-              {{ t('admin.mediaPlaygroundImage.fields.enabled') }}
-            </label>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
               <input v-model="form.fallback_to_responses_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               {{ t('admin.mediaPlaygroundImage.fields.fallbackToResponses') }}
             </label>
-          </div>
+          </fieldset>
+
+          <fieldset data-testid="model-section-status" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.mediaPlaygroundImage.sections.status') }}</legend>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {{ t('admin.mediaPlaygroundImage.fields.enabled') }}
+            </label>
+          </fieldset>
         </form>
 
         <template #footer>
@@ -414,6 +445,7 @@ const appStore = useAppStore()
 const sizeOptions: ImageSizeTier[] = ['1k', '2k', '4k']
 
 const models = ref<MediaPlaygroundImageModel[]>([])
+const filterQuery = ref('')
 const probeRuns = ref<MediaPlaygroundImageProbeRun[]>([])
 const taskRecords = ref<MediaPlaygroundImageTaskRecord[]>([])
 const loading = ref(false)
@@ -471,16 +503,33 @@ const upstreamKeyPlaceholder = computed(() => {
   return 'sk-...'
 })
 
+const filteredModels = computed(() => {
+  const query = filterQuery.value.trim().toLocaleLowerCase()
+  if (!query) return models.value
+
+  return models.value.filter((model) => [
+    model.display_name,
+    model.model,
+    model.provider_name,
+    model.api_mode,
+    apiModeLabel(model.api_mode),
+    model.upstream_base_url,
+    model.health_status,
+    healthStatusLabel(model.health_status),
+    ...(model.supported_sizes ?? []),
+  ].some((value) => String(value ?? '').trim().toLocaleLowerCase().includes(query)))
+})
+
 const columns = computed<Column[]>(() => [
-  { key: 'display_name', label: t('admin.mediaPlaygroundImage.columns.name') },
-  { key: 'api_mode', label: t('admin.mediaPlaygroundImage.columns.apiMode') },
-  { key: 'provider_name', label: t('admin.mediaPlaygroundImage.columns.provider') },
-  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.columns.upstream') },
-  { key: 'prices', label: t('admin.mediaPlaygroundImage.columns.prices') },
+  { key: 'display_name', label: t('admin.mediaPlaygroundImage.columns.name'), sortable: true },
+  { key: 'provider_name', label: t('admin.mediaPlaygroundImage.columns.provider'), sortable: true },
+  { key: 'api_mode', label: t('admin.mediaPlaygroundImage.columns.apiMode'), sortable: true },
+  { key: 'upstream_base_url', label: t('admin.mediaPlaygroundImage.columns.upstream'), sortable: true },
+  { key: 'price_1k', label: t('admin.mediaPlaygroundImage.columns.prices'), sortable: true },
   { key: 'supported_sizes', label: t('admin.mediaPlaygroundImage.columns.sizes') },
-  { key: 'sort_order', label: t('admin.mediaPlaygroundImage.columns.sortOrder') },
-  { key: 'health', label: t('admin.mediaPlaygroundImage.columns.health') },
-  { key: 'enabled', label: t('admin.mediaPlaygroundImage.columns.enabled') },
+  { key: 'sort_order', label: t('admin.mediaPlaygroundImage.columns.sortOrder'), sortable: true },
+  { key: 'health_status', label: t('admin.mediaPlaygroundImage.columns.health'), sortable: true },
+  { key: 'enabled', label: t('admin.mediaPlaygroundImage.columns.enabled'), sortable: true },
   { key: 'actions', label: t('common.actions') },
 ])
 

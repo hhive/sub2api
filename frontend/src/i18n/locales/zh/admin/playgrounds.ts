@@ -45,6 +45,17 @@ export default {
     billingModes: {
       balance_prepaid: '按次预扣余额'
     },
+    filters: {
+      searchPlaceholder: '筛选视频模型',
+      clear: '清空筛选',
+      resultCount: '显示 {visible} / {total}'
+    },
+    sections: {
+      basic: '基础信息',
+      upstream: '上游连接',
+      billingRuntime: '计费与运行',
+      status: '状态'
+    },
     apiModes: {
       openai_videos: 'OpenAI Videos API',
       openai_videos_v2: 'OpenAI Videos API2',
@@ -116,6 +127,17 @@ export default {
       }
     },
     sizeRequired: '至少选择一个支持尺寸',
+    filters: {
+      searchPlaceholder: '筛选图片模型',
+      clear: '清空筛选',
+      resultCount: '显示 {visible} / {total}'
+    },
+    sections: {
+      basic: '基础信息',
+      upstream: '上游连接',
+      billingRuntime: '计费与运行',
+      status: '状态'
+    },
     columns: {
       name: '模型',
       apiMode: 'API 模式',

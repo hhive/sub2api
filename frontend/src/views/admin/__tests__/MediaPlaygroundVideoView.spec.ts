@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { computed, defineComponent, h, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import MediaPlaygroundVideoView from '../MediaPlaygroundVideoView.vue'
@@ -14,25 +14,69 @@ vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError: vi.fn(), showS
 vi.mock('@/utils/apiError', () => ({ extractApiErrorMessage: (_e: unknown, fallback: string) => fallback }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
-  return { ...actual, useI18n: () => ({ t: (key: string) => key }) }
+  const translations: Record<string, string> = {
+    'admin.videoPlayground.filters.searchPlaceholder': '筛选视频模型',
+    'admin.videoPlayground.filters.clear': '清空筛选',
+    'admin.videoPlayground.filters.resultCount': '{visible} / {total}',
+    'admin.videoPlayground.sections.basic': '基础信息',
+    'admin.videoPlayground.sections.upstream': '上游连接',
+    'admin.videoPlayground.sections.billingRuntime': '计费与运行',
+    'admin.videoPlayground.sections.status': '状态',
+  }
+  return { ...actual, useI18n: () => ({
+    t: (key: string, params?: Record<string, string | number>) =>
+      (translations[key] ?? key).replace(/\{(\w+)\}/g, (_, token) => String(params?.[token] ?? `{${token}}`)),
+  }) }
 })
 
 const DataTableStub = defineComponent({
   props: { columns: Array, data: Array },
   setup(props, { slots }) {
-    return () => h('div', (props.data as any[] || []).flatMap(row =>
-      (props.columns as any[] || []).map(col =>
-        h(
-          'div',
-          { 'data-column': col.key, 'data-row': row.task_id },
+    const sortKey = ref('')
+    const sortOrder = ref<'asc' | 'desc'>('asc')
+    const sortedData = computed(() => {
+      const rows = [...(props.data as any[] || [])]
+      if (!sortKey.value) return rows
+      return rows.sort((left, right) => {
+        const result = String(left[sortKey.value] ?? '').localeCompare(String(right[sortKey.value] ?? ''), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        })
+        return sortOrder.value === 'asc' ? result : -result
+      })
+    })
+    const sort = (column: any) => {
+      if (!column.sortable) return
+      if (sortKey.value === column.key) sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+      else {
+        sortKey.value = column.key
+        sortOrder.value = 'asc'
+      }
+    }
+    return () => h('table', [
+      h('thead', [h('tr', (props.columns as any[] || []).map((column) => h('th', {
+        'data-column': column.key,
+        'data-sortable': String(Boolean(column.sortable)),
+        'aria-sort': column.sortable
+          ? sortKey.value === column.key
+            ? sortOrder.value === 'asc' ? 'ascending' : 'descending'
+            : 'none'
+          : undefined,
+        onClick: () => sort(column),
+      }, column.label)))]),
+      h('tbody', sortedData.value.map(row => h('tr', { 'data-row': row.id ?? row.task_id },
+        (props.columns as any[] || []).map(col => h(
+          'td',
+          { 'data-column': col.key, 'data-row': row.id ?? row.task_id },
           slots[`cell-${col.key}`]?.({ row, value: row[col.key] }) || row[col.key] || ''
-        )
-      )
-    ))
+        ))
+      ))),
+    ])
   },
 })
 const DialogStub = defineComponent({ props: { show: Boolean }, setup(props, { slots }) { return () => props.show ? h('section', [slots.default?.(), slots.footer?.()]) : null } })
 const model = { id: 7, media_type: 'video', display_name: 'Video', model: 'video-1', provider_name: 'OpenAI', api_mode: 'openai_videos_v2', upstream_base_url: 'https://upstream.test', upstream_api_key: '', upstream_api_key_mask: '123456', price_quota: 2, billing_mode: 'balance_prepaid', refund_enabled: true, timeout_seconds: 90, enabled: true, sort_order: 4 }
+const secondModel = { ...model, id: 8, display_name: 'Animation', model: 'seedance-1', provider_name: 'ByteDance', api_mode: 'seedance_content_generation', upstream_base_url: 'https://seedance.test', price_quota: 1, billing_mode: 'postpaid', refund_enabled: false, sort_order: 5 }
 
 function mountView() { return mount(MediaPlaygroundVideoView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, DataTable: DataTableStub, BaseDialog: DialogStub, ConfirmDialog: true, Icon: true } } }) }
 function button(wrapper: ReturnType<typeof mountView>, text: string) { return wrapper.findAll('button').find(item => item.text().includes(text))! }
@@ -72,6 +116,91 @@ describe('MediaPlaygroundVideoView interactions', () => {
     expect(getTask).toHaveBeenCalledWith('local-task-1')
     expect(wrapper.text()).toContain('safe prompt')
     expect(wrapper.text()).toContain('completed')
+  })
+
+  it('groups the video model form into four semantic sections', async () => {
+    const wrapper = mountView(); await flushPromises(); await button(wrapper, 'admin.videoPlayground.createModel').trigger('click')
+    expect(wrapper.findAll('fieldset').map((section) => section.attributes('data-testid'))).toEqual([
+      'model-section-basic',
+      'model-section-upstream',
+      'model-section-billing-runtime',
+      'model-section-status',
+    ])
+    expect(wrapper.findAll('legend').map((legend) => legend.text())).toEqual([
+      '基础信息',
+      '上游连接',
+      '计费与运行',
+      '状态',
+    ])
+  })
+
+  it('uses the shared leading column order and only marks supported video columns sortable', async () => {
+    const wrapper = mountView(); await flushPromises()
+    const columns = wrapper.findComponent(DataTableStub).props('columns') as any[]
+    expect(columns.slice(0, 4).map((column) => column.key)).toEqual([
+      'display_name',
+      'provider_name',
+      'api_mode',
+      'upstream_base_url',
+    ])
+    expect(columns.filter((column) => column.sortable).map((column) => column.key)).toEqual([
+      'display_name',
+      'provider_name',
+      'api_mode',
+      'upstream_base_url',
+      'price_quota',
+      'billing_mode',
+      'refund_enabled',
+      'enabled',
+    ])
+    expect(columns.find((column) => column.key === 'actions')?.sortable).not.toBe(true)
+  })
+
+  it('filters video models by provider and protocol, reports counts, and clears locally', async () => {
+    listModels.mockResolvedValue([model, secondModel])
+    const wrapper = mountView(); await flushPromises()
+    const callsAfterLoad = listModels.mock.calls.length
+    const search = wrapper.get('input[type="search"]')
+    expect(search.attributes('aria-label')).toBe('筛选视频模型')
+    expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite')
+
+    await search.setValue('bytedance')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Animation')
+    expect(wrapper.text()).toContain('1 / 2')
+
+    await search.setValue('OPENAI_VIDEOS_V2')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Video')
+    expect(wrapper.text()).not.toContain('Animation')
+    expect(listModels).toHaveBeenCalledTimes(callsAfterLoad)
+
+    await wrapper.findAll('button').find((item) => item.text() === '清空筛选')!.trigger('click')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    expect(wrapper.text()).toContain('2 / 2')
+  })
+
+  it('sorts video rows ascending and descending from the same header', async () => {
+    listModels.mockResolvedValue([
+      model,
+      secondModel,
+      { ...model, id: 9, display_name: 'Zeta Local', upstream_base_url: 'https://local.invalid' },
+    ])
+    const wrapper = mountView(); await flushPromises()
+    const rowIds = () => wrapper.findAll('tbody [data-column="display_name"]').map((cell) => cell.attributes('data-row'))
+    const header = wrapper.get('thead [data-column="display_name"]')
+
+    await wrapper.get('input[type="search"]').setValue('.test')
+    await header.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('ascending')
+    expect(rowIds()).toEqual(['8', '7'])
+    await header.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('descending')
+    expect(rowIds()).toEqual(['7', '8'])
+
+    await wrapper.findAll('button').find((item) => item.text() === '清空筛选')!.trigger('click')
+    expect(header.attributes('aria-sort')).toBe('descending')
+    expect(rowIds()).toEqual(['9', '7', '8'])
   })
 
   it('creates a model with the OpenAI Videos API2 mode', async () => {

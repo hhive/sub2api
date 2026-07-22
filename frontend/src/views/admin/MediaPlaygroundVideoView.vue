@@ -21,7 +21,24 @@
       </div>
 
       <section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-        <DataTable :columns="columns" :data="models" :loading="loading">
+        <div class="flex flex-col gap-3 border-b border-gray-200 p-4 dark:border-dark-700 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            v-model="filterQuery"
+            type="search"
+            class="input sm:max-w-sm"
+            :aria-label="t('admin.videoPlayground.filters.searchPlaceholder')"
+            :placeholder="t('admin.videoPlayground.filters.searchPlaceholder')"
+          />
+          <div class="flex items-center justify-between gap-3 sm:justify-end">
+            <span class="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+              {{ t('admin.videoPlayground.filters.resultCount', { visible: filteredModels.length, total: models.length }) }}
+            </span>
+            <button v-if="filterQuery" class="btn btn-secondary" type="button" @click="filterQuery = ''">
+              {{ t('admin.videoPlayground.filters.clear') }}
+            </button>
+          </div>
+        </div>
+        <DataTable :columns="columns" :data="filteredModels" :loading="loading">
           <template #cell-display_name="{ row }">
             <div>
               <div class="font-medium text-gray-900 dark:text-white">{{ row.display_name }}</div>
@@ -165,36 +182,44 @@
             </select>
           </label>
 
-          <div class="grid gap-4 lg:grid-cols-2">
-            <label class="block">
+          <fieldset data-testid="model-section-basic" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.videoPlayground.sections.basic') }}</legend>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.displayName') }}</span>
               <input v-model.trim="form.display_name" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.model') }}</span>
               <input v-model.trim="form.model" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.apiMode') }}</span>
               <select v-model="form.api_mode" class="input" required>
                 <option value="openai_videos">{{ t('admin.videoPlayground.apiModes.openai_videos') }}</option>
                 <option value="openai_videos_v2">{{ t('admin.videoPlayground.apiModes.openai_videos_v2') }}</option>
                 <option value="seedance_content_generation">{{ t('admin.videoPlayground.apiModes.seedance_content_generation') }}</option>
               </select>
-            </label>
-            <label class="block">
-              <span class="input-label">{{ t('admin.videoPlayground.fields.sortOrder') }}</span>
-              <input v-model.number="form.sort_order" class="input" type="number" />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.providerName') }}</span>
               <input v-model.trim="form.provider_name" class="input" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
+                <span class="input-label">{{ t('admin.videoPlayground.fields.sortOrder') }}</span>
+                <input v-model.number="form.sort_order" class="input" type="number" />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset data-testid="model-section-upstream" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.videoPlayground.sections.upstream') }}</legend>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.upstreamBaseURL') }}</span>
               <input v-model.trim="form.upstream_base_url" class="input" placeholder="https://api.example.com" required />
-            </label>
-            <label class="block">
+              </label>
+              <label class="block">
               <span class="input-label">{{ t('admin.videoPlayground.fields.upstreamAPIKey') }}</span>
               <div class="relative">
                 <input
@@ -212,10 +237,13 @@
                   <Icon :name="upstreamKeyVisible ? 'eyeOff' : 'eye'" size="md" />
                 </button>
               </div>
-            </label>
-          </div>
+              </label>
+            </div>
+          </fieldset>
 
-          <div class="grid gap-4 sm:grid-cols-3">
+          <fieldset data-testid="model-section-billing-runtime" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.videoPlayground.sections.billingRuntime') }}</legend>
+            <div class="grid gap-4 sm:grid-cols-3">
               <label class="block">
                 <span class="input-label">{{ t('admin.videoPlayground.fields.priceQuota') }}</span>
                 <input v-model.number="form.price_quota" class="input" type="number" min="0" step="0.000001" required />
@@ -230,18 +258,21 @@
                   <option value="balance_prepaid">{{ t('admin.videoPlayground.billingModes.balance_prepaid') }}</option>
                 </select>
               </label>
-          </div>
+            </div>
 
-          <div class="flex flex-wrap gap-4">
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
               <input v-model="form.refund_enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               {{ t('admin.videoPlayground.fields.refundEnabled') }}
             </label>
+          </fieldset>
+
+          <fieldset data-testid="model-section-status" class="space-y-4 rounded border border-gray-200 p-4 dark:border-dark-700">
+            <legend class="px-2 text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.videoPlayground.sections.status') }}</legend>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
               <input v-model="form.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
               {{ t('admin.videoPlayground.fields.enabled') }}
             </label>
-          </div>
+          </fieldset>
         </form>
 
         <template #footer>
@@ -289,6 +320,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const models = ref<MediaPlaygroundVideoModel[]>([])
+const filterQuery = ref('')
 const taskRecords = ref<MediaPlaygroundVideoTask[]>([])
 const taskDetail = ref<MediaPlaygroundVideoTaskDetail | null>(null)
 const loading = ref(false)
@@ -339,15 +371,31 @@ const upstreamKeyPlaceholder = computed(() => {
   return 'sk-...'
 })
 
+const filteredModels = computed(() => {
+  const query = filterQuery.value.trim().toLocaleLowerCase()
+  if (!query) return models.value
+
+  return models.value.filter((model) => [
+    model.display_name,
+    model.model,
+    model.provider_name,
+    model.api_mode,
+    t(`admin.videoPlayground.apiModes.${model.api_mode}`),
+    model.upstream_base_url,
+    model.billing_mode,
+    t(`admin.videoPlayground.billingModes.${model.billing_mode}`),
+  ].some((value) => String(value ?? '').trim().toLocaleLowerCase().includes(query)))
+})
+
 const columns = computed<Column[]>(() => [
-  { key: 'display_name', label: t('admin.videoPlayground.columns.name') },
-  { key: 'provider_name', label: t('admin.videoPlayground.columns.provider') },
-  { key: 'api_mode', label: t('admin.videoPlayground.columns.apiMode') },
-  { key: 'upstream_base_url', label: t('admin.videoPlayground.columns.upstream') },
-  { key: 'price_quota', label: t('admin.videoPlayground.columns.price') },
-  { key: 'billing_mode', label: t('admin.videoPlayground.columns.billingMode') },
-  { key: 'refund_enabled', label: t('admin.videoPlayground.columns.refund') },
-  { key: 'enabled', label: t('admin.videoPlayground.columns.enabled') },
+  { key: 'display_name', label: t('admin.videoPlayground.columns.name'), sortable: true },
+  { key: 'provider_name', label: t('admin.videoPlayground.columns.provider'), sortable: true },
+  { key: 'api_mode', label: t('admin.videoPlayground.columns.apiMode'), sortable: true },
+  { key: 'upstream_base_url', label: t('admin.videoPlayground.columns.upstream'), sortable: true },
+  { key: 'price_quota', label: t('admin.videoPlayground.columns.price'), sortable: true },
+  { key: 'billing_mode', label: t('admin.videoPlayground.columns.billingMode'), sortable: true },
+  { key: 'refund_enabled', label: t('admin.videoPlayground.columns.refund'), sortable: true },
+  { key: 'enabled', label: t('admin.videoPlayground.columns.enabled'), sortable: true },
   { key: 'actions', label: t('common.actions') },
 ])
 

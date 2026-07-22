@@ -45,6 +45,17 @@ export default {
     billingModes: {
       balance_prepaid: 'Prepaid balance per call'
     },
+    filters: {
+      searchPlaceholder: 'Filter video models',
+      clear: 'Clear filter',
+      resultCount: 'Showing {visible} of {total}'
+    },
+    sections: {
+      basic: 'Basic information',
+      upstream: 'Upstream connection',
+      billingRuntime: 'Billing and runtime',
+      status: 'Status'
+    },
     apiModes: {
       openai_videos: 'OpenAI Videos API',
       openai_videos_v2: 'OpenAI Videos API2',
@@ -116,6 +127,17 @@ export default {
       }
     },
     sizeRequired: 'Select at least one supported size',
+    filters: {
+      searchPlaceholder: 'Filter image models',
+      clear: 'Clear filter',
+      resultCount: 'Showing {visible} of {total}'
+    },
+    sections: {
+      basic: 'Basic information',
+      upstream: 'Upstream connection',
+      billingRuntime: 'Billing and runtime',
+      status: 'Status'
+    },
     columns: {
       name: 'Model',
       apiMode: 'API mode',
