@@ -146,14 +146,15 @@ var auditActionOverrides = map[string]string{
 // auditBodyOmittedRoutes maps routes whose bodies cannot be made safe by
 // key-level redaction to the marker persisted instead of the original body.
 var auditBodyOmittedRoutes = map[string]string{
-	"POST /api/v1/admin/accounts/import/codex-session":        "<credential-bearing body omitted>",
-	"POST /api/v1/chat/completions":                           "<sensitive chat body omitted>",
-	"PUT /api/v1/admin/prompt-audit/config":                   "<credential-bearing body omitted>",
-	"POST /api/v1/admin/prompt-audit/endpoints/probe":         "<credential-bearing body omitted>",
-	"DELETE /api/v1/admin/prompt-audit/events/:id":            "<credential-bearing body omitted>",
-	"POST /api/v1/admin/prompt-audit/events/batch-delete":     "<credential-bearing body omitted>",
-	"POST /api/v1/admin/prompt-audit/events/delete-preview":   "<credential-bearing body omitted>",
-	"POST /api/v1/admin/prompt-audit/events/delete-by-filter": "<credential-bearing body omitted>",
+	"POST /api/v1/admin/accounts/import/codex-session":          "<credential-bearing body omitted>",
+	"PUT /api/v1/admin/accounts/:id/ollama-cloud-usage/session": "<credential-bearing body omitted>",
+	"POST /api/v1/chat/completions":                             "<sensitive chat body omitted>",
+	"PUT /api/v1/admin/prompt-audit/config":                     "<credential-bearing body omitted>",
+	"POST /api/v1/admin/prompt-audit/endpoints/probe":           "<credential-bearing body omitted>",
+	"DELETE /api/v1/admin/prompt-audit/events/:id":              "<credential-bearing body omitted>",
+	"POST /api/v1/admin/prompt-audit/events/batch-delete":       "<credential-bearing body omitted>",
+	"POST /api/v1/admin/prompt-audit/events/delete-preview":     "<credential-bearing body omitted>",
+	"POST /api/v1/admin/prompt-audit/events/delete-by-filter":   "<credential-bearing body omitted>",
 }
 
 // NewAuditLogMiddleware 创建审计中间件。
