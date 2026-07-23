@@ -182,7 +182,7 @@ func TestUpdateSettingsMalformedForwardedClientIPHeadersRemainFailClosedWhenOmit
 	svc := service.NewSettingService(repo, cfg)
 	require.ErrorContains(t, svc.LoadForwardedClientIPSettings(context.Background()), "load forwarded client ip headers")
 	require.False(t, cfg.ForwardedClientIPSettings().TrustForwardedIP)
-	h := NewSettingHandler(svc, nil, nil, nil, nil, nil, nil)
+	h := NewSettingHandler(svc, nil, nil, nil, nil, nil, nil, nil)
 
 	rec := doUpdateSettings(t, h, map[string]any{"registration_enabled": true}, nil)
 
