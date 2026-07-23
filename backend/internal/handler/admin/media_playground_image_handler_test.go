@@ -169,3 +169,38 @@ func TestMediaPlaygroundImageHandlerRunModelProbeRejectsInvalidID(t *testing.T) 
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
+
+func TestMediaPlaygroundImageHandlerUpdateModelForwardsQualityConfiguration(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("MEDIA_PLAYGROUND_ADMIN_BASE_URL", "http://media-playground.test")
+	upstreamCalled := false
+
+	handler := NewMediaPlaygroundImageHandler(nil)
+	handler.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		upstreamCalled = true
+		require.Equal(t, http.MethodPatch, r.Method)
+		require.Equal(t, "/api/admin/media/models/7", r.URL.Path)
+
+		var payload map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		require.Equal(t, true, payload["quality_supported"])
+		require.Equal(t, 0.75, payload["quality_multiplier_low"])
+		require.Equal(t, 1.25, payload["quality_multiplier_medium"])
+		require.Equal(t, 2.0, payload["quality_multiplier_high"])
+
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString(`{"id":7}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	router := gin.New()
+	router.PATCH("/models/:id", handler.UpdateModel)
+
+	body := bytes.NewBufferString(`{"quality_supported":true,"quality_multiplier_low":0.75,"quality_multiplier_medium":1.25,"quality_multiplier_high":2}`)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/models/7", body))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.True(t, upstreamCalled)
+}

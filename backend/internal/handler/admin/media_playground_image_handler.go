@@ -22,20 +22,24 @@ type MediaPlaygroundImageHandler struct {
 }
 
 type mediaPlaygroundImageModelRequest struct {
-	DisplayName         string   `json:"display_name"`
-	Model               string   `json:"model"`
-	APIMode             string   `json:"api_mode"`
-	ProviderName        string   `json:"provider_name"`
-	UpstreamBaseURL     string   `json:"upstream_base_url"`
-	UpstreamAPIKey      string   `json:"upstream_api_key"`
-	Price1K             float64  `json:"price_1k"`
-	Price2K             float64  `json:"price_2k"`
-	Price4K             float64  `json:"price_4k"`
-	SupportedSizes      []string `json:"supported_sizes"`
-	TimeoutSeconds      int      `json:"timeout_seconds"`
-	FallbackToResponses bool     `json:"fallback_to_responses_enabled"`
-	Enabled             bool     `json:"enabled"`
-	SortOrder           int      `json:"sort_order"`
+	DisplayName             string   `json:"display_name"`
+	Model                   string   `json:"model"`
+	APIMode                 string   `json:"api_mode"`
+	ProviderName            string   `json:"provider_name"`
+	UpstreamBaseURL         string   `json:"upstream_base_url"`
+	UpstreamAPIKey          string   `json:"upstream_api_key"`
+	Price1K                 float64  `json:"price_1k"`
+	Price2K                 float64  `json:"price_2k"`
+	Price4K                 float64  `json:"price_4k"`
+	QualitySupported        bool     `json:"quality_supported"`
+	QualityMultiplierLow    float64  `json:"quality_multiplier_low"`
+	QualityMultiplierMedium float64  `json:"quality_multiplier_medium"`
+	QualityMultiplierHigh   float64  `json:"quality_multiplier_high"`
+	SupportedSizes          []string `json:"supported_sizes"`
+	TimeoutSeconds          int      `json:"timeout_seconds"`
+	FallbackToResponses     bool     `json:"fallback_to_responses_enabled"`
+	Enabled                 bool     `json:"enabled"`
+	SortOrder               int      `json:"sort_order"`
 }
 
 func NewMediaPlaygroundImageHandler(settingService *service.SettingService) *MediaPlaygroundImageHandler {
