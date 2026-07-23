@@ -276,7 +276,6 @@ export interface PublicSettings {
   lobehub_enabled: boolean
   lobehub_menu_label: string
   lobehub_launch_path: string
-  lobehub_allowed_emails: string[]
   media_playground_enabled: boolean
   media_playground_menu_label: string
   media_playground_launch_path: string

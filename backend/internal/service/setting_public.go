@@ -197,7 +197,6 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyCustomEndpoints,
 		SettingKeyLobeHubEnabled,
 		SettingKeyLobeHubMenuLabel,
-		SettingKeyLobeHubAllowedEmails,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
@@ -287,10 +286,6 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		settings[SettingKeyTablePageSizeOptions],
 	)
 	victoryMenuItemsRaw := s.getStringOrDefault(settings, SettingKeyVictoryMenuItems, defaultVictoryMenuItemsValue)
-	lobeHubAllowedEmailsRaw, ok := settings[SettingKeyLobeHubAllowedEmails]
-	if !ok {
-		lobeHubAllowedEmailsRaw = defaultLobeHubAllowedEmailsValue
-	}
 	loginAgreementDocuments := parseLoginAgreementDocuments(settings[SettingKeyLoginAgreementDocuments])
 	loginAgreementUpdatedAt := strings.TrimSpace(settings[SettingKeyLoginAgreementUpdatedAt])
 	if loginAgreementUpdatedAt == "" {
@@ -345,7 +340,6 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LobeHubEnabled:                   settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubMenuLabel:                 s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                "/api/v1/lobehub/launch",
-		LobeHubAllowedEmails:             ParseLobeHubAllowedEmails(lobeHubAllowedEmailsRaw),
 		MediaPlaygroundEnabled:           mediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:         "图片与视频",
 		MediaPlaygroundLaunchPath:        "/api/v1/media-playground/launch",
@@ -520,7 +514,6 @@ type PublicSettingsInjectionPayload struct {
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
-	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
 	MediaPlaygroundEnabled           bool                     `json:"media_playground_enabled"`
 	MediaPlaygroundMenuLabel         string                   `json:"media_playground_menu_label"`
 	MediaPlaygroundLaunchPath        string                   `json:"media_playground_launch_path"`
@@ -607,7 +600,6 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LobeHubEnabled:                   settings.LobeHubEnabled,
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
-		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
 		MediaPlaygroundEnabled:           settings.MediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:         settings.MediaPlaygroundMenuLabel,
 		MediaPlaygroundLaunchPath:        settings.MediaPlaygroundLaunchPath,

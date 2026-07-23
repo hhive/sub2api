@@ -163,7 +163,6 @@ type UpdateSettingsRequest struct {
 	LobeHubBaseURL              *string                `json:"lobehub_base_url"`
 	LobeHubMenuLabel            *string                `json:"lobehub_menu_label"`
 	LobeHubExchangeSecret       *string                `json:"lobehub_exchange_secret"`
-	LobeHubAllowedEmails        *string                `json:"lobehub_allowed_emails"`
 
 	// 默认配置
 	DefaultConcurrency                        int                               `json:"default_concurrency"`
@@ -1102,10 +1101,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	if req.LobeHubExchangeSecret != nil {
 		lobeHubExchangeSecret = strings.TrimSpace(*req.LobeHubExchangeSecret)
 	}
-	lobeHubAllowedEmails := strings.TrimSpace(previousSettings.LobeHubAllowedEmails)
-	if req.LobeHubAllowedEmails != nil {
-		lobeHubAllowedEmails = service.NormalizeLobeHubAllowedEmailsValue(*req.LobeHubAllowedEmails)
-	}
 	if lobeHubEnabled {
 		if lobeHubBaseURL == "" {
 			response.BadRequest(c, "LobeHub Base URL is required when enabled")
@@ -1586,7 +1581,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LobeHubBaseURL:                         lobeHubBaseURL,
 		LobeHubMenuLabel:                       lobeHubMenuLabel,
 		LobeHubExchangeSecret:                  lobeHubExchangeSecret,
-		LobeHubAllowedEmails:                   lobeHubAllowedEmails,
 		DefaultConcurrency:                     req.DefaultConcurrency,
 		DefaultBalance:                         req.DefaultBalance,
 		BalanceCreditValidityDays:              balanceCreditValidityDays,
@@ -2143,7 +2137,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		LobeHubBaseURL:                                         updatedSettings.LobeHubBaseURL,
 		LobeHubMenuLabel:                                       updatedSettings.LobeHubMenuLabel,
 		LobeHubExchangeSecretConfigured:                        updatedSettings.LobeHubExchangeSecret != "",
-		LobeHubAllowedEmails:                                   updatedSettings.LobeHubAllowedEmails,
 		DefaultConcurrency:                                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                                         updatedSettings.DefaultBalance,
 		BalanceCreditValidityDays:                              updatedSettings.BalanceCreditValidityDays,

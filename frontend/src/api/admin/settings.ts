@@ -466,7 +466,6 @@ export interface SystemSettings {
   custom_menu_items: CustomMenuItem[];
   victory_menu_items: VictoryMenuItem[];
   custom_endpoints: CustomEndpoint[];
-  lobehub_allowed_emails: string;
   // SMTP settings
   smtp_host: string;
   smtp_port: number;
@@ -795,7 +794,6 @@ export interface UpdateSettingsRequest {
   custom_menu_items?: CustomMenuItem[];
   victory_menu_items?: VictoryMenuItem[];
   custom_endpoints?: CustomEndpoint[];
-  lobehub_allowed_emails?: string;
   smtp_host?: string;
   smtp_port?: number;
   smtp_username?: string;

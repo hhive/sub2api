@@ -273,7 +273,6 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		LobeHubBaseURL:                                         settings.LobeHubBaseURL,
 		LobeHubMenuLabel:                                       settings.LobeHubMenuLabel,
 		LobeHubExchangeSecretConfigured:                        settings.LobeHubExchangeSecret != "",
-		LobeHubAllowedEmails:                                   settings.LobeHubAllowedEmails,
 		DefaultConcurrency:                                     settings.DefaultConcurrency,
 		DefaultBalance:                                         settings.DefaultBalance,
 		BalanceCreditValidityDays:                              settings.BalanceCreditValidityDays,

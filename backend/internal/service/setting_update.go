@@ -306,7 +306,6 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyLobeHubEnabled] = strconv.FormatBool(settings.LobeHubEnabled)
 	updates[SettingKeyLobeHubBaseURL] = strings.TrimSpace(settings.LobeHubBaseURL)
 	updates[SettingKeyLobeHubMenuLabel] = strings.TrimSpace(settings.LobeHubMenuLabel)
-	updates[SettingKeyLobeHubAllowedEmails] = NormalizeLobeHubAllowedEmailsValue(settings.LobeHubAllowedEmails)
 	if settings.LobeHubExchangeSecret != "" {
 		updates[SettingKeyLobeHubExchangeSecret] = strings.TrimSpace(settings.LobeHubExchangeSecret)
 	}

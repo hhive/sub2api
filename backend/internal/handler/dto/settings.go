@@ -172,7 +172,6 @@ type SystemSettings struct {
 	LobeHubBaseURL                  string            `json:"lobehub_base_url"`
 	LobeHubMenuLabel                string            `json:"lobehub_menu_label"`
 	LobeHubExchangeSecretConfigured bool              `json:"lobehub_exchange_secret_configured"`
-	LobeHubAllowedEmails            string            `json:"lobehub_allowed_emails"`
 
 	DefaultConcurrency                    int                          `json:"default_concurrency"`
 	DefaultBalance                        float64                      `json:"default_balance"`
@@ -391,7 +390,6 @@ type PublicSettings struct {
 	LobeHubEnabled                   bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                 string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                string                   `json:"lobehub_launch_path"`
-	LobeHubAllowedEmails             []string                 `json:"lobehub_allowed_emails"`
 	MediaPlaygroundEnabled           bool                     `json:"media_playground_enabled"`
 	MediaPlaygroundMenuLabel         string                   `json:"media_playground_menu_label"`
 	MediaPlaygroundLaunchPath        string                   `json:"media_playground_launch_path"`

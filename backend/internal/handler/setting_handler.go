@@ -86,7 +86,6 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		LobeHubEnabled:                   settings.LobeHubEnabled,
 		LobeHubMenuLabel:                 settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                settings.LobeHubLaunchPath,
-		LobeHubAllowedEmails:             settings.LobeHubAllowedEmails,
 		MediaPlaygroundEnabled:           settings.MediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:         settings.MediaPlaygroundMenuLabel,
 		MediaPlaygroundLaunchPath:        settings.MediaPlaygroundLaunchPath,

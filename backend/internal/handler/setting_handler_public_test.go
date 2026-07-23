@@ -82,14 +82,14 @@ func TestSettingHandler_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t 
 	require.True(t, resp.Data.ForceEmailOnThirdPartySignup)
 }
 
-func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T) {
+func TestSettingHandler_GetPublicSettings_OmitsRemovedLobeHubAllowedEmails(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	repo := &settingHandlerPublicRepoStub{
 		values: map[string]string{
-			service.SettingKeyLobeHubEnabled:       "true",
-			service.SettingKeyLobeHubMenuLabel:     "Lobe Chat",
-			service.SettingKeyLobeHubAllowedEmails: "Allowed@Example.com\nother@qq.com",
+			service.SettingKeyLobeHubEnabled:   "true",
+			service.SettingKeyLobeHubMenuLabel: "Lobe Chat",
+			"lobehub_allowed_emails":           "Allowed@Example.com\nother@qq.com",
 		},
 	}
 	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
@@ -103,20 +103,15 @@ func TestSettingHandler_GetPublicSettings_ExposesLobeHubMenuConfig(t *testing.T)
 	require.Equal(t, http.StatusOK, recorder.Code)
 
 	var resp struct {
-		Code int `json:"code"`
-		Data struct {
-			LobeHubEnabled       bool     `json:"lobehub_enabled"`
-			LobeHubMenuLabel     string   `json:"lobehub_menu_label"`
-			LobeHubLaunchPath    string   `json:"lobehub_launch_path"`
-			LobeHubAllowedEmails []string `json:"lobehub_allowed_emails"`
-		} `json:"data"`
+		Code int                        `json:"code"`
+		Data map[string]json.RawMessage `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
-	require.True(t, resp.Data.LobeHubEnabled)
-	require.Equal(t, "Lobe Chat", resp.Data.LobeHubMenuLabel)
-	require.Equal(t, "/api/v1/lobehub/launch", resp.Data.LobeHubLaunchPath)
-	require.Equal(t, []string{"allowed@example.com", "other@qq.com"}, resp.Data.LobeHubAllowedEmails)
+	require.JSONEq(t, "true", string(resp.Data["lobehub_enabled"]))
+	require.JSONEq(t, `"Lobe Chat"`, string(resp.Data["lobehub_menu_label"]))
+	require.JSONEq(t, `"/api/v1/lobehub/launch"`, string(resp.Data["lobehub_launch_path"]))
+	require.NotContains(t, resp.Data, "lobehub_allowed_emails")
 }
 
 func TestSettingHandler_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {

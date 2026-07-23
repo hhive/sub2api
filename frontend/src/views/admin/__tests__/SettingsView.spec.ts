@@ -665,6 +665,23 @@ describe("admin SettingsView payment visible method controls", () => {
     adminSettingsFetch.mockResolvedValue(undefined);
   });
 
+  it("removes the legacy LobeHub visibility whitelist setting", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("LobeHub 新聊天台可见白名单");
+    expect(wrapper.find('textarea[name="lobehub_allowed_emails"]').exists()).toBe(false);
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings.mock.calls[0]?.[0]).not.toHaveProperty(
+      "lobehub_allowed_emails",
+    );
+  });
+
   it("does not render legacy visible payment method controls", async () => {
     const wrapper = mountView();
 
