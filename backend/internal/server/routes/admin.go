@@ -24,6 +24,11 @@ func RegisterAdminRoutes(
 	admin.Use(gin.HandlerFunc(auditLog))
 	admin.Use(middleware.AdminComplianceGuard(settingService))
 	{
+		if h.AdminExternalApp != nil {
+			admin.GET("/external-apps", h.AdminExternalApp.List)
+			admin.POST("/external-apps/:app_id/launch", h.AdminExternalApp.CreateLaunch)
+		}
+
 		// 部署与运营合规确认
 		registerAdminComplianceRoutes(admin, h)
 
@@ -105,9 +110,6 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
-		// 统一媒体站模型配置
-		registerMediaPlaygroundRoutes(admin, h)
-
 		// 风控中心
 		registerContentModerationRoutes(admin, h)
 
@@ -145,32 +147,6 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		auditLogs.GET("/:id", h.Admin.AuditLog.Get)
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
-	}
-}
-
-func registerMediaPlaygroundRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	mediaPlayground := admin.Group("/media-playground")
-	video := mediaPlayground.Group("/video")
-	{
-		video.GET("/models", h.Admin.MediaPlaygroundVideo.ListModels)
-		video.GET("/tasks", h.Admin.MediaPlaygroundVideo.ListTasks)
-		video.GET("/tasks/:id", h.Admin.MediaPlaygroundVideo.GetTask)
-		video.GET("/upstream-requests", h.Admin.MediaPlaygroundVideo.ListUpstreamRequests)
-		video.POST("/models", h.Admin.MediaPlaygroundVideo.CreateModel)
-		video.PATCH("/models/:id", h.Admin.MediaPlaygroundVideo.UpdateModel)
-		video.DELETE("/models/:id", h.Admin.MediaPlaygroundVideo.DeleteModel)
-	}
-	image := mediaPlayground.Group("/image")
-	{
-		image.GET("/models", h.Admin.MediaPlaygroundImage.ListModels)
-		image.GET("/model-probe-runs", h.Admin.MediaPlaygroundImage.ListProbeRuns)
-		image.GET("/tasks", h.Admin.MediaPlaygroundImage.ListTasks)
-		image.GET("/upstream-requests", h.Admin.MediaPlaygroundImage.ListUpstreamRequests)
-		image.POST("/model-probe-runs/run", h.Admin.MediaPlaygroundImage.RunProbe)
-		image.POST("/models/:id/probe", h.Admin.MediaPlaygroundImage.RunModelProbe)
-		image.POST("/models", h.Admin.MediaPlaygroundImage.CreateModel)
-		image.PATCH("/models/:id", h.Admin.MediaPlaygroundImage.UpdateModel)
-		image.DELETE("/models/:id", h.Admin.MediaPlaygroundImage.DeleteModel)
 	}
 }
 

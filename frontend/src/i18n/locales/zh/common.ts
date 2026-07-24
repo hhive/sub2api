@@ -198,8 +198,6 @@ export default {
     channelPricing: '渠道定价',
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
-    mediaPlaygroundImageConfig: '媒体站图片模型',
-    videoPlaygroundConfig: '媒体站视频模型',
     riskControl: '风控中心',
     securityAudit: '安全审计',
     contentModeration: '内容审核',
@@ -209,6 +207,13 @@ export default {
 
   launch: {
     noAvailableApiKey: '没有可用 API Key，请先创建一条启用、未过期且有额度的 API Key',
+  },
+
+  adminExternalApps: {
+    opening: '正在打开',
+    loadFailed: '加载管理员应用失败',
+    openFailed: '打开管理员应用失败',
+    invalidUrl: '管理员应用返回了无效地址',
   },
 
   mediaPlayground: {

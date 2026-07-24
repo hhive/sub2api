@@ -58,6 +58,7 @@ var auditExtraAllowedKeys = map[string]struct{}{
 	"http_status": {}, "latency_ms": {}, "token_applied": {}, "retryable": {},
 	"event_id": {}, "requested_count": {}, "deleted_events": {}, "deleted_jobs": {},
 	"matched_count": {}, "snapshot_max_id": {}, "filter_hash": {}, "confirm": {},
+	"app_id": {},
 }
 
 // SetAuditExtra adds allowlisted, scalar details to the current audit entry.
@@ -155,6 +156,7 @@ var auditBodyOmittedRoutes = map[string]string{
 	"POST /api/v1/admin/prompt-audit/events/batch-delete":       "<credential-bearing body omitted>",
 	"POST /api/v1/admin/prompt-audit/events/delete-preview":     "<credential-bearing body omitted>",
 	"POST /api/v1/admin/prompt-audit/events/delete-by-filter":   "<credential-bearing body omitted>",
+	"POST /api/v1/external-apps/:app_id/exchange":               "<credential-bearing body omitted>",
 }
 
 // NewAuditLogMiddleware 创建审计中间件。

@@ -741,6 +741,8 @@ var ProviderSet = wire.NewSet(
 	ProvideOllamaCloudUsageService,
 	ProvideSettingService,
 	NewLaunchService,
+	ProvideAdminExternalAppRegistry,
+	NewAdminExternalAppService,
 	NewDataManagementService,
 	ProvideBackupService,
 	ProvideOpsSystemLogSink,

@@ -33,8 +33,6 @@ import adminPaymentAPI from './payment'
 import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
-import mediaPlaygroundVideoAPI from './mediaPlaygroundVideo'
-import mediaPlaygroundImageAPI from './mediaPlaygroundImage'
 import defaultModelPricingAPI from './defaultModelPricing'
 import auditAPI from './audit'
 
@@ -72,8 +70,6 @@ export const adminAPI = {
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
-  mediaPlaygroundVideo: mediaPlaygroundVideoAPI,
-  mediaPlaygroundImage: mediaPlaygroundImageAPI,
   defaultModelPricing: defaultModelPricingAPI,
   audit: auditAPI
 }
@@ -109,8 +105,6 @@ export {
   affiliatesAPI,
   riskControlAPI,
   adminComplianceAPI,
-  mediaPlaygroundVideoAPI,
-  mediaPlaygroundImageAPI,
   defaultModelPricingAPI,
   auditAPI
 }
@@ -124,15 +118,4 @@ export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from 
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
-export type { MediaPlaygroundVideoModel, MediaPlaygroundVideoModelPayload, MediaPlaygroundVideoTask, MediaPlaygroundVideoTaskDetail, MediaPlaygroundVideoTaskPage, VideoAPIMode } from './mediaPlaygroundVideo'
-export type {
-  MediaPlaygroundImageHealthStatus,
-  MediaPlaygroundImageModel,
-  MediaPlaygroundImageModelPayload,
-  MediaPlaygroundImageProbeRun,
-  MediaPlaygroundImageProbeRunPage,
-  MediaPlaygroundImageTaskRecord,
-  MediaPlaygroundImageTaskRecordPage,
-  ImageSizeTier
-} from './mediaPlaygroundImage'
 export type { DefaultModelPricingItem, DefaultModelPricingResponse, DefaultModelPricingParams } from './defaultModelPricing'

@@ -15,13 +15,15 @@ func TestLaunchRoutesUseMediaPlaygroundContractOnly(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	noop := func(c *gin.Context) { c.Next() }
-	handlers := &handler.Handlers{Launch: &handler.LaunchHandler{}}
+	handlers := &handler.Handlers{Launch: &handler.LaunchHandler{}, AdminExternalApp: &handler.AdminExternalAppHandler{}}
 
 	RegisterLaunchRoutes(
 		router.Group("/api/v1"),
 		handlers,
 		middleware.JWTAuthMiddleware(noop),
 		middleware.APIKeyAuthMiddleware(noop),
+		middleware.AuditLogMiddleware(noop),
+		nil,
 		nil,
 	)
 
@@ -32,6 +34,7 @@ func TestLaunchRoutesUseMediaPlaygroundContractOnly(t *testing.T) {
 
 	require.Contains(t, routes, "POST /api/v1/media-playground/launch")
 	require.Contains(t, routes, "POST /api/v1/media-playground/exchange")
+	require.Contains(t, routes, "POST /api/v1/external-apps/:app_id/exchange")
 	require.NotContains(t, routes, "POST /api/v1/image-playground/launch")
 	require.NotContains(t, routes, "POST /api/v1/image-playground/exchange")
 	require.NotContains(t, routes, "POST /api/v1/video-playground/launch")

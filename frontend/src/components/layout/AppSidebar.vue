@@ -410,7 +410,15 @@ import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { launchMediaPlayground, launchLobeHub, launchVictoryMenu } from '@/api/launch'
+import {
+  launchAdminExternalApp,
+  launchMediaPlayground,
+  launchLobeHub,
+  launchVictoryMenu,
+  listAdminExternalApps,
+} from '@/api/launch'
+import type { AdminExternalApp } from '@/api/launch'
+import { openAdminExternalAppWindow } from '@/utils/adminExternalAppLaunch'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import type { VictoryMenuItem } from '@/types'
 
@@ -423,12 +431,13 @@ interface NavItem {
   hideInSimpleMode?: boolean
   children?: NavItem[]
   victoryMenuID?: string
+  adminExternalAppID?: string
   /**
    * When true, the parent item only toggles the expand/collapse state and
    * does NOT navigate to its `path`. The `path` is purely a stable key.
    */
   expandOnly?: boolean
-  action?: 'lobehub' | 'mediaPlayground' | 'victoryMenu'
+  action?: 'lobehub' | 'mediaPlayground' | 'victoryMenu' | 'adminExternalApp'
   /**
    * 可选的功能开关 getter。返回 false 时菜单项被隐藏；返回 undefined/true 时显示。
    * 宽容策略（undefined → 显示）避免 public settings 未加载完成时菜单闪烁消失。
@@ -453,7 +462,7 @@ function applyFeatureFlags(items: NavItem[]): NavItem[] {
   return out
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -471,6 +480,8 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 const lobeHubLaunching = ref(false)
 const mediaPlaygroundLaunching = ref(false)
 const victoryMenuLaunching = ref<Record<string, boolean>>({})
+const adminExternalApps = ref<AdminExternalApp[]>([])
+const adminExternalAppLaunching = ref<Record<string, boolean>>({})
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 
@@ -633,21 +644,6 @@ const ImageIcon = {
           'stroke-linecap': 'round',
           'stroke-linejoin': 'round',
           d: 'm2.25 15.75 5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z'
-        })
-      ]
-    )
-}
-
-const VideoIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
-      [
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h8.25A3.75 3.75 0 0016.5 15V9a3.75 3.75 0 00-3.75-3.75H4.5A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z'
         })
       ]
     )
@@ -1059,6 +1055,20 @@ const customMenuItemsForAdmin = computed(() => {
     .sort((a, b) => a.sort_order - b.sort_order)
 })
 
+const adminExternalAppNavItems = computed((): NavItem[] => {
+  return adminExternalApps.value
+    .filter((app) => app.enabled)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((app) => ({
+      path: `__admin_external_app_${app.app_id}__`,
+      label: locale.value.startsWith('zh') ? app.label_zh : app.label_en,
+      icon: GlobeIcon,
+      hideInSimpleMode: true,
+      action: 'adminExternalApp',
+      adminExternalAppID: app.app_id,
+    }))
+})
+
 // Admin navigation items
 const adminNavItems = computed((): NavItem[] => {
   const baseItems: NavItem[] = [
@@ -1135,8 +1145,7 @@ const adminNavItems = computed((): NavItem[] => {
     children: [
       { path: '/admin/channels/default-pricing', label: t('nav.defaultModelPricing'), icon: PriceTagIcon, hideInSimpleMode: true },
       { path: '/admin/balance-credits', label: t('nav.balanceQuery'), icon: CreditCardIcon, hideInSimpleMode: true },
-      { path: '/admin/media-playground/image', label: t('nav.mediaPlaygroundImageConfig'), icon: ImageIcon, hideInSimpleMode: true },
-      { path: '/admin/media-playground/video', label: t('nav.videoPlaygroundConfig'), icon: VideoIcon, hideInSimpleMode: true }
+      ...adminExternalAppNavItems.value,
     ]
   }
 
@@ -1256,6 +1265,22 @@ async function handleVictoryMenuLaunch(item: NavItem) {
   }
 }
 
+async function handleAdminExternalAppLaunch(item: NavItem) {
+  const appID = item.adminExternalAppID
+  if (!appID || adminExternalAppLaunching.value[appID]) return
+  handleMenuItemClick(item.path)
+  adminExternalAppLaunching.value = { ...adminExternalAppLaunching.value, [appID]: true }
+  try {
+    await openAdminExternalAppWindow(() => launchAdminExternalApp(appID))
+  } catch (error) {
+    appStore.showError(resolveAdminExternalAppLaunchError(error))
+  } finally {
+    const next = { ...adminExternalAppLaunching.value }
+    delete next[appID]
+    adminExternalAppLaunching.value = next
+  }
+}
+
 function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
   if (action === 'lobehub') {
     return handleLobeHubLaunch()
@@ -1266,12 +1291,16 @@ function handleActionLaunch(action: NavItem['action'], item?: NavItem) {
   if (action === 'victoryMenu' && item) {
     return handleVictoryMenuLaunch(item)
   }
+  if (action === 'adminExternalApp' && item) {
+    return handleAdminExternalAppLaunch(item)
+  }
 }
 
 function isActionLaunching(action: NavItem['action'], item?: NavItem): boolean {
   if (action === 'lobehub') return lobeHubLaunching.value
   if (action === 'mediaPlayground') return mediaPlaygroundLaunching.value
   if (action === 'victoryMenu' && item?.victoryMenuID) return !!victoryMenuLaunching.value[item.victoryMenuID]
+  if (action === 'adminExternalApp' && item?.adminExternalAppID) return !!adminExternalAppLaunching.value[item.adminExternalAppID]
   return false
 }
 
@@ -1279,6 +1308,9 @@ function actionLabel(item: NavItem): string {
   if (item.action === 'lobehub' && lobeHubLaunching.value) return t('lobehub.opening')
   if (item.action === 'mediaPlayground' && mediaPlaygroundLaunching.value) return t('mediaPlayground.opening')
   if (item.action === 'victoryMenu' && item.victoryMenuID && victoryMenuLaunching.value[item.victoryMenuID]) return t('victoryMenu.opening')
+  if (item.action === 'adminExternalApp' && item.adminExternalAppID && adminExternalAppLaunching.value[item.adminExternalAppID]) {
+    return t('adminExternalApps.opening')
+  }
   return item.label
 }
 
@@ -1310,6 +1342,28 @@ function resolveVictoryMenuLaunchError(error: unknown): string {
     return t('launch.noAvailableApiKey')
   }
   return apiError.message || t('victoryMenu.openFailed')
+}
+
+function resolveAdminExternalAppLaunchError(error: unknown): string {
+  const appError = error as { code?: string; message?: string }
+  if (appError.code === 'INVALID_ADMIN_EXTERNAL_APP_URL') {
+    return t('adminExternalApps.invalidUrl')
+  }
+  return appError.message || t('adminExternalApps.openFailed')
+}
+
+async function loadAdminExternalApps() {
+  if (!isAdmin.value) {
+    adminExternalApps.value = []
+    return
+  }
+  try {
+    adminExternalApps.value = await listAdminExternalApps()
+  } catch (error) {
+    adminExternalApps.value = []
+    const apiError = error as { message?: string }
+    appStore.showError(apiError.message || t('adminExternalApps.loadFailed'))
+  }
 }
 
 function isActive(path: string): boolean {
@@ -1371,6 +1425,9 @@ watch(
   (v) => {
     if (v) {
       adminSettingsStore.fetch()
+      void loadAdminExternalApps()
+    } else {
+      adminExternalApps.value = []
     }
   },
   { immediate: true }

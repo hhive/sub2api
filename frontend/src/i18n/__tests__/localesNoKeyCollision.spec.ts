@@ -5,7 +5,6 @@ import enAdminAudit from '../locales/en/admin/audit'
 import enAdminChannels from '../locales/en/admin/channels'
 import enAdminOps from '../locales/en/admin/ops'
 import enAdminOverview from '../locales/en/admin/overview'
-import enAdminPlaygrounds from '../locales/en/admin/playgrounds'
 import enAdminResources from '../locales/en/admin/resources'
 import enAdminSettings from '../locales/en/admin/settings'
 import enCommon from '../locales/en/common'
@@ -17,7 +16,6 @@ import zhAdminAudit from '../locales/zh/admin/audit'
 import zhAdminChannels from '../locales/zh/admin/channels'
 import zhAdminOps from '../locales/zh/admin/ops'
 import zhAdminOverview from '../locales/zh/admin/overview'
-import zhAdminPlaygrounds from '../locales/zh/admin/playgrounds'
 import zhAdminResources from '../locales/zh/admin/resources'
 import zhAdminSettings from '../locales/zh/admin/settings'
 import zhCommon from '../locales/zh/common'
@@ -58,7 +56,6 @@ const admins: Record<string, Modules> = {
     resources: zhAdminResources,
     ops: zhAdminOps,
     settings: zhAdminSettings,
-    playgrounds: zhAdminPlaygrounds,
     audit: zhAdminAudit
   },
   en: {
@@ -68,7 +65,6 @@ const admins: Record<string, Modules> = {
     resources: enAdminResources,
     ops: enAdminOps,
     settings: enAdminSettings,
-    playgrounds: enAdminPlaygrounds,
     audit: enAdminAudit
   }
 }

@@ -61,7 +61,8 @@ describe('AppSidebar header styles', () => {
 
 describe('AppSidebar chat menu wiring', () => {
   it('exposes only the LobeHub chat launch', () => {
-    expect(componentSource).toContain("import { launchMediaPlayground, launchLobeHub, launchVictoryMenu } from '@/api/launch'")
+    expect(componentSource).toContain('launchLobeHub,')
+    expect(componentSource).toContain('launchLobeHub()')
     expect(componentSource).toContain('FeatureFlags.lobehub')
     expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
     expect(componentSource).toContain('launchWindow.opener = null')
@@ -95,16 +96,18 @@ describe('AppSidebar media playground menu wiring', () => {
     expect(componentSource).toContain("handleMenuItemClick('__media_playground__')")
   })
 
-  it('labels the user launch entry as Infinite Canvas while keeping the admin model config separate', () => {
+  it('labels the user launch entry without retaining legacy admin labels', () => {
     const zhLocale = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../i18n/locales/zh/common.ts'), 'utf8')
     expect(zhLocale).toContain("mediaPlayground: '图片与视频'")
-    expect(zhLocale).toContain("mediaPlaygroundImageConfig: '媒体站图片模型'")
+    expect(zhLocale).not.toContain('mediaPlaygroundImageConfig')
+    expect(zhLocale).not.toContain('videoPlaygroundConfig')
   })
 })
 
 describe('AppSidebar video playground menu retirement', () => {
-  it('keeps video administration but removes the standalone user launch', () => {
-    expect(componentSource).toContain("path: '/admin/media-playground/video'")
+  it('removes the old internal media administration entries and standalone user video launch', () => {
+    expect(componentSource).not.toContain("path: '/admin/media-playground/image'")
+    expect(componentSource).not.toContain("path: '/admin/media-playground/video'")
     expect(componentSource).not.toContain("path: '__video_playground__'")
     expect(componentSource).not.toContain("action: 'videoPlayground'")
     expect(componentSource).not.toContain('launchVideoPlayground()')
@@ -112,7 +115,7 @@ describe('AppSidebar video playground menu retirement', () => {
 })
 
 describe('AppSidebar other operations menu', () => {
-  it('places the four admin tools after settings without duplicate top-level entries', () => {
+  it('places generic external apps after the two built-in admin tools', () => {
     const adminNavBlock = componentSource.match(/const adminNavItems = computed[\s\S]*?return visible\n}\)/)?.[0] ?? ''
     const groupStart = adminNavBlock.indexOf('const otherOperationsItem')
     const groupEnd = adminNavBlock.indexOf('\n  }', groupStart)
@@ -121,13 +124,27 @@ describe('AppSidebar other operations menu', () => {
     expect(adminNavBlock.indexOf('visible.push(otherOperationsItem)')).toBeGreaterThan(adminNavBlock.indexOf("visible.push({ path: '/admin/settings'"))
     expect(adminNavBlock.lastIndexOf('for (const cm of customMenuItemsForAdmin.value)')).toBeGreaterThan(adminNavBlock.indexOf('visible.push(otherOperationsItem)'))
     expect(groupBlock.indexOf("path: '/admin/channels/default-pricing'")).toBeLessThan(groupBlock.indexOf("path: '/admin/balance-credits'"))
-    expect(groupBlock.indexOf("path: '/admin/balance-credits'")).toBeLessThan(groupBlock.indexOf("path: '/admin/media-playground/image'"))
-    expect(groupBlock.indexOf("path: '/admin/media-playground/image'")).toBeLessThan(groupBlock.indexOf("path: '/admin/media-playground/video'"))
+    expect(groupBlock.indexOf("path: '/admin/balance-credits'")).toBeLessThan(groupBlock.indexOf('...adminExternalAppNavItems.value'))
     expect(adminNavBlock.match(/path: '\/admin\/balance-credits'/g)).toHaveLength(1)
-    expect(adminNavBlock.match(/path: '\/admin\/media-playground\/image'/g)).toHaveLength(1)
-    expect(adminNavBlock.match(/path: '\/admin\/media-playground\/video'/g)).toHaveLength(1)
-    expect(groupBlock.match(/hideInSimpleMode: true/g)).toHaveLength(5)
+    expect(adminNavBlock).not.toContain("path: '/admin/media-playground/image'")
+    expect(adminNavBlock).not.toContain("path: '/admin/media-playground/video'")
     expect(adminNavBlock.slice(adminNavBlock.indexOf('if (authStore.isSimpleMode)'), adminNavBlock.indexOf('visible.push(otherOperationsItem)'))).not.toContain('filtered.push(otherOperationsItem)')
+  })
+
+  it('loads enabled external apps only for administrators and maps labels by locale', () => {
+    expect(componentSource).toContain('listAdminExternalApps()')
+    expect(componentSource).toContain('if (!isAdmin.value)')
+    expect(componentSource).toContain('.filter((app) => app.enabled)')
+    expect(componentSource).toContain("locale.value.startsWith('zh') ? app.label_zh : app.label_en")
+    expect(componentSource).toContain("action: 'adminExternalApp'")
+    expect(componentSource).toContain('adminExternalAppID: app.app_id')
+  })
+
+  it('uses per-app loading guards and the secure pre-open helper', () => {
+    expect(componentSource).toContain('adminExternalAppLaunching.value[appID]')
+    expect(componentSource).toContain('openAdminExternalAppWindow(() => launchAdminExternalApp(appID))')
+    expect(componentSource).toContain("return t('adminExternalApps.opening')")
+    expect(componentSource).toContain("t('adminExternalApps.openFailed')")
   })
 })
 

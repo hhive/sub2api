@@ -40,8 +40,6 @@ type AdminHandlers struct {
 	Payment                *admin.PaymentHandler
 	Affiliate              *admin.AffiliateHandler
 	Compliance             *admin.ComplianceHandler
-	MediaPlaygroundVideo   *admin.MediaPlaygroundVideoHandler
-	MediaPlaygroundImage   *admin.MediaPlaygroundImageHandler
 	AuditLog               *admin.AuditLogHandler
 }
 
@@ -65,6 +63,7 @@ type Handlers struct {
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
 	Launch           *LaunchHandler
+	AdminExternalApp *AdminExternalAppHandler
 	ImagePlayground  *ImagePlaygroundTaskHandler
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler

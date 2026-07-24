@@ -44,8 +44,6 @@ func ProvideAdminHandlers(
 	paymentHandler *admin.PaymentHandler,
 	affiliateHandler *admin.AffiliateHandler,
 	complianceHandler *admin.ComplianceHandler,
-	mediaPlaygroundVideoHandler *admin.MediaPlaygroundVideoHandler,
-	mediaPlaygroundImageHandler *admin.MediaPlaygroundImageHandler,
 	auditLogHandler *admin.AuditLogHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
@@ -86,8 +84,6 @@ func ProvideAdminHandlers(
 		Payment:                paymentHandler,
 		Affiliate:              affiliateHandler,
 		Compliance:             complianceHandler,
-		MediaPlaygroundVideo:   mediaPlaygroundVideoHandler,
-		MediaPlaygroundImage:   mediaPlaygroundImageHandler,
 		AuditLog:               auditLogHandler,
 	}
 }
@@ -193,6 +189,7 @@ func ProvideHandlers(
 	paymentWebhookHandler *PaymentWebhookHandler,
 	availableChannelHandler *AvailableChannelHandler,
 	launchHandler *LaunchHandler,
+	adminExternalAppHandler *AdminExternalAppHandler,
 	imagePlaygroundHandler *ImagePlaygroundTaskHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
@@ -219,6 +216,7 @@ func ProvideHandlers(
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
 		Launch:           launchHandler,
+		AdminExternalApp: adminExternalAppHandler,
 		ImagePlayground:  imagePlaygroundHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
@@ -247,6 +245,8 @@ var ProviderSet = wire.NewSet(
 	NewAvailableChannelHandler,
 	ProvideLaunchService,
 	NewLaunchHandler,
+	ProvideAdminExternalAppService,
+	NewAdminExternalAppHandler,
 	NewImagePlaygroundOpenAIImagesTaskExecutor,
 	NewImagePlaygroundTaskHandler,
 	NewAsyncImageHandler,
@@ -286,8 +286,6 @@ var ProviderSet = wire.NewSet(
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
 	admin.NewComplianceHandler,
-	admin.NewMediaPlaygroundVideoHandler,
-	admin.NewMediaPlaygroundImageHandler,
 	admin.NewAuditLogHandler,
 
 	// AdminHandlers and Handlers constructors

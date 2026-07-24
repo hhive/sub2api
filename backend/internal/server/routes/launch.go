@@ -1,10 +1,15 @@
 package routes
 
 import (
+	"strings"
+	"time"
+
 	"github.com/Wei-Shaw/sub2api/internal/handler"
+	basemiddleware "github.com/Wei-Shaw/sub2api/internal/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 func RegisterLaunchRoutes(
@@ -12,8 +17,26 @@ func RegisterLaunchRoutes(
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
 	apiKeyAuth middleware.APIKeyAuthMiddleware,
+	auditLog middleware.AuditLogMiddleware,
+	redisClient *redis.Client,
 	settingService *service.SettingService,
 ) {
+	exchangeLimiter := basemiddleware.NewRateLimiter(redisClient)
+	exchangeRateLimitOptions := basemiddleware.RateLimitOptions{FailureMode: basemiddleware.RateLimitFailClose}
+	exchangeIPRateLimit := exchangeLimiter.LimitWithOptions("admin-external-app-exchange", 30, time.Minute, exchangeRateLimitOptions)
+	exchangeAppRateLimit := func(c *gin.Context) {
+		appID := strings.TrimSpace(c.Param("app_id"))
+		appScopedLimiter := exchangeLimiter.LimitWithOptions("admin-external-app-exchange-app:"+appID, 30, time.Minute, basemiddleware.RateLimitOptions{
+			FailureMode: basemiddleware.RateLimitFailClose,
+		})
+		appScopedLimiter(c)
+	}
+	externalApps := v1.Group("/external-apps")
+	externalApps.Use(gin.HandlerFunc(auditLog))
+	{
+		externalApps.POST("/:app_id/exchange", exchangeIPRateLimit, h.AdminExternalApp.RequireExchangeSecret, exchangeAppRateLimit, h.AdminExternalApp.Exchange)
+	}
+
 	lobeHubPublic := v1.Group("/lobehub")
 	{
 		lobeHubPublic.POST("/exchange", h.Launch.LobeHubExchange)

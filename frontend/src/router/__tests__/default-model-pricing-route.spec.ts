@@ -20,4 +20,11 @@ describe('default model pricing admin routes', () => {
     expect(routeBlock).toContain('requiresAuth: true')
     expect(routeBlock).toContain('requiresAdmin: true')
   })
+
+  it('does not retain the legacy media administration pages', () => {
+    expect(routerSource).not.toContain("path: '/admin/media-playground/image'")
+    expect(routerSource).not.toContain("path: '/admin/media-playground/video'")
+    expect(routerSource).not.toContain('MediaPlaygroundImageView.vue')
+    expect(routerSource).not.toContain('MediaPlaygroundVideoView.vue')
+  })
 })

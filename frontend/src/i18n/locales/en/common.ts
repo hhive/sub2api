@@ -198,8 +198,6 @@ export default {
     channelPricing: 'Channel Pricing',
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
-    mediaPlaygroundImageConfig: 'Media Site Image Models',
-    videoPlaygroundConfig: 'Media Site Video Models',
     riskControl: 'Risk Control',
     securityAudit: 'Security Audit',
     contentModeration: 'Content Moderation',
@@ -209,6 +207,13 @@ export default {
 
   launch: {
     noAvailableApiKey: 'No available API key. Create an active, unexpired API key with remaining quota first.',
+  },
+
+  adminExternalApps: {
+    opening: 'Opening',
+    loadFailed: 'Failed to load administrator applications',
+    openFailed: 'Failed to open the administrator application',
+    invalidUrl: 'The administrator application returned an invalid URL',
   },
 
   mediaPlayground: {
