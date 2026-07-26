@@ -132,6 +132,8 @@ type Group struct {
 
 	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
+	// OpenAI Live 接口开关
+	AllowLive bool `json:"allow_live"`
 
 	// SupportedModels lists user-visible models available through this group.
 	SupportedModels []UserSupportedModel `json:"supported_models"`
@@ -573,6 +575,9 @@ type UsageLog struct {
 	UserAgent *string `json:"user_agent"`
 	// IPAddress is visible to the owner of the usage record.
 	IPAddress *string `json:"ip_address,omitempty"`
+	// SessionID is the explicit client-provided request correlation identifier
+	// (e.g. the session_id / X-Session-Id headers). Omitted when absent.
+	SessionID *string `json:"session_id,omitempty"`
 
 	// Cache TTL Override 标记
 	CacheTTLOverridden bool `json:"cache_ttl_overridden"`
