@@ -71,7 +71,7 @@ func TestAdminExternalAppRoutesAreInsideAdminAuthGroup(t *testing.T) {
 	})
 	noop := func(c *gin.Context) { c.Next() }
 	handlers := &handler.Handlers{Admin: &handler.AdminHandlers{}, AdminExternalApp: &handler.AdminExternalAppHandler{}}
-	RegisterAdminRoutes(router.Group("/api/v1"), handlers, adminAuth, middleware.AuditLogMiddleware(noop), middleware.StepUpAuthMiddleware(noop), nil)
+	RegisterAdminRoutes(router.Group("/api/v1"), handlers, adminAuth, middleware.AuditLogMiddleware(noop), middleware.StepUpAuthMiddleware(noop), nil, nil)
 
 	routes := make(map[string]struct{})
 	for _, route := range router.Routes() {
@@ -104,7 +104,7 @@ func TestAdminExternalAppLaunchRouteUsesAuthAuditAndComplianceGuards(t *testing.
 	svc := &adminExternalAppRouteServiceStub{}
 	handlers := &handler.Handlers{Admin: &handler.AdminHandlers{}, AdminExternalApp: handler.NewAdminExternalAppHandler(svc)}
 	settingService := service.NewSettingService(&adminExternalAppSettingRepoStub{}, &config.Config{})
-	RegisterAdminRoutes(router.Group("/api/v1"), handlers, adminAuth, audit, middleware.StepUpAuthMiddleware(func(c *gin.Context) { c.Next() }), settingService)
+	RegisterAdminRoutes(router.Group("/api/v1"), handlers, adminAuth, audit, middleware.StepUpAuthMiddleware(func(c *gin.Context) { c.Next() }), settingService, nil)
 
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/v1/admin/external-apps/media-management/launch", nil))

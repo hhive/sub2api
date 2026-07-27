@@ -67,6 +67,7 @@ const defaultPublicSettings = {
   promo_code_enabled: false,
   password_reset_enabled: true,
   invitation_code_enabled: true,
+  affiliate_enabled: true,
   turnstile_enabled: false,
   turnstile_site_key: '',
   site_name: '小逆AI',
@@ -172,5 +173,42 @@ describe('RegisterView', () => {
       })
     )
     expect(registerMock.mock.calls[0][0]).not.toHaveProperty('invitation_code')
+  })
+
+  it('keeps the optional affiliate invitation field before Turnstile', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...defaultPublicSettings,
+      invitation_code_enabled: false,
+      affiliate_enabled: true,
+      turnstile_enabled: true,
+      turnstile_site_key: 'site-key'
+    })
+
+    const wrapper = mountRegisterView()
+    await flushPromises()
+
+    const invitationField = wrapper.get('[data-testid="affiliate-invitation-field"]')
+    const turnstile = wrapper.get('[data-testid="registration-turnstile"]')
+
+    expect(invitationField.get('input').attributes('id')).toBe('affiliate_code')
+    expect(invitationField.text()).toContain('common.optional')
+    expect(
+      invitationField.element.compareDocumentPosition(turnstile.element) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it('uses the mandatory invitation field without duplicating the affiliate field', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...defaultPublicSettings,
+      invitation_code_enabled: true,
+      affiliate_enabled: true
+    })
+
+    const wrapper = mountRegisterView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="affiliate-invitation-field"]').exists()).toBe(false)
+    expect(wrapper.get('#invitation_code').exists()).toBe(true)
   })
 })

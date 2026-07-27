@@ -32,6 +32,7 @@ func TestLegacyMediaPlaygroundAdminRoutesAreRemoved(t *testing.T) {
 		middleware.AuditLogMiddleware(noop),
 		middleware.StepUpAuthMiddleware(noop),
 		settingService,
+		nil,
 	)
 
 	routes := make(map[string]struct{})
