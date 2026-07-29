@@ -125,6 +125,7 @@ var auditSensitiveReads = map[string]string{
 var auditActionOverrides = map[string]string{
 	"POST /api/v1/auth/login":                                 service.AuditActionLogin,
 	"POST /api/v1/auth/login/2fa":                             service.AuditActionLogin2FA,
+	"POST /api/v1/auth/passkey/login/finish":                  service.AuditActionLogin,
 	"POST /api/v1/auth/register":                              service.AuditActionRegister,
 	"POST /api/v1/auth/refresh":                               service.AuditActionTokenRefresh,
 	"POST /api/v1/user/totp/step-up":                          service.AuditActionStepUpVerify,
@@ -147,6 +148,8 @@ var auditActionOverrides = map[string]string{
 // auditBodyOmittedRoutes maps routes whose bodies cannot be made safe by
 // key-level redaction to the marker persisted instead of the original body.
 var auditBodyOmittedRoutes = map[string]string{
+	"POST /api/v1/auth/passkey/login/finish":                    "<credential-bearing body omitted>",
+	"POST /api/v1/user/passkeys/register/finish":                "<credential-bearing body omitted>",
 	"POST /api/v1/admin/accounts/import/codex-session":          "<credential-bearing body omitted>",
 	"PUT /api/v1/admin/accounts/:id/ollama-cloud-usage/session": "<credential-bearing body omitted>",
 	"POST /api/v1/chat/completions":                             "<sensitive chat body omitted>",
