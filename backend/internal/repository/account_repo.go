@@ -400,6 +400,38 @@ func (r *accountRepository) Update(ctx context.Context, account *service.Account
 	return r.updateAccount(ctx, account, nil)
 }
 
+// CompareAndSwapPriority atomically preserves a concurrent administrator edit.
+func (r *accountRepository) CompareAndSwapPriority(ctx context.Context, id int64, expected, target int) (int, bool, error) {
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return 0, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	client := tx.Client()
+	affected, err := client.Account.Update().
+		Where(dbaccount.IDEQ(id), dbaccount.PriorityEQ(expected), dbaccount.DeletedAtIsNil()).
+		SetPriority(target).
+		Save(ctx)
+	if err != nil {
+		return 0, false, err
+	}
+	if affected == 0 {
+		account, queryErr := client.Account.Query().Where(dbaccount.IDEQ(id), dbaccount.DeletedAtIsNil()).Only(ctx)
+		if queryErr != nil {
+			return 0, false, translatePersistenceError(queryErr, service.ErrAccountNotFound, nil)
+		}
+		return account.Priority, false, nil
+	}
+	if err := enqueueSchedulerOutbox(ctx, client, service.SchedulerOutboxEventAccountChanged, &id, nil, nil); err != nil {
+		return 0, false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, false, err
+	}
+	r.syncSchedulerAccountSnapshot(ctx, id)
+	return target, true, nil
+}
+
 // UpdateWithUpstreamBillingProbeEnabled applies an explicit probe switch in the
 // same row-lock transaction as the rest of an admin account edit.
 func (r *accountRepository) UpdateWithUpstreamBillingProbeEnabled(ctx context.Context, account *service.Account, enabled bool) error {

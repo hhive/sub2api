@@ -21,6 +21,12 @@ func RegisterLaunchRoutes(
 	redisClient *redis.Client,
 	settingService *service.SettingService,
 ) {
+	if h.Admin != nil && h.Admin.Account != nil {
+		relayMonitor := v1.Group("/internal/relay-monitor/accounts")
+		relayMonitor.GET("/:id/priority", h.Admin.Account.GetRelayMonitorPriority)
+		relayMonitor.PUT("/:id/priority", h.Admin.Account.SetRelayMonitorPriority)
+	}
+
 	exchangeLimiter := basemiddleware.NewRateLimiter(redisClient)
 	exchangeRateLimitOptions := basemiddleware.RateLimitOptions{FailureMode: basemiddleware.RateLimitFailClose}
 	exchangeIPRateLimit := exchangeLimiter.LimitWithOptions("admin-external-app-exchange", 30, time.Minute, exchangeRateLimitOptions)

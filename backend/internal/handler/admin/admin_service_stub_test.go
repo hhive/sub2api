@@ -36,6 +36,7 @@ type stubAdminService struct {
 	lastBulkUpdateAccountInput          *service.BulkUpdateAccountsInput
 	getAccountResult                    *service.Account
 	updateAccountCalls                  int
+	relayMonitorPriorityCASCalls        int
 	updateAccountExtraCalls             int
 	checkMixedErr                       error
 	lastMixedCheck                      struct {
@@ -525,6 +526,21 @@ func (s *stubAdminService) UpdateAccount(ctx context.Context, id int64, input *s
 	}
 	account := service.Account{ID: id, Name: input.Name, Status: service.StatusActive}
 	return &account, nil
+}
+
+func (s *stubAdminService) CompareAndSwapAccountPriority(_ context.Context, _ int64, expected, target int) (int, bool, error) {
+	s.relayMonitorPriorityCASCalls++
+	if s.getAccountResult == nil {
+		return 0, false, service.ErrAccountNotFound
+	}
+	if s.getAccountResult.Priority == target {
+		return target, false, nil
+	}
+	if s.getAccountResult.Priority != expected {
+		return s.getAccountResult.Priority, false, nil
+	}
+	s.getAccountResult.Priority = target
+	return target, true, nil
 }
 
 func (s *stubAdminService) UpdateAccountExtra(ctx context.Context, id int64, updates map[string]any) error {

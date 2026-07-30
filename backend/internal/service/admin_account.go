@@ -598,6 +598,19 @@ type accountProbeEnabledAtomicUpdater interface {
 	UpdateWithUpstreamBillingProbeEnabled(context.Context, *Account, bool) error
 }
 
+type accountPriorityCompareAndSwapper interface {
+	CompareAndSwapPriority(context.Context, int64, int, int) (int, bool, error)
+}
+
+// CompareAndSwapAccountPriority is intentionally outside the broad AdminService interface.
+func (s *adminServiceImpl) CompareAndSwapAccountPriority(ctx context.Context, id int64, expected, target int) (int, bool, error) {
+	repository, ok := s.accountRepo.(accountPriorityCompareAndSwapper)
+	if !ok {
+		return 0, false, errors.New("account priority compare-and-swap unavailable")
+	}
+	return repository.CompareAndSwapPriority(ctx, id, expected, target)
+}
+
 func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *UpdateAccountInput) (*Account, error) {
 	account, err := s.accountRepo.GetByID(ctx, id)
 	if err != nil {
