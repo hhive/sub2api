@@ -178,6 +178,12 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyComplianceNoticeDeclineText,
 		SettingKeyTurnstileEnabled,
 		SettingKeyTurnstileSiteKey,
+		SettingKeyTencentCaptchaEnabled,
+		SettingKeyTencentCaptchaAppID,
+		SettingKeyAliyunCaptchaEnabled,
+		SettingKeyAliyunCaptchaSceneID,
+		SettingKeyAliyunCaptchaPrefix,
+		SettingKeyAliyunCaptchaRegion,
 		SettingKeyAPIKeyACLTrustForwardedIP,
 		SettingKeySiteName,
 		SettingKeySiteLogo,
@@ -188,6 +194,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyMediaPlaygroundDocURL,
 		SettingKeyRedeemPurchaseURL,
 		SettingKeyHomeContent,
+		SettingKeyCompactHomeEnabled,
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
 		SettingKeyPurchaseSubscriptionURL,
@@ -324,6 +331,12 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		ComplianceNoticeDeclineText:      s.getStringOrDefault(settings, SettingKeyComplianceNoticeDeclineText, defaultComplianceNoticeDeclineText),
 		TurnstileEnabled:                 settings[SettingKeyTurnstileEnabled] == "true",
 		TurnstileSiteKey:                 settings[SettingKeyTurnstileSiteKey],
+		TencentCaptchaEnabled:            settings[SettingKeyTencentCaptchaEnabled] == "true",
+		TencentCaptchaAppID:              settings[SettingKeyTencentCaptchaAppID],
+		AliyunCaptchaEnabled:             settings[SettingKeyAliyunCaptchaEnabled] == "true",
+		AliyunCaptchaSceneID:             settings[SettingKeyAliyunCaptchaSceneID],
+		AliyunCaptchaPrefix:              settings[SettingKeyAliyunCaptchaPrefix],
+		AliyunCaptchaRegion:              normalizeAliyunCaptchaRegion(settings[SettingKeyAliyunCaptchaRegion]),
 		SiteName:                         s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
 		SiteLogo:                         settings[SettingKeySiteLogo],
 		SiteSubtitle:                     s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
@@ -333,6 +346,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		MediaPlaygroundDocURL:            strings.TrimSpace(settings[SettingKeyMediaPlaygroundDocURL]),
 		RedeemPurchaseURL:                s.getStringOrDefault(settings, SettingKeyRedeemPurchaseURL, defaultRedeemPurchaseURL),
 		HomeContent:                      settings[SettingKeyHomeContent],
+		CompactHomeEnabled:               settings[SettingKeyCompactHomeEnabled] == "true",
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
@@ -529,6 +543,12 @@ type PublicSettingsInjectionPayload struct {
 	ComplianceNoticeDeclineText      string                   `json:"compliance_notice_decline_text"`
 	TurnstileEnabled                 bool                     `json:"turnstile_enabled"`
 	TurnstileSiteKey                 string                   `json:"turnstile_site_key"`
+	TencentCaptchaEnabled            bool                     `json:"tencent_captcha_enabled"`
+	TencentCaptchaAppID              string                   `json:"tencent_captcha_app_id"`
+	AliyunCaptchaEnabled             bool                     `json:"aliyun_captcha_enabled"`
+	AliyunCaptchaSceneID             string                   `json:"aliyun_captcha_scene_id"`
+	AliyunCaptchaPrefix              string                   `json:"aliyun_captcha_prefix"`
+	AliyunCaptchaRegion              string                   `json:"aliyun_captcha_region"`
 	SiteName                         string                   `json:"site_name"`
 	SiteLogo                         string                   `json:"site_logo"`
 	SiteSubtitle                     string                   `json:"site_subtitle"`
@@ -538,6 +558,7 @@ type PublicSettingsInjectionPayload struct {
 	MediaPlaygroundDocURL            string                   `json:"media_playground_doc_url"`
 	RedeemPurchaseURL                string                   `json:"redeem_purchase_url"`
 	HomeContent                      string                   `json:"home_content"`
+	CompactHomeEnabled               bool                     `json:"compact_home_enabled"`
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled      bool                     `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL          string                   `json:"purchase_subscription_url"`
@@ -618,6 +639,12 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		ComplianceNoticeDeclineText:      settings.ComplianceNoticeDeclineText,
 		TurnstileEnabled:                 settings.TurnstileEnabled,
 		TurnstileSiteKey:                 settings.TurnstileSiteKey,
+		TencentCaptchaEnabled:            settings.TencentCaptchaEnabled,
+		TencentCaptchaAppID:              settings.TencentCaptchaAppID,
+		AliyunCaptchaEnabled:             settings.AliyunCaptchaEnabled,
+		AliyunCaptchaSceneID:             settings.AliyunCaptchaSceneID,
+		AliyunCaptchaPrefix:              settings.AliyunCaptchaPrefix,
+		AliyunCaptchaRegion:              settings.AliyunCaptchaRegion,
 		SiteName:                         settings.SiteName,
 		SiteLogo:                         settings.SiteLogo,
 		SiteSubtitle:                     settings.SiteSubtitle,
@@ -627,6 +654,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		MediaPlaygroundDocURL:            strings.TrimSpace(settings.MediaPlaygroundDocURL),
 		RedeemPurchaseURL:                settings.RedeemPurchaseURL,
 		HomeContent:                      settings.HomeContent,
+		CompactHomeEnabled:               settings.CompactHomeEnabled,
 		HideCcsImportButton:              settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:      settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:          settings.PurchaseSubscriptionURL,

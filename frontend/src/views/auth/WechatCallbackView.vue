@@ -562,7 +562,7 @@ function resolveWeChatStartURL(intent: 'bind_current_user' | 'adopt_existing_use
     intent,
   })
 
-  return `${normalized}/auth/oauth/wechat/start?${params.toString()}`
+  return `${normalized}/auth/oauth/wechat/bind/start?${params.toString()}`
 }
 
 function buildExistingAccountResumePath(): string | null {
@@ -916,7 +916,14 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
       email: payload.email,
       password: payload.password,
       verify_code: payload.verifyCode || undefined,
-      ...(invitationCode ? { invitation_code: invitationCode } : {}),
+      ...(payload.turnstileToken ? { turnstile_token: payload.turnstileToken } : {}),
+      ...(payload.tencentCaptchaTicket
+        ? {
+            tencent_captcha_ticket: payload.tencentCaptchaTicket,
+            tencent_captcha_randstr: payload.tencentCaptchaRandstr
+        }
+        : {}),
+      invitation_code: invitationCode || undefined,
       ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })
