@@ -11,9 +11,9 @@
 # =============================================================================
 
 services:
-  sub2api:
+  sub2api-docker:
     image: weishaw/sub2api:latest
-    container_name: sub2api
+    container_name: sub2api-docker
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -48,9 +48,9 @@ services:
       # =======================================================================
       - DATABASE_HOST=${DATABASE_HOST:?DATABASE_HOST is required}
       - DATABASE_PORT=${DATABASE_PORT:-5432}
-      - DATABASE_USER=${DATABASE_USER:-sub2api}
+      - DATABASE_USER=${DATABASE_USER:-sub2api-docker}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
-      - DATABASE_DBNAME=${DATABASE_DBNAME:-sub2api}
+      - DATABASE_DBNAME=${DATABASE_DBNAME:-sub2api-docker}
       - DATABASE_SSLMODE=${DATABASE_SSLMODE:-disable}
       - DATABASE_MAX_OPEN_CONNS=${DATABASE_MAX_OPEN_CONNS:-50}
       - DATABASE_MAX_IDLE_CONNS=${DATABASE_MAX_IDLE_CONNS:-10}

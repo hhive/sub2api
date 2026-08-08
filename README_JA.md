@@ -313,7 +313,7 @@ curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-
 docker compose up -d
 
 # ログを表示
-docker compose logs -f sub2api
+docker compose logs -f sub2api-docker
 ```
 
 **スクリプトの動作内容:**
@@ -387,7 +387,7 @@ docker compose up -d
 docker compose -f docker-compose.local.yml ps
 
 # 7. ログを表示
-docker compose -f docker-compose.local.yml logs -f sub2api
+docker compose -f docker-compose.local.yml logs -f sub2api-docker
 ```
 
 #### デプロイバージョン
@@ -405,7 +405,7 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 管理者パスワードが自動生成された場合は、ログで確認できます:
 ```bash
-docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
+docker compose -f docker-compose.local.yml logs sub2api-docker | grep "admin password"
 ```
 
 #### アップグレード

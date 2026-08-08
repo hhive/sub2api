@@ -312,7 +312,7 @@ curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-
 docker compose up -d
 
 # 查看日志
-docker compose logs -f sub2api
+docker compose logs -f sub2api-docker
 ```
 
 **脚本功能：**
@@ -386,7 +386,7 @@ docker compose up -d
 docker compose -f docker-compose.local.yml ps
 
 # 7. 查看日志
-docker compose -f docker-compose.local.yml logs -f sub2api
+docker compose -f docker-compose.local.yml logs -f sub2api-docker
 ```
 
 #### 部署版本对比
@@ -416,7 +416,7 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 如果管理员密码是自动生成的，在日志中查找：
 ```bash
-docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
+docker compose -f docker-compose.local.yml logs sub2api-docker | grep "admin password"
 ```
 
 #### 升级

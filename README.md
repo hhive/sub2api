@@ -312,7 +312,7 @@ curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-
 docker compose up -d
 
 # View logs
-docker compose logs -f sub2api
+docker compose logs -f sub2api-docker
 ```
 
 **What the script does:**
@@ -386,7 +386,7 @@ docker compose up -d
 docker compose -f docker-compose.local.yml ps
 
 # 7. View logs
-docker compose -f docker-compose.local.yml logs -f sub2api
+docker compose -f docker-compose.local.yml logs -f sub2api-docker
 ```
 
 #### Deployment Versions
@@ -404,7 +404,7 @@ Open `http://YOUR_SERVER_IP:8080` in your browser.
 
 If admin password was auto-generated, find it in logs:
 ```bash
-docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
+docker compose -f docker-compose.local.yml logs sub2api-docker | grep "admin password"
 ```
 
 #### Upgrade
