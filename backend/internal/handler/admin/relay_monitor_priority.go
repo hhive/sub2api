@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,6 +58,14 @@ type relayMonitorPriorityCompareAndSwapper interface {
 	CompareAndSwapAccountPriority(context.Context, int64, int, int) (int, bool, error)
 }
 
+type relayMonitorPriorityCapPauser interface {
+	PauseRelayMonitorPriorityCappedAccount(context.Context, int64, time.Duration) (time.Time, error)
+}
+
+type relayMonitorPriorityCapPauseRequest struct {
+	DurationSeconds int `json:"duration_seconds"`
+}
+
 // SetRelayMonitorPriority applies a narrow idempotent compare-before-update operation.
 func (h *AccountHandler) SetRelayMonitorPriority(c *gin.Context) {
 	if !requireRelayMonitorPrioritySecret(c) {
@@ -87,4 +96,33 @@ func (h *AccountHandler) SetRelayMonitorPriority(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"account_id": accountID, "priority": request.TargetPriority, "idempotent": !updated})
+}
+
+// PauseRelayMonitorPriorityCappedAccount temporarily removes a capped account from scheduling.
+func (h *AccountHandler) PauseRelayMonitorPriorityCappedAccount(c *gin.Context) {
+	if !requireRelayMonitorPrioritySecret(c) {
+		return
+	}
+	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || accountID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
+		return
+	}
+	var request relayMonitorPriorityCapPauseRequest
+	if err := c.ShouldBindJSON(&request); err != nil || request.DurationSeconds < 60 || request.DurationSeconds > 3600 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pause duration"})
+		return
+	}
+	pauser, ok := h.adminService.(relayMonitorPriorityCapPauser)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "priority integration unavailable"})
+		return
+	}
+	until, err := pauser.PauseRelayMonitorPriorityCappedAccount(
+		c.Request.Context(), accountID, time.Duration(request.DurationSeconds)*time.Second)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "account pause failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"account_id": accountID, "temp_unschedulable_until": until.UTC()})
 }

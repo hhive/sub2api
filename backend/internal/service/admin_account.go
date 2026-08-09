@@ -599,6 +599,13 @@ type accountPriorityCompareAndSwapper interface {
 	CompareAndSwapPriority(context.Context, int64, int, int) (int, bool, error)
 }
 
+const relayMonitorPriorityCappedReason = "relay monitor priority capped"
+
+const (
+	relayMonitorPriorityCapPauseMin = time.Minute
+	relayMonitorPriorityCapPauseMax = time.Hour
+)
+
 // CompareAndSwapAccountPriority is intentionally outside the broad AdminService interface.
 func (s *adminServiceImpl) CompareAndSwapAccountPriority(ctx context.Context, id int64, expected, target int) (int, bool, error) {
 	repository, ok := s.accountRepo.(accountPriorityCompareAndSwapper)
@@ -606,6 +613,25 @@ func (s *adminServiceImpl) CompareAndSwapAccountPriority(ctx context.Context, id
 		return 0, false, errors.New("account priority compare-and-swap unavailable")
 	}
 	return repository.CompareAndSwapPriority(ctx, id, expected, target)
+}
+
+// PauseRelayMonitorPriorityCappedAccount is intentionally outside the broad AdminService interface.
+func (s *adminServiceImpl) PauseRelayMonitorPriorityCappedAccount(ctx context.Context, id int64, duration time.Duration) (time.Time, error) {
+	if duration < relayMonitorPriorityCapPauseMin || duration > relayMonitorPriorityCapPauseMax {
+		return time.Time{}, errors.New("invalid relay monitor priority cap pause duration")
+	}
+	until := time.Now().Add(duration)
+	if err := s.accountRepo.SetTempUnschedulable(ctx, id, until, relayMonitorPriorityCappedReason); err != nil {
+		return time.Time{}, err
+	}
+	account, err := s.accountRepo.GetByID(ctx, id)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if account.TempUnschedulableUntil != nil && account.TempUnschedulableUntil.After(until) {
+		return *account.TempUnschedulableUntil, nil
+	}
+	return until, nil
 }
 func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *UpdateAccountInput) (*Account, error) {
 	account, err := s.accountRepo.GetByID(ctx, id)

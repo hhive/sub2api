@@ -38,6 +38,10 @@ type stubAdminService struct {
 	getAccountResult                    *service.Account
 	updateAccountCalls                  int
 	relayMonitorPriorityCASCalls        int
+	relayCapPauseCalls                  int
+	relayCapPauseAccountID              int64
+	relayCapPauseDuration               time.Duration
+	relayCapPauseUntil                  time.Time
 	updateAccountExtraCalls             int
 	checkMixedErr                       error
 	lastMixedCheck                      struct {
@@ -543,6 +547,13 @@ func (s *stubAdminService) CompareAndSwapAccountPriority(_ context.Context, _ in
 	}
 	s.getAccountResult.Priority = target
 	return target, true, nil
+}
+
+func (s *stubAdminService) PauseRelayMonitorPriorityCappedAccount(_ context.Context, accountID int64, duration time.Duration) (time.Time, error) {
+	s.relayCapPauseCalls++
+	s.relayCapPauseAccountID = accountID
+	s.relayCapPauseDuration = duration
+	return s.relayCapPauseUntil, nil
 }
 
 func (s *stubAdminService) UpdateAccountExtra(ctx context.Context, id int64, updates map[string]any) error {

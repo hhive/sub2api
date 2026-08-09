@@ -25,6 +25,7 @@ func RegisterLaunchRoutes(
 		relayMonitor := v1.Group("/internal/relay-monitor/accounts")
 		relayMonitor.GET("/:id/priority", h.Admin.Account.GetRelayMonitorPriority)
 		relayMonitor.PUT("/:id/priority", h.Admin.Account.SetRelayMonitorPriority)
+		relayMonitor.POST("/:id/priority-cap-pause", h.Admin.Account.PauseRelayMonitorPriorityCappedAccount)
 	}
 
 	exchangeLimiter := basemiddleware.NewRateLimiter(redisClient)

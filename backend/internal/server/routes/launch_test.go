@@ -38,6 +38,7 @@ func TestLaunchRoutesUseMediaPlaygroundContractOnly(t *testing.T) {
 	require.Contains(t, routes, "POST /api/v1/external-apps/:app_id/exchange")
 	require.Contains(t, routes, "GET /api/v1/internal/relay-monitor/accounts/:id/priority")
 	require.Contains(t, routes, "PUT /api/v1/internal/relay-monitor/accounts/:id/priority")
+	require.Contains(t, routes, "POST /api/v1/internal/relay-monitor/accounts/:id/priority-cap-pause")
 	require.NotContains(t, routes, "POST /api/v1/image-playground/launch")
 	require.NotContains(t, routes, "POST /api/v1/image-playground/exchange")
 	require.NotContains(t, routes, "POST /api/v1/video-playground/launch")
