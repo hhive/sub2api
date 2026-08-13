@@ -521,6 +521,9 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			if err != nil {
 				return nil, fmt.Errorf("assign or extend subscription: %w", err)
 			}
+			if err := s.applyFirstRechargeBonus(txCtx, userID, redeemCode); err != nil {
+				return nil, fmt.Errorf("apply first recharge bonus: %w", err)
+			}
 		}
 
 	default:
@@ -575,6 +578,9 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || s.userRepo == nil || redeemCode == nil {
 		return nil
 	}
+	if !isFirstRechargeBonusEligibleRedeem(redeemCode) {
+		return nil
+	}
 	settings, err := s.settingService.GetAllSettings(ctx)
 	if err != nil {
 		return err
@@ -582,7 +588,7 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	if !settings.FirstRechargeBonusEnabled || settings.FirstRechargeBonusAmount <= 0 {
 		return nil
 	}
-	hasPrior, err := s.hasPriorPositiveBalanceRedeem(ctx, userID, redeemCode.ID)
+	hasPrior, err := s.hasPriorFirstRechargeEligibleRedeem(ctx, userID, redeemCode.ID)
 	if err != nil {
 		return err
 	}
@@ -607,7 +613,21 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	return s.userRepo.UpdateBalance(ctx, userID, settings.FirstRechargeBonusAmount)
 }
 
-func (s *RedeemService) hasPriorPositiveBalanceRedeem(ctx context.Context, userID int64, currentRedeemCodeID int64) (bool, error) {
+func isFirstRechargeBonusEligibleRedeem(redeemCode *RedeemCode) bool {
+	if redeemCode == nil {
+		return false
+	}
+	switch redeemCode.Type {
+	case RedeemTypeBalance:
+		return redeemCode.Value > 0
+	case RedeemTypeSubscription:
+		return redeemCode.ValidityDays >= 0
+	default:
+		return false
+	}
+}
+
+func (s *RedeemService) hasPriorFirstRechargeEligibleRedeem(ctx context.Context, userID int64, currentRedeemCodeID int64) (bool, error) {
 	if s == nil || s.entClient == nil || userID <= 0 {
 		return false, nil
 	}
@@ -618,9 +638,17 @@ func (s *RedeemService) hasPriorPositiveBalanceRedeem(ctx context.Context, userI
 	count, err := client.RedeemCode.Query().
 		Where(
 			redeemcode.UsedByEQ(userID),
-			redeemcode.ValueGT(0),
-			redeemcode.TypeEQ(RedeemTypeBalance),
 			redeemcode.IDNEQ(currentRedeemCodeID),
+			redeemcode.Or(
+				redeemcode.And(
+					redeemcode.TypeEQ(RedeemTypeBalance),
+					redeemcode.ValueGT(0),
+				),
+				redeemcode.And(
+					redeemcode.TypeEQ(RedeemTypeSubscription),
+					redeemcode.ValidityDaysGTE(0),
+				),
+			),
 		).
 		Count(ctx)
 	if err != nil {

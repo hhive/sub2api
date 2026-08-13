@@ -16,6 +16,16 @@ type redeemBalanceCreditRepoStub struct {
 	created []BalanceCreditCreate
 }
 
+type redeemBonusUserRepoStub struct {
+	*userRepoStub
+	balanceUpdates []float64
+}
+
+func (s *redeemBonusUserRepoStub) UpdateBalance(_ context.Context, _ int64, amount float64) error {
+	s.balanceUpdates = append(s.balanceUpdates, amount)
+	return nil
+}
+
 func (s *redeemBalanceCreditRepoStub) CreateCredit(ctx context.Context, credit BalanceCreditCreate) error {
 	s.created = append(s.created, credit)
 	return nil
@@ -75,6 +85,159 @@ func TestRedeemServiceCreateBalanceCreditPermanentWhenValidityZero(t *testing.T)
 	require.Equal(t, "PERMANENT", repo.created[0].SourceCode)
 	require.Equal(t, 12.5, repo.created[0].Amount)
 	require.Nil(t, repo.created[0].ExpiresAt)
+}
+
+func TestRedeemServiceFirstRechargeBonusSkipsAfterPriorPositiveSubscriptionRedeem(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	user := client.User.Create().
+		SetEmail("prior-subscription@example.com").
+		SetPasswordHash("test").
+		SaveX(ctx)
+	client.RedeemCode.Create().
+		SetCode("PRIOR-SUBSCRIPTION").
+		SetType(RedeemTypeSubscription).
+		SetValue(10).
+		SetStatus(StatusUsed).
+		SetUsedBy(user.ID).
+		SaveX(ctx)
+
+	creditRepo := &redeemBalanceCreditRepoStub{}
+	userRepo := &redeemBonusUserRepoStub{userRepoStub: &userRepoStub{}}
+	svc := &RedeemService{
+		entClient:         client,
+		balanceCreditRepo: creditRepo,
+		userRepo:          userRepo,
+		settingService: firstRechargeBonusSettingService(map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:      "true",
+			SettingKeyFirstRechargeBonusAmount:       "10",
+			SettingKeyFirstRechargeBonusValidityDays: "3",
+		}),
+	}
+
+	err := svc.applyFirstRechargeBonus(ctx, user.ID, &RedeemCode{
+		ID:           2002,
+		Code:         "CURRENT-BALANCE",
+		Type:         RedeemTypeBalance,
+		Value:        10,
+		ValidityDays: 0,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, creditRepo.created)
+	require.Empty(t, userRepo.balanceUpdates)
+}
+
+func TestRedeemServiceFirstRechargeBonusAppliesToFirstPositiveSubscriptionRedeem(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	creditRepo := &redeemBalanceCreditRepoStub{}
+	userRepo := &redeemBonusUserRepoStub{userRepoStub: &userRepoStub{}}
+	svc := &RedeemService{
+		entClient:         client,
+		balanceCreditRepo: creditRepo,
+		userRepo:          userRepo,
+		settingService: firstRechargeBonusSettingService(map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:      "true",
+			SettingKeyFirstRechargeBonusAmount:       "10",
+			SettingKeyFirstRechargeBonusValidityDays: "3",
+		}),
+	}
+
+	err := svc.applyFirstRechargeBonus(ctx, 42, &RedeemCode{
+		ID:           2004,
+		Code:         "FIRST-SUBSCRIPTION",
+		Type:         RedeemTypeSubscription,
+		Value:        10,
+		ValidityDays: 30,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, creditRepo.created, 1)
+	require.Equal(t, BalanceCreditSourceFirstRechargeBonus, creditRepo.created[0].SourceType)
+	require.Equal(t, "2004", creditRepo.created[0].SourceID)
+	require.Equal(t, 10.0, creditRepo.created[0].Amount)
+	require.NotNil(t, creditRepo.created[0].ExpiresAt)
+	require.Equal(t, []float64{10}, userRepo.balanceUpdates)
+}
+
+func TestRedeemServiceFirstRechargeBonusSkipsSubscriptionAfterPriorPositiveBalanceRedeem(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	user := client.User.Create().
+		SetEmail("prior-balance@example.com").
+		SetPasswordHash("test").
+		SaveX(ctx)
+	client.RedeemCode.Create().
+		SetCode("PRIOR-BALANCE").
+		SetType(RedeemTypeBalance).
+		SetValue(10).
+		SetStatus(StatusUsed).
+		SetUsedBy(user.ID).
+		SaveX(ctx)
+
+	creditRepo := &redeemBalanceCreditRepoStub{}
+	userRepo := &redeemBonusUserRepoStub{userRepoStub: &userRepoStub{}}
+	svc := &RedeemService{
+		entClient:         client,
+		balanceCreditRepo: creditRepo,
+		userRepo:          userRepo,
+		settingService: firstRechargeBonusSettingService(map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:      "true",
+			SettingKeyFirstRechargeBonusAmount:       "10",
+			SettingKeyFirstRechargeBonusValidityDays: "3",
+		}),
+	}
+
+	err := svc.applyFirstRechargeBonus(ctx, user.ID, &RedeemCode{
+		ID:           2005,
+		Code:         "CURRENT-SUBSCRIPTION",
+		Type:         RedeemTypeSubscription,
+		Value:        10,
+		ValidityDays: 30,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, creditRepo.created)
+	require.Empty(t, userRepo.balanceUpdates)
+}
+
+func TestRedeemServiceFirstRechargeBonusSkipsNegativeSubscriptionAdjustment(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	creditRepo := &redeemBalanceCreditRepoStub{}
+	userRepo := &redeemBonusUserRepoStub{userRepoStub: &userRepoStub{}}
+	svc := &RedeemService{
+		entClient:         client,
+		balanceCreditRepo: creditRepo,
+		userRepo:          userRepo,
+		settingService: firstRechargeBonusSettingService(map[string]string{
+			SettingKeyFirstRechargeBonusEnabled:      "true",
+			SettingKeyFirstRechargeBonusAmount:       "10",
+			SettingKeyFirstRechargeBonusValidityDays: "3",
+		}),
+	}
+
+	err := svc.applyFirstRechargeBonus(ctx, 42, &RedeemCode{
+		ID:           2003,
+		Code:         "REDUCE-SUBSCRIPTION",
+		Type:         RedeemTypeSubscription,
+		Value:        10,
+		ValidityDays: -3,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, creditRepo.created)
+	require.Empty(t, userRepo.balanceUpdates)
+}
+
+func firstRechargeBonusSettingService(values map[string]string) *SettingService {
+	return NewSettingService(&settingRepoStub{values: values}, &config.Config{
+		Default: config.DefaultConfig{
+			UserBalance:     0,
+			UserConcurrency: 1,
+		},
+	})
 }
 
 func TestSubscriptionQuotaTotalForValidityDays(t *testing.T) {
