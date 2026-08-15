@@ -824,6 +824,7 @@ func filterEnabledVictoryMenuItems(raw string) json.RawMessage {
 		Label       string `json:"label"`
 		URL         string `json:"url"`
 		CarryAPIKey bool   `json:"carry_api_key"`
+		Enabled     bool   `json:"enabled"`
 		SortOrder   int    `json:"sort_order"`
 	}, 0, len(items))
 	for _, item := range items {
@@ -835,12 +836,14 @@ func filterEnabledVictoryMenuItems(raw string) json.RawMessage {
 			Label       string `json:"label"`
 			URL         string `json:"url"`
 			CarryAPIKey bool   `json:"carry_api_key"`
+			Enabled     bool   `json:"enabled"`
 			SortOrder   int    `json:"sort_order"`
 		}{
 			ID:          item.ID,
 			Label:       item.Label,
 			URL:         item.URL,
 			CarryAPIKey: item.CarryAPIKey,
+			Enabled:     item.Enabled,
 			SortOrder:   item.SortOrder,
 		})
 	}

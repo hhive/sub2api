@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const defaultVictoryMenuItemsValue = `[{"id":"xiaoni-offer","label":"小逆Offer","url":"https://offer.xiaoni-ai.top","carry_api_key":false,"enabled":true,"sort_order":0}]`
+const defaultVictoryMenuItemsValue = `[]`
 
 // IsRegistrationEnabled 检查是否开放注册
 func (s *SettingService) IsRegistrationEnabled(ctx context.Context) bool {

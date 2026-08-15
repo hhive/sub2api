@@ -231,8 +231,8 @@ export default {
   },
 
   victoryMenu: {
-    opening: 'Opening Victory menu',
-    openFailed: 'Failed to open Victory menu'
+    opening: 'Opening jump menu',
+    openFailed: 'Failed to open jump menu'
   },
 
   lobehub: {

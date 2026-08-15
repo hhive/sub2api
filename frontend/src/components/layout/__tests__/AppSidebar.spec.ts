@@ -11,6 +11,8 @@ import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 
 const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppSidebar.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
+const appStoreSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../stores/app.ts'), 'utf8')
+const settingsViewSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../views/admin/SettingsView.vue'), 'utf8')
 const stylePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../../style.css')
 const styleSource = readFileSync(stylePath, 'utf8')
 
@@ -180,14 +182,24 @@ describe('AppSidebar purchase menu wiring', () => {
 })
 
 describe('AppSidebar victory menu wiring', () => {
-  it('adds Vibe forum and configurable victory child launches to the user menu', () => {
+  it('adds configurable jump menus as top-level items at the end of the user menu', () => {
+    const selfNavBlock = componentSource.match(/function buildSelfNavItems[\s\S]*?return items\n}/)?.[0] ?? ''
+
     expect(componentSource).toContain("label: 'Vibe论坛'")
     expect(componentSource).toContain("externalUrl: 'https://vibe.xiaoni-ai.top'")
-    expect(componentSource).toContain("label: '旗开得胜'")
-    expect(componentSource).toContain("label: '小逆Offer'")
-    expect(componentSource).toContain("url: 'https://offer.xiaoni-ai.top'")
+    expect(selfNavBlock).not.toContain("path: '__victory_menu__'")
+    expect(selfNavBlock).not.toContain("label: '旗开得胜'")
+    expect(selfNavBlock).not.toContain('children: victoryMenuItems.value.map')
+    expect(componentSource).not.toContain('defaultVictoryMenuItems')
+    expect(componentSource).not.toContain("label: '小逆Offer'")
+    expect(componentSource).not.toContain("url: 'https://offer.xiaoni-ai.top'")
+    expect(appStoreSource).not.toContain("id: 'xiaoni-offer'")
+    expect(settingsViewSource).not.toContain('id: "xiaoni-offer"')
+    expect(selfNavBlock).toContain('...victoryMenuItems.value.map((item): NavItem => ({')
+    expect(selfNavBlock.indexOf('...victoryMenuItems.value.map')).toBeGreaterThan(selfNavBlock.indexOf('...customMenuItemsForUser.value.map'))
     expect(componentSource).toContain('launchVictoryMenu(menuID)')
     expect(componentSource).toContain("action: item.carry_api_key ? 'victoryMenu' : undefined")
+    expect(componentSource.match(/item\.action === 'lobehub' \|\| item\.action === 'mediaPlayground' \|\| item\.action === 'victoryMenu'/g)).toHaveLength(3)
     expect(componentSource).toContain('target="_blank"')
     expect(componentSource).toContain('rel="noopener noreferrer"')
   })

@@ -231,8 +231,8 @@ export default {
   },
 
   victoryMenu: {
-    opening: '正在打开旗开得胜',
-    openFailed: '打开旗开得胜菜单失败'
+    opening: '正在打开跳转菜单',
+    openFailed: '打开跳转菜单失败'
   },
 
   lobehub: {

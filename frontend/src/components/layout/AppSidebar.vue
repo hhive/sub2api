@@ -99,7 +99,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground' || item.action === 'victoryMenu'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -207,7 +207,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground' || item.action === 'victoryMenu'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -316,7 +316,7 @@
               </div>
             </template>
             <button
-              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground'"
+              v-else-if="item.action === 'lobehub' || item.action === 'mediaPlayground' || item.action === 'victoryMenu'"
               type="button"
               class="sidebar-link mb-1 w-full"
               :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
@@ -420,7 +420,6 @@ import {
 import type { AdminExternalApp } from '@/api/launch'
 import { openAdminExternalAppWindow } from '@/utils/adminExternalAppLaunch'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
-import type { VictoryMenuItem } from '@/types'
 
 interface NavItem {
   path: string
@@ -958,20 +957,9 @@ const purchaseSubscriptionUrl = computed(() => {
 })
 const flagBatchImageAccess = () => canUseBatchImage.value
 
-const defaultVictoryMenuItems: VictoryMenuItem[] = [
-  {
-    id: 'xiaoni-offer',
-    label: '小逆Offer',
-    url: 'https://offer.xiaoni-ai.top',
-    carry_api_key: false,
-    enabled: true,
-    sort_order: 0,
-  },
-]
-
 const victoryMenuItems = computed(() => {
   const configured = appStore.cachedPublicSettings?.victory_menu_items
-  const items = Array.isArray(configured) && configured.length > 0 ? configured : defaultVictoryMenuItems
+  const items = Array.isArray(configured) ? configured : []
   return items
     .filter((item) => item.enabled !== false && item.label.trim() && item.url.trim())
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -994,21 +982,6 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__media_playground__', label: t('nav.mediaPlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagMediaPlayground, action: 'mediaPlayground' },
     { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
-    {
-      path: '__victory_menu__',
-      label: '旗开得胜',
-      icon: GiftIcon,
-      hideInSimpleMode: true,
-      expandOnly: true,
-      children: victoryMenuItems.value.map((item): NavItem => ({
-        path: `__victory_menu_${item.id}__`,
-        label: item.label,
-        icon: GiftIcon,
-        externalUrl: item.carry_api_key ? undefined : item.url,
-        action: item.carry_api_key ? 'victoryMenu' : undefined,
-        victoryMenuID: item.id,
-      })),
-    },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
@@ -1022,6 +995,15 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
       label: item.label,
       icon: null,
       iconSvg: item.icon_svg,
+    })),
+    ...victoryMenuItems.value.map((item): NavItem => ({
+      path: `__victory_menu_${item.id}__`,
+      label: item.label,
+      icon: GiftIcon,
+      hideInSimpleMode: true,
+      externalUrl: item.carry_api_key ? undefined : item.url,
+      action: item.carry_api_key ? 'victoryMenu' : undefined,
+      victoryMenuID: item.id,
     })),
   )
   return items

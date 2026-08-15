@@ -6835,7 +6835,7 @@
             </div>
           </div>
 
-          <!-- Victory Menu Items -->
+          <!-- Custom Jump Menu Items -->
           <div class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -9990,16 +9990,7 @@ const form = reactive<SettingsForm>({
     visibility: "user" | "admin";
     sort_order: number;
   }>,
-  victory_menu_items: [
-    {
-      id: "xiaoni-offer",
-      label: "小逆Offer",
-      url: "https://offer.xiaoni-ai.top",
-      carry_api_key: false,
-      enabled: true,
-      sort_order: 0,
-    },
-  ] as Array<{
+  victory_menu_items: [] as Array<{
     id: string;
     label: string;
     url: string;
