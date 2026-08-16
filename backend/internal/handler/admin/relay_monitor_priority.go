@@ -2,40 +2,15 @@ package admin
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-const relayMonitorPrioritySecretHeader = "X-Sub2API-Relay-Monitor-Secret"
-
-func requireRelayMonitorPrioritySecret(c *gin.Context) bool {
-	expected := strings.TrimSpace(os.Getenv("SUB2API_RELAY_MONITOR_PRIORITY_SECRET"))
-	provided := strings.TrimSpace(c.GetHeader(relayMonitorPrioritySecretHeader))
-	if len(expected) < 32 {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "relay monitor priority integration unavailable"})
-		return false
-	}
-	expectedHash := sha256.Sum256([]byte(expected))
-	providedHash := sha256.Sum256([]byte(provided))
-	if subtle.ConstantTimeCompare(expectedHash[:], providedHash[:]) != 1 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return false
-	}
-	return true
-}
-
 // GetRelayMonitorPriority exposes only the scheduling priority to the dedicated Monitor integration.
 func (h *AccountHandler) GetRelayMonitorPriority(c *gin.Context) {
-	if !requireRelayMonitorPrioritySecret(c) {
-		return
-	}
 	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || accountID <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
@@ -68,9 +43,6 @@ type relayMonitorPriorityCapPauseRequest struct {
 
 // SetRelayMonitorPriority applies a narrow idempotent compare-before-update operation.
 func (h *AccountHandler) SetRelayMonitorPriority(c *gin.Context) {
-	if !requireRelayMonitorPrioritySecret(c) {
-		return
-	}
 	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || accountID <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
@@ -100,9 +72,6 @@ func (h *AccountHandler) SetRelayMonitorPriority(c *gin.Context) {
 
 // PauseRelayMonitorPriorityCappedAccount temporarily removes a capped account from scheduling.
 func (h *AccountHandler) PauseRelayMonitorPriorityCappedAccount(c *gin.Context) {
-	if !requireRelayMonitorPrioritySecret(c) {
-		return
-	}
 	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || accountID <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})

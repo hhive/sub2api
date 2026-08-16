@@ -24,6 +24,8 @@ import (
 type adminExternalAppRouteServiceStub struct {
 	createCalls int
 	secretCalls int
+	lastAppID   string
+	lastSecret  string
 }
 
 func (s *adminExternalAppRouteServiceStub) List() []service.AdminExternalAppMetadata {
@@ -33,8 +35,10 @@ func (s *adminExternalAppRouteServiceStub) CreateLaunch(context.Context, string,
 	s.createCalls++
 	return &service.AdminExternalAppLaunchResult{}, nil
 }
-func (s *adminExternalAppRouteServiceStub) ValidateExchangeSecret(string, string) error {
+func (s *adminExternalAppRouteServiceStub) ValidateExchangeSecret(appID, secret string) error {
 	s.secretCalls++
+	s.lastAppID = appID
+	s.lastSecret = secret
 	return infraerrors.Unauthorized("ADMIN_EXTERNAL_APP_SECRET_INVALID", "external app secret invalid")
 }
 func (s *adminExternalAppRouteServiceStub) Exchange(context.Context, string, string) (*service.AdminExternalAppExchangePayload, error) {

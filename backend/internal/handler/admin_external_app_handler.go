@@ -82,6 +82,24 @@ func (h *AdminExternalAppHandler) RequireExchangeSecret(c *gin.Context) {
 	c.Next()
 }
 
+func (h *AdminExternalAppHandler) RequireAppSecret(appID string) gin.HandlerFunc {
+	appID = strings.TrimSpace(appID)
+	return func(c *gin.Context) {
+		if !service.IsValidAdminExternalAppID(appID) {
+			response.ErrorFrom(c, invalidAdminExternalAppSecret())
+			c.Abort()
+			return
+		}
+		if err := h.service.ValidateExchangeSecret(appID, c.GetHeader(adminExternalAppSecretHeader)); err != nil {
+			response.ErrorFrom(c, err)
+			c.Abort()
+			return
+		}
+		c.Set(adminExternalAppSecretValidatedContextKey, true)
+		c.Next()
+	}
+}
+
 func (h *AdminExternalAppHandler) Exchange(c *gin.Context) {
 	middleware.SetAuditAction(c, service.AuditActionExternalAppExchange)
 	appID := strings.TrimSpace(c.Param("app_id"))
