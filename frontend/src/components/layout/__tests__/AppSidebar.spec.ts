@@ -98,6 +98,16 @@ describe('AppSidebar media playground menu wiring', () => {
     expect(componentSource).toContain("handleMenuItemClick('__media_playground__')")
   })
 
+  it('pre-opens a window from the click event so browsers do not block the launch', () => {
+    const launchBlock = componentSource.match(/async function handleMediaPlaygroundLaunch\(\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+
+    expect(launchBlock).toContain("const launchWindow = window.open('', '_blank')")
+    expect(launchBlock).toContain('launchWindow.opener = null')
+    expect(launchBlock).toContain('launchWindow.location.href = result.redirect_url')
+    expect(launchBlock).toContain('launchWindow?.close()')
+    expect(launchBlock).not.toContain("window.open(result.redirect_url, '_blank', 'noopener')")
+  })
+
   it('labels the user launch entry without retaining legacy admin labels', () => {
     const zhLocale = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../i18n/locales/zh/common.ts'), 'utf8')
     expect(zhLocale).toContain("mediaPlayground: '图片与视频'")

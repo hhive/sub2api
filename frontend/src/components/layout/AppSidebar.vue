@@ -1209,11 +1209,20 @@ async function handleLobeHubLaunch() {
 async function handleMediaPlaygroundLaunch() {
   if (mediaPlaygroundLaunching.value) return
   handleMenuItemClick('__media_playground__')
+  const launchWindow = window.open('', '_blank')
+  if (launchWindow) {
+    launchWindow.opener = null
+  }
   mediaPlaygroundLaunching.value = true
   try {
     const result = await launchMediaPlayground()
-    window.open(result.redirect_url, '_blank', 'noopener')
+    if (launchWindow) {
+      launchWindow.location.href = result.redirect_url
+    } else {
+      window.location.href = result.redirect_url
+    }
   } catch (error) {
+    launchWindow?.close()
     appStore.showError(resolveMediaPlaygroundLaunchError(error))
   } finally {
     mediaPlaygroundLaunching.value = false
