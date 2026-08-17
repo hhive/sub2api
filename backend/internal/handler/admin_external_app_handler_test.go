@@ -22,6 +22,8 @@ type adminExternalAppServiceStub struct {
 	list          []service.AdminExternalAppMetadata
 	secretErr     error
 	secretCalls   int
+	lastAppID     string
+	lastSecret    string
 	exchangeErr   error
 	exchange      *service.AdminExternalAppExchangePayload
 	exchangeCalls int
@@ -31,8 +33,10 @@ func (s *adminExternalAppServiceStub) List() []service.AdminExternalAppMetadata 
 func (s *adminExternalAppServiceStub) CreateLaunch(context.Context, string, int64) (*service.AdminExternalAppLaunchResult, error) {
 	return &service.AdminExternalAppLaunchResult{}, nil
 }
-func (s *adminExternalAppServiceStub) ValidateExchangeSecret(string, string) error {
+func (s *adminExternalAppServiceStub) ValidateExchangeSecret(appID, secret string) error {
 	s.secretCalls++
+	s.lastAppID = appID
+	s.lastSecret = secret
 	return s.secretErr
 }
 func (s *adminExternalAppServiceStub) Exchange(context.Context, string, string) (*service.AdminExternalAppExchangePayload, error) {
@@ -101,6 +105,24 @@ func TestAdminExternalAppHandler_SecretValidatedBeforeTokenConsumption(t *testin
 	r.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 	require.Zero(t, svc.exchangeCalls)
+}
+
+func TestAdminExternalAppHandler_FixedAppSecretMiddlewareUsesUpstreamMonitorSSO(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &adminExternalAppServiceStub{}
+	h := NewAdminExternalAppHandler(svc)
+	r := gin.New()
+	r.GET("/priority", h.RequireAppSecret("upstream-monitor"), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/priority", nil)
+	request.Header.Set(adminExternalAppSecretHeader, "shared-sso-secret")
+	r.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+	require.Equal(t, 1, svc.secretCalls)
+	require.Equal(t, "upstream-monitor", svc.lastAppID)
+	require.Equal(t, "shared-sso-secret", svc.lastSecret)
 }
 
 func TestAdminExternalAppHandler_RejectsMalformedAppIDBeforeSecretLookup(t *testing.T) {

@@ -21,8 +21,9 @@ func RegisterLaunchRoutes(
 	redisClient *redis.Client,
 	settingService *service.SettingService,
 ) {
-	if h.Admin != nil && h.Admin.Account != nil {
+	if h.Admin != nil && h.Admin.Account != nil && h.AdminExternalApp != nil {
 		relayMonitor := v1.Group("/internal/relay-monitor/accounts")
+		relayMonitor.Use(h.AdminExternalApp.RequireAppSecret("upstream-monitor"))
 		relayMonitor.GET("/:id/priority", h.Admin.Account.GetRelayMonitorPriority)
 		relayMonitor.PUT("/:id/priority", h.Admin.Account.SetRelayMonitorPriority)
 		relayMonitor.POST("/:id/priority-cap-pause", h.Admin.Account.PauseRelayMonitorPriorityCappedAccount)
