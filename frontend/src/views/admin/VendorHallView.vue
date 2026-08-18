@@ -31,19 +31,27 @@
         </div>
         <div class="flex items-center gap-2">
           <select v-model="sortBy" class="input vendor-select" @change="applyFilters"><option value="availability">{{ t('admin.vendorHall.sort.availability') }}</option><option value="cache_hit_rate">{{ t('admin.vendorHall.sort.cache') }}</option><option value="user_ttft">{{ t('admin.vendorHall.sort.ttft') }}</option><option value="requests">{{ t('admin.vendorHall.sort.requests') }}</option></select>
-          <button type="button" class="btn btn-secondary" :disabled="!selectedAccount" data-test="view-usage-selected" @click="goToUsage">{{ t('admin.vendorHall.actions.usage') }}</button>
-          <button type="button" class="btn btn-secondary" :disabled="!selectedAccount" data-test="manage-account-selected" @click="goToAccount">{{ t('admin.vendorHall.actions.manage') }}</button>
-          <button type="button" class="btn btn-secondary" :disabled="!selectedAccount || actionLoading" data-test="pause-selected" @click="openConfirm('pause')">{{ t('admin.vendorHall.actions.pause') }}</button>
-          <button type="button" class="btn btn-danger" :disabled="!selectedAccount || actionLoading" data-test="disable-selected" @click="openConfirm('disable')">{{ t('admin.vendorHall.actions.disable') }}</button>
         </div>
       </section>
 
       <section class="vendor-table overflow-hidden rounded-xl border border-gray-200 shadow-sm dark:border-dark-700">
-        <div class="vendor-table__head hidden lg:grid"><span>{{ t('admin.vendorHall.columns.account') }}</span><span>{{ t('admin.vendorHall.columns.multiplier') }}</span><span>{{ t('admin.vendorHall.columns.latency') }}</span><span>{{ t('admin.vendorHall.columns.cache') }}</span><span>{{ t('admin.vendorHall.columns.availability') }}</span><span>{{ t('admin.vendorHall.columns.ttft') }}</span><span>{{ t('admin.vendorHall.columns.status') }}</span></div>
+        <div class="vendor-table__head"><span>{{ t('admin.vendorHall.columns.account') }}</span><span>{{ t('admin.vendorHall.columns.multiplier') }}</span><span>{{ t('admin.vendorHall.columns.latency') }}</span><span>{{ t('admin.vendorHall.columns.cache') }}</span><span>{{ t('admin.vendorHall.columns.availability') }}</span><span>{{ t('admin.vendorHall.columns.ttft') }}</span><span>{{ t('admin.vendorHall.columns.status') }}</span></div>
         <div v-if="loading" class="p-12 text-center text-sm text-gray-500">{{ t('common.loading') }}</div>
         <div v-else-if="error" class="p-12 text-center text-sm text-red-600">{{ error }}</div>
         <div v-else-if="accounts.length === 0" class="p-12 text-center text-sm text-gray-500">{{ t('admin.vendorHall.empty') }}</div>
-        <VendorAccountRow v-for="account in accounts" v-else :key="account.account_id" :account="account" :selected="selectedId === account.account_id" :expanded="expandedId === account.account_id" @select="selectedId = $event" @toggle="expandedId = expandedId === account.account_id ? null : account.account_id" />
+        <VendorAccountRow
+          v-for="account in accounts"
+          v-else
+          :key="account.account_id"
+          :account="account"
+          :expanded="expandedId === account.account_id"
+          :action-loading="actionLoading"
+          @toggle="expandedId = expandedId === account.account_id ? null : account.account_id"
+          @usage="goToUsage(account)"
+          @manage="goToAccount(account)"
+          @pause="openConfirmFor(account, 'pause')"
+          @disable="openConfirmFor(account, 'disable')"
+        />
         <Pagination v-if="!loading && !error && total > pageSize" :page="page" :total="total" :page-size="pageSize" :show-page-size-selector="false" @update:page="page = $event; loadData()" />
       </section>
 
@@ -82,11 +90,10 @@ const summary = ref<VendorHallSummary>({ total_accounts: 0, healthy_accounts: 0,
 const loading = ref(false)
 const actionLoading = ref(false)
 const error = ref('')
-const selectedId = ref<number | null>(null)
 const expandedId = ref<number | null>(null)
 const confirmAction = ref<'pause' | 'disable' | null>(null)
+const actionAccount = ref<VendorHallAccount | null>(null)
 const schedulingOverrides = new Map<number, VendorHallAccount['scheduling_status']>()
-const selectedAccount = computed(() => accounts.value.find((account) => account.account_id === selectedId.value) || null)
 const confirmTitle = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableTitle') : t('admin.vendorHall.confirm.pauseTitle'))
 const confirmMessage = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableMessage') : t('admin.vendorHall.confirm.pauseMessage'))
 
@@ -112,15 +119,18 @@ const loadData = async () => {
       if (overriddenStatus === 'paused') nextSummary.paused_accounts += 1
     }
     summary.value = nextSummary
-    if (selectedId.value && !accounts.value.some((item) => item.account_id === selectedId.value)) selectedId.value = null
   } catch (err) {
     error.value = extractApiErrorMessage(err, t('admin.vendorHall.failed'))
   } finally { loading.value = false }
 }
 const applyFilters = () => { page.value = 1; void loadData() }
-const openConfirm = (action: 'pause' | 'disable') => { if (selectedAccount.value && !actionLoading.value) confirmAction.value = action }
+const openConfirmFor = (account: VendorHallAccount, action: 'pause' | 'disable') => {
+  if (actionLoading.value) return
+  actionAccount.value = account
+  confirmAction.value = action
+}
 const performAction = async () => {
-  const account = selectedAccount.value
+  const account = actionAccount.value
   const action = confirmAction.value
   if (!account || !action || actionLoading.value) return
   actionLoading.value = true; confirmAction.value = null
@@ -137,8 +147,8 @@ const performAction = async () => {
   } catch (err) { appStore.showError(extractApiErrorMessage(err, t('admin.vendorHall.failed'))) }
   finally { actionLoading.value = false }
 }
-const goToUsage = () => { if (selectedAccount.value) void router.push({ path: '/admin/usage', query: { account_id: String(selectedAccount.value.account_id) } }) }
-const goToAccount = () => { if (selectedAccount.value) void router.push({ path: '/admin/accounts', query: { account_id: String(selectedAccount.value.account_id) } }) }
+const goToUsage = (account: VendorHallAccount) => { void router.push({ path: '/admin/usage', query: { account_id: String(account.account_id) } }) }
+const goToAccount = (account: VendorHallAccount) => { void router.push({ path: '/admin/accounts', query: { account_id: String(account.account_id) } }) }
 const formatPercent = (value: number | null) => value == null ? '--' : `${(value * 100).toFixed(1)}%`
 const formatUpdated = (value: string | null) => value ? new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '--'
 onMounted(loadData)
@@ -157,12 +167,11 @@ onMounted(loadData)
 .vendor-window button.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
 .vendor-search { width: 180px; }
 .vendor-select { width: 150px; min-width: 145px; flex: none; }
-.vendor-toolbar .btn { white-space: nowrap; }
-.vendor-table__head { grid-template-columns: minmax(210px, 1.7fr) .7fr 1fr 82px 82px minmax(140px, 1fr) minmax(120px, .8fr); gap: 18px; padding: 11px 20px; background: #f8fafc; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.vendor-table__head { display: grid; grid-template-columns: minmax(210px, 1.7fr) .7fr 1fr 82px 82px minmax(140px, 1fr) minmax(120px, .8fr); gap: 18px; padding: 11px 20px; background: #f8fafc; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 :global(.dark .vendor-hero) { border-color: #374151; }
 :global(.dark .vendor-summary), :global(.dark .vendor-toolbar) { border-color: #374151; background: #1f2937; }
 :global(.dark .vendor-summary strong) { color: #f9fafb; }
 :global(.dark .vendor-table__head) { background: #111827; }
-@media (max-width: 760px) { .vendor-hero { align-items: flex-start; flex-direction: column; } .vendor-toolbar > div:last-child { width: 100%; flex-wrap: wrap; } .vendor-toolbar > div:last-child .vendor-select { width: 100%; flex-basis: 100%; } .vendor-toolbar .btn { flex: 1 1 calc(50% - 4px); } .vendor-search { width: 100%; } .vendor-select { width: auto; min-width: 0; flex: 1; } }
-@media (min-width: 1024px) and (max-width: 1100px) { .vendor-table__head { display: none; } }
+@media (max-width: 1100px) { .vendor-table__head { display: none; } }
+@media (max-width: 760px) { .vendor-hero { align-items: flex-start; flex-direction: column; } .vendor-toolbar > div:last-child { width: 100%; } .vendor-toolbar > div:last-child .vendor-select { width: 100%; } .vendor-search { width: 100%; } .vendor-select { width: auto; min-width: 0; flex: 1; } }
 </style>

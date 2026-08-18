@@ -120,19 +120,19 @@ describe('VendorHallView', () => {
     expect(wrapper.text()).not.toContain('6H')
   })
 
-  it('selects only one account and pauses it after confirmation', async () => {
+  it('pauses the account from its expanded action area after confirmation', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.get('[data-test="select-account-7"]').setValue(true)
-    await wrapper.get('[data-test="pause-selected"]').trigger('click')
+    await wrapper.findAll('[aria-label="admin.vendorHall.details"]')[0].trigger('click')
+    await wrapper.get('[data-test="pause-account-7"]').trigger('click')
     await wrapper.get('[data-test="confirm-action"]').trigger('click')
     await flushPromises()
 
     expect(pauseScheduling).toHaveBeenCalledTimes(1)
     expect(pauseScheduling).toHaveBeenCalledWith(7)
     expect(list).toHaveBeenCalledTimes(2)
-    expect(wrapper.get('[data-test="select-account-7"]').element.closest('article')?.textContent).toContain('admin.vendorHall.status.paused')
+    expect(wrapper.get('[data-test="pause-account-7"]').element.closest('article')?.textContent).toContain('admin.vendorHall.status.paused')
   })
 
   it('closes scheduling after a danger confirmation without duplicate submission', async () => {
@@ -141,8 +141,8 @@ describe('VendorHallView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.get('[data-test="select-account-7"]').setValue(true)
-    await wrapper.get('[data-test="disable-selected"]').trigger('click')
+    await wrapper.findAll('[aria-label="admin.vendorHall.details"]')[0].trigger('click')
+    await wrapper.get('[data-test="disable-account-7"]').trigger('click')
     const confirm = wrapper.get('[data-test="confirm-action"]')
     await confirm.trigger('click')
     await confirm.trigger('click')
@@ -153,24 +153,38 @@ describe('VendorHallView', () => {
     await flushPromises()
   })
 
-  it('opens usage records with the selected account filter', async () => {
+  it('keeps account actions in the expanded row instead of the toolbar', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.get('[data-test="select-account-7"]').setValue(true)
-    await wrapper.get('[data-test="view-usage-selected"]').trigger('click')
+    expect(wrapper.find('[data-test="view-usage-selected"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="manage-account-selected"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="pause-selected"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="disable-selected"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="select-account-7"]').exists()).toBe(false)
 
-    expect(push).toHaveBeenCalledWith({ path: '/admin/usage', query: { account_id: '7' } })
+    await wrapper.findAll('[aria-label="admin.vendorHall.details"]')[0].trigger('click')
+    await wrapper.get('[data-test="view-usage-account-7"]').trigger('click')
+    expect(push).toHaveBeenLastCalledWith({ path: '/admin/usage', query: { account_id: '7' } })
+    await wrapper.get('[data-test="manage-account-7"]').trigger('click')
+    expect(push).toHaveBeenLastCalledWith({ path: '/admin/accounts', query: { account_id: '7' } })
   })
 
-  it('opens account management with the selected account', async () => {
+  it('offers account-specific actions in the expanded row', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.get('[data-test="select-account-7"]').setValue(true)
-    await wrapper.get('[data-test="manage-account-selected"]').trigger('click')
+    await wrapper.findAll('[aria-label="admin.vendorHall.details"]')[0].trigger('click')
+    expect(wrapper.get('[data-test="view-usage-account-7"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="manage-account-7"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="pause-account-7"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="disable-account-7"]').exists()).toBe(true)
 
-    expect(push).toHaveBeenCalledWith({ path: '/admin/accounts', query: { account_id: '7' } })
+    await wrapper.get('[data-test="view-usage-account-7"]').trigger('click')
+    expect(push).toHaveBeenCalledWith({ path: '/admin/usage', query: { account_id: '7' } })
+
+    await wrapper.get('[data-test="pause-account-7"]').trigger('click')
+    expect(wrapper.get('[data-test="confirm-action"]').exists()).toBe(true)
   })
 
   it('shows structured API error messages', async () => {

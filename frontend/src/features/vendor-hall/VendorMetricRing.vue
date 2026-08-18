@@ -1,16 +1,20 @@
 <template>
-  <div class="vendor-ring" :style="ringStyle" :aria-label="`${label} ${displayValue}`">
-    <div class="vendor-ring__center">
-      <strong>{{ displayValue }}</strong>
-      <span>{{ label }}</span>
+  <div class="vendor-ring-wrap">
+    <div class="vendor-ring" :style="ringStyle" :aria-label="`${label} ${displayValue}`">
+      <div class="vendor-ring__center">
+        <strong>{{ displayValue }}</strong>
+        <span>{{ label }}</span>
+      </div>
     </div>
+    <VendorMetricHelp :label="label" :description="help" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import VendorMetricHelp from './VendorMetricHelp.vue'
 
-const props = defineProps<{ value: number | null; label: string; tone?: 'green' | 'blue' }>()
+const props = defineProps<{ value: number | null; label: string; help: string; tone?: 'green' | 'blue' }>()
 
 const normalized = computed(() => {
   if (props.value == null || !Number.isFinite(props.value)) return 0
@@ -24,6 +28,8 @@ const ringStyle = computed(() => ({
 </script>
 
 <style scoped>
+.vendor-ring-wrap { position: relative; width: 82px; }
+.vendor-ring-wrap :deep(.vendor-metric-help) { position: absolute; top: -5px; right: 0; }
 .vendor-ring { width: 76px; height: 76px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--ring-color) var(--ring-value), #e5e7eb 0); }
 .vendor-ring__center { width: 60px; height: 60px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: white; }
 .vendor-ring strong { font-size: 13px; line-height: 1.1; color: #111827; }

@@ -1,0 +1,34 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+const source = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), '../VendorAccountRow.vue'),
+  'utf8',
+)
+
+describe('VendorAccountRow responsive metrics', () => {
+  it('keeps TTFT value and trend in the collapsed account row', () => {
+    const collapsedContent = source.split('<div v-if="expanded"')[0]
+
+    expect(collapsedContent).toContain('<VendorTtftSparkline')
+    expect(collapsedContent).toContain('account.user_ttft_p95_ms')
+  })
+
+  it('offers a clickable definition for every displayed metric', () => {
+    expect(source).toContain('VendorMetricHelp')
+    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBeGreaterThanOrEqual(7)
+  })
+
+  it('uses a two-row horizontally scrollable metrics layout on narrow screens', () => {
+    expect(source).toContain('class="vendor-account__metrics-scroll"')
+    expect(source).toContain('overflow-x: auto')
+    expect(source).toContain('grid-template-areas: "identity actions" "metrics metrics"')
+    expect(source).toContain('grid-template-areas: "ttft latency availability cache multiplier"')
+  })
+
+  it('never hides the TTFT trend at responsive breakpoints', () => {
+    expect(source).not.toMatch(/\.vendor-trend\s*\{[^}]*display:\s*none/)
+  })
+})
