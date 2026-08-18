@@ -35,6 +35,7 @@ import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
 import defaultModelPricingAPI from './defaultModelPricing'
 import auditAPI from './audit'
+import vendorHallAPI from './vendorHall'
 
 /**
  * Unified admin API object for convenient access
@@ -71,7 +72,8 @@ export const adminAPI = {
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
   defaultModelPricing: defaultModelPricingAPI,
-  audit: auditAPI
+  audit: auditAPI,
+  vendorHall: vendorHallAPI
 }
 
 export {
@@ -106,7 +108,8 @@ export {
   riskControlAPI,
   adminComplianceAPI,
   defaultModelPricingAPI,
-  auditAPI
+  auditAPI,
+  vendorHallAPI
 }
 
 export default adminAPI
@@ -119,3 +122,4 @@ export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
 export type { ContentModerationConfig, ContentModerationLog, ModerationMode } from './riskControl'
 export type { DefaultModelPricingItem, DefaultModelPricingResponse, DefaultModelPricingParams } from './defaultModelPricing'
+export type { VendorHallAccount, VendorHallQuery, VendorHallResponse, VendorHallSummary, VendorHallTrendPoint, VendorHallWindow } from './vendorHall'

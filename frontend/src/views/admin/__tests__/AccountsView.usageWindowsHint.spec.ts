@@ -7,12 +7,14 @@ const {
   listAccounts,
   listWithEtag,
   getBatchTodayStats,
+  getAccountById,
   getAllProxies,
   getAllGroups
 } = vi.hoisted(() => ({
   listAccounts: vi.fn(),
   listWithEtag: vi.fn(),
   getBatchTodayStats: vi.fn(),
+  getAccountById: vi.fn(),
   getAllProxies: vi.fn(),
   getAllGroups: vi.fn()
 }))
@@ -23,6 +25,7 @@ vi.mock('@/api/admin', () => ({
       list: listAccounts,
       listWithEtag,
       getBatchTodayStats,
+      getById: getAccountById,
       getUpstreamBillingProbeSettings: vi.fn().mockResolvedValue({ enabled: true, interval_minutes: 30 }),
       delete: vi.fn(),
       batchClearError: vi.fn(),
@@ -88,6 +91,11 @@ const HelpTooltipStub = {
   template: '<span data-test="usage-windows-hint">{{ content }}</span>'
 }
 
+const EditAccountModalStub = {
+  props: ['show', 'account'],
+  template: '<div v-if="show" data-test="routed-account-modal">{{ account?.name }}</div>'
+}
+
 function mountView() {
   return mount(AccountsView, {
     global: {
@@ -114,7 +122,7 @@ function mountView() {
         ErrorPassthroughRulesModal: true,
         TLSFingerprintProfilesModal: true,
         CreateAccountModal: true,
-        EditAccountModal: true,
+        EditAccountModal: EditAccountModalStub,
         BulkEditAccountModal: true,
         PlatformTypeBadge: true,
         AccountCapacityCell: true,
@@ -131,10 +139,12 @@ function mountView() {
 describe('admin AccountsView usage windows hint', () => {
   beforeEach(() => {
     localStorage.clear()
+    window.history.replaceState({}, '', '/')
 
     listAccounts.mockReset()
     listWithEtag.mockReset()
     getBatchTodayStats.mockReset()
+    getAccountById.mockReset()
     getAllProxies.mockReset()
     getAllGroups.mockReset()
 
@@ -153,6 +163,17 @@ describe('admin AccountsView usage windows hint', () => {
     getBatchTodayStats.mockResolvedValue({ stats: {} })
     getAllProxies.mockResolvedValue([])
     getAllGroups.mockResolvedValue([])
+  })
+
+  it('opens the existing edit modal for account_id from the route', async () => {
+    window.history.replaceState({}, '', '/admin/accounts?account_id=7')
+    getAccountById.mockResolvedValue({ id: 7, name: 'OpenAI East' })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(getAccountById).toHaveBeenCalledWith(7)
+    expect(wrapper.get('[data-test="routed-account-modal"]').text()).toBe('OpenAI East')
   })
 
   it('renders an explanatory tooltip next to the usage windows column header', async () => {

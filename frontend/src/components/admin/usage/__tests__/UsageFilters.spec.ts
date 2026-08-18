@@ -259,3 +259,12 @@ describe('UsageFilters — model options come from prop (no dup request)', () =>
     expect(opts.map((o) => o.value)).toEqual([null, 'claude-3', 'gpt-4o'])
   })
 })
+
+describe('UsageFilters — programmatic account label', () => {
+  it('exposes a setter for a routed account name', async () => {
+    const wrapper = mountFilters({ ...defaultFilters(), account_id: 7 })
+    ;(wrapper.vm as any).setAccountKeyword('OpenAI East')
+    await wrapper.vm.$nextTick()
+    expect((wrapper.findAll('input[type="text"]')[2].element as HTMLInputElement).value).toBe('OpenAI East')
+  })
+})

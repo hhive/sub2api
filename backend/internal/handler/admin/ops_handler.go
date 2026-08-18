@@ -10,11 +10,13 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/Wei-Shaw/sub2api/internal/vendorhall"
 	"github.com/gin-gonic/gin"
 )
 
 type OpsHandler struct {
-	opsService *service.OpsService
+	opsService        *service.OpsService
+	vendorHallService vendorhall.Lister
 }
 
 // GetErrorLogByID returns ops error log detail.
@@ -69,7 +71,7 @@ func parseOpsViewParam(c *gin.Context) string {
 }
 
 func NewOpsHandler(opsService *service.OpsService) *OpsHandler {
-	return &OpsHandler{opsService: opsService}
+	return &OpsHandler{opsService: opsService, vendorHallService: vendorhall.NewServiceFromEnv()}
 }
 
 // GetErrorLogs lists ops error logs.

@@ -1,0 +1,13 @@
+export default {
+  vendorHall: {
+    title: '供应商大厅', description: '集中查看供应商账号的真实流量健康度，并快速调整调度状态。', live: 'Monitor 实时采集', window: '时间范围', search: '搜索账号、平台或分组', allStatuses: '全部状态', details: '展开账号详情', empty: '当前筛选条件下没有供应商账号', failed: '供应商数据加载失败',
+    summary: { total: '接入账号', accounts: '个供应商账号', healthy: '健康运行', running: '可正常参与调度', paused: '暂停调度', manual: '临时或永久停用', availability: '平均可用率' },
+    columns: { account: '供应商账号', multiplier: '倍率', latency: '用户延迟', cache: '缓存命中', availability: '可用率', ttft: '用户 TTFT 趋势', status: '调度状态' },
+    metrics: { rateMultiplier: '上游倍率', userLatency: '用户延迟', cache: '缓存', availability: '可用率', userTtft: '用户 TTFT P95', requests: '请求量', updated: '最近采集', averageLatency: '平均延迟' },
+    status: { schedulable: '调度中', paused: '暂停中', disabled: '已关闭', unknown: '未知' },
+    sort: { availability: '按可用率', cache: '按缓存命中', ttft: '按 TTFT', requests: '按请求量' },
+    actions: { usage: '查看使用记录', manage: '账号管理', pause: '暂停 1 小时', disable: '关闭调度' },
+    confirm: { pauseTitle: '暂停账号调度', pauseMessage: '该账号将在 1 小时内不参与新请求调度，到期后自动恢复。', disableTitle: '关闭账号调度', disableMessage: '该账号将持续退出调度，除非管理员手动重新开启。历史记录和凭据不会删除。' },
+    success: { paused: '已暂停调度 1 小时', disabled: '已关闭账号调度' },
+  },
+}

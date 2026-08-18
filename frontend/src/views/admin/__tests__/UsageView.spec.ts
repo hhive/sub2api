@@ -4,7 +4,7 @@ import { defineComponent, ref } from 'vue'
 
 import UsageView from '../UsageView.vue'
 
-const { list, exportList, getStats, getSnapshotV2, getById, getModelStats, listErrorLogs, routeQuery, aoaToSheet, sheetAddAoa, saveAs, xlsxWrite } = vi.hoisted(() => {
+const { list, exportList, getStats, getSnapshotV2, getById, getAccountById, getModelStats, listErrorLogs, routeQuery, aoaToSheet, sheetAddAoa, saveAs, xlsxWrite } = vi.hoisted(() => {
   vi.stubGlobal('localStorage', {
     getItem: vi.fn(() => null),
     setItem: vi.fn(),
@@ -17,6 +17,7 @@ const { list, exportList, getStats, getSnapshotV2, getById, getModelStats, listE
     getStats: vi.fn(),
     getSnapshotV2: vi.fn(),
     getById: vi.fn(),
+    getAccountById: vi.fn(),
     getModelStats: vi.fn(),
     listErrorLogs: vi.fn(),
     routeQuery: {} as Record<string, string>,
@@ -60,6 +61,9 @@ vi.mock('@/api/admin', () => ({
     },
     users: {
       getById,
+    },
+    accounts: {
+      getById: getAccountById,
     },
   },
 }))
@@ -119,19 +123,22 @@ const AppLayoutStub = { template: '<div><slot /></div>' }
 const UsageFiltersStub = defineComponent({
   setup(_, { expose }) {
     const userKeyword = ref('')
+    const accountKeyword = ref('')
     let userSearchRevision = 0
     const setUserKeyword = (email: string) => {
       userSearchRevision += 1
       userKeyword.value = email
     }
+    const setAccountKeyword = (name: string) => { accountKeyword.value = name }
     expose({
       getUserSearchRevision: () => userSearchRevision,
       setUserKeyword,
       simulateUserInput: setUserKeyword,
+      setAccountKeyword,
     })
-    return { userKeyword }
+    return { userKeyword, accountKeyword }
   },
-  template: '<div><span data-test="user-filter-label">{{ userKeyword }}</span><slot name="after-reset" /></div>',
+  template: '<div><span data-test="user-filter-label">{{ userKeyword }}</span><span data-test="account-filter-label">{{ accountKeyword }}</span><slot name="after-reset" /></div>',
 })
 const UsageTableStub = {
   props: ['columns'],
@@ -192,6 +199,7 @@ describe('admin UsageView route filters', () => {
     getSnapshotV2.mockReset().mockResolvedValue({ trend: [], models: [], groups: [] })
     getModelStats.mockReset().mockResolvedValue({ models: [] })
     getById.mockReset()
+    getAccountById.mockReset()
   })
 
   afterEach(() => {
@@ -209,6 +217,18 @@ describe('admin UsageView route filters', () => {
     expect(getById).toHaveBeenCalledWith(42, true)
     expect(list).toHaveBeenCalledWith(expect.objectContaining({ user_id: 42 }), expect.anything())
     expect(wrapper.find('[data-test="user-filter-label"]').text()).toBe('route-user@test.com')
+  })
+
+  it('shows the routed account while applying account_id to usage requests', async () => {
+    routeQuery.account_id = '7'
+    getAccountById.mockResolvedValue({ id: 7, name: 'OpenAI East' })
+
+    const wrapper = mountRouteFilteredUsageView()
+    await flushPromises()
+
+    expect(getAccountById).toHaveBeenCalledWith(7)
+    expect(list).toHaveBeenCalledWith(expect.objectContaining({ account_id: 7 }), expect.anything())
+    expect(wrapper.find('[data-test="account-filter-label"]').text()).toBe('OpenAI East')
   })
 
   it('does not apply a stale routed user label after user_id changes', async () => {

@@ -1730,6 +1730,18 @@ const cols = computed(() =>
 )
 
 const handleEdit = (a: Account) => { edAcc.value = a; showEdit.value = true }
+const openRoutedAccount = async () => {
+  const rawAccountId = new URLSearchParams(window.location.search).get('account_id')
+  if (!rawAccountId) return
+  const accountId = Number(rawAccountId)
+  if (!Number.isInteger(accountId) || accountId <= 0) return
+  try {
+    handleEdit(await adminAPI.accounts.getById(accountId))
+  } catch (error) {
+    console.error('Failed to open routed account:', error)
+    appStore.showError(t('admin.accounts.failedToOpenRoutedAccount'))
+  }
+}
 const openMenu = (a: Account, e: MouseEvent) => {
   menu.acc = a
 
@@ -2461,6 +2473,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load proxies/groups:', error)
   }
+  await openRoutedAccount()
   window.addEventListener('scroll', handleScroll, true)
   window.addEventListener('resize', handleViewportResize)
   document.addEventListener('click', handleClickOutside)

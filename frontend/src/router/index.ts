@@ -442,6 +442,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/vendor-hall',
+    name: 'AdminVendorHall',
+    component: () => import('@/views/admin/VendorHallView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Vendor Hall',
+      titleKey: 'admin.vendorHall.title',
+      descriptionKey: 'admin.vendorHall.description'
+    }
+  },
+  {
     path: '/admin/audit-logs',
     name: 'AdminAuditLogs',
     component: () => import('@/views/admin/AuditLogView.vue'),

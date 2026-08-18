@@ -182,6 +182,7 @@ export default {
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
+    vendorHall: 'Vendor Hall',
     promoCodes: 'Promo Codes',
     settings: 'Settings',
     otherOperations: 'Other Operations',
