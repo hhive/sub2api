@@ -66,9 +66,6 @@
     <div v-if="expanded" class="vendor-account__details">
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.requests') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.requests')" :description="t('admin.vendorHall.help.requests')" /></span><strong>{{ formatNumber(account.request_count) }}</strong></div>
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.updated') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.updated')" :description="t('admin.vendorHall.help.updated')" /></span><strong>{{ formatDate(account.collected_at) }}</strong></div>
-      <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.averageLatency') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.averageLatency')" :description="t('admin.vendorHall.help.averageLatency')" /></span><strong>{{ formatMs(account.average_latency_ms) }}</strong></div>
-      <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userTtftAvg') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtftAvg')" :description="t('admin.vendorHall.help.userTtftAvg')" /></span><strong>{{ formatMs(account.user_ttft_average_ms) }}</strong></div>
-      <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userTtft') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtft')" :description="t('admin.vendorHall.help.userTtft')" /></span><strong>{{ formatMs(account.user_ttft_p95_ms) }}</strong></div>
       <div class="vendor-account__detail-actions">
         <button type="button" class="btn btn-secondary" :data-test="`view-usage-account-${account.account_id}`" @click="$emit('usage')">
           {{ t('admin.vendorHall.actions.usage') }}
@@ -149,7 +146,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(loc
 .vendor-status--disabled { background: #fef2f2; color: #b91c1c; }
 .vendor-expand { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 5px; color: #6b7280; transition: background-color .16s; }
 .vendor-expand:hover { background: #e5e7eb; color: #111827; }
-.vendor-account__details { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; border-top: 1px dashed #e5e7eb; padding: 14px 72px 18px; }
+.vendor-account__details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; border-top: 1px dashed #e5e7eb; padding: 14px 72px 18px; }
 .vendor-account__details div { display: flex; flex-direction: column; gap: 3px; }
 .vendor-account__details span { font-size: 11px; color: #6b7280; }
 .vendor-account__details strong { font-size: 13px; color: #111827; }

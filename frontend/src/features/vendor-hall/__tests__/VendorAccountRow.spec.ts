@@ -18,9 +18,19 @@ describe('VendorAccountRow responsive metrics', () => {
     expect(collapsedContent).toContain("admin.vendorHall.metrics.userTtftAvg")
   })
 
+  it('keeps collapsed latency and TTFT metrics out of the expanded details', () => {
+    const detailsContent = source.split('<div v-if="expanded"')[1]
+
+    expect(detailsContent).not.toContain('account.average_latency_ms')
+    expect(detailsContent).not.toContain('account.user_ttft_average_ms')
+    expect(detailsContent).not.toContain('account.user_ttft_p95_ms')
+    expect(detailsContent).toContain('account.request_count')
+    expect(detailsContent).toContain('account.collected_at')
+  })
+
   it('offers a clickable definition for every displayed metric', () => {
     expect(source).toContain('VendorMetricHelp')
-    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBeGreaterThanOrEqual(8)
+    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBe(6)
   })
 
   it('uses a two-row horizontally scrollable metrics layout on narrow screens', () => {
