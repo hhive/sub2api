@@ -53,6 +53,7 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(payload), `"account_name":"Alpha"`)
 	require.Contains(t, string(payload), `"user_ttft_p95_ms":500`)
+	require.Contains(t, string(payload), `"user_ttft_average_ms":86`)
 	require.Contains(t, string(payload), `"ttft_p95_ms":500`)
 	require.NotContains(t, string(payload), `"metrics"`)
 	require.NoError(t, mock.ExpectationsWereMet())

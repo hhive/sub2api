@@ -20,6 +20,7 @@ export interface VendorHallAccount {
   cache_hit_rate: number | null
   average_latency_ms: number | null
   p95_latency_ms: number | null
+  user_ttft_average_ms: number | null
   user_ttft_p95_ms: number | null
   request_count: number
   collected_at: string | null

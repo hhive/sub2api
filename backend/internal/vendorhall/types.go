@@ -28,6 +28,7 @@ type Metrics struct {
 	AverageDurationMs   *float64     `json:"average_duration_ms"`
 	DurationP95Ms       *float64     `json:"duration_p95_ms"`
 	FirstTokenP95Ms     *float64     `json:"first_token_p95_ms"`
+	FirstTokenAverageMs *float64     `json:"first_token_average_ms"`
 	UpstreamMultiplier  *float64     `json:"upstream_multiplier"`
 	Trend               []TrendPoint `json:"trend"`
 	inputTokens         int64
@@ -50,6 +51,7 @@ type Account struct {
 	AverageLatencyMs       *float64     `json:"average_latency_ms"`
 	P95LatencyMs           *float64     `json:"p95_latency_ms"`
 	UserTTFTP95Ms          *float64     `json:"user_ttft_p95_ms"`
+	UserTTFTAverageMs      *float64     `json:"user_ttft_average_ms"`
 	RequestCount           int64        `json:"request_count"`
 	CollectedAt            *time.Time   `json:"collected_at"`
 	TempUnschedulableUntil *time.Time   `json:"temp_unschedulable_until"`

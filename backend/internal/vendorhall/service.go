@@ -338,6 +338,7 @@ func applyMetrics(account *Account, now time.Time) {
 	account.AverageLatencyMs = account.metrics.AverageDurationMs
 	account.P95LatencyMs = account.metrics.DurationP95Ms
 	account.UserTTFTP95Ms = account.metrics.FirstTokenP95Ms
+	account.UserTTFTAverageMs = account.metrics.FirstTokenAverageMs
 	account.RequestCount = account.metrics.RequestCount
 	account.CollectedAt = account.metrics.collectedAt
 	if account.CollectedAt == nil {

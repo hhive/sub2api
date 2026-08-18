@@ -38,6 +38,23 @@ func histogramP95(histogram map[string]int64) *float64 {
 	return ptrFloat(entries[len(entries)-1].value)
 }
 
+func histogramAverage(histogram map[string]int64) *float64 {
+	var totalCount int64
+	var weightedSum float64
+	for bucket, count := range histogram {
+		value, err := strconv.ParseFloat(bucket, 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || count <= 0 {
+			continue
+		}
+		totalCount += count
+		weightedSum += value * float64(count)
+	}
+	if totalCount == 0 {
+		return nil
+	}
+	return ptrFloat(weightedSum / float64(totalCount))
+}
+
 func aggregateMinutes(minutes []MinuteMetric, start, end time.Time, maxTrendPoints int) Metrics {
 	result := Metrics{Trend: []TrendPoint{}, hasSamples: len(minutes) > 0}
 	durationHist := map[string]int64{}
@@ -81,6 +98,7 @@ func aggregateMinutes(minutes []MinuteMetric, start, end time.Time, maxTrendPoin
 	}
 	result.DurationP95Ms = histogramP95(durationHist)
 	result.FirstTokenP95Ms = histogramP95(firstTokenHist)
+	result.FirstTokenAverageMs = histogramAverage(firstTokenHist)
 	result.inputTokens = input
 	result.cacheReadTokens = cacheRead
 	result.cacheCreateTokens = cacheCreate

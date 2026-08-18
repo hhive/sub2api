@@ -9,16 +9,18 @@ const source = readFileSync(
 )
 
 describe('VendorAccountRow responsive metrics', () => {
-  it('keeps TTFT value and trend in the collapsed account row', () => {
+  it('keeps average and P95 TTFT values with the trend in the collapsed account row', () => {
     const collapsedContent = source.split('<div v-if="expanded"')[0]
 
     expect(collapsedContent).toContain('<VendorTtftSparkline')
+    expect(collapsedContent).toContain('account.user_ttft_average_ms')
     expect(collapsedContent).toContain('account.user_ttft_p95_ms')
+    expect(collapsedContent).toContain("admin.vendorHall.metrics.userTtftAvg")
   })
 
   it('offers a clickable definition for every displayed metric', () => {
     expect(source).toContain('VendorMetricHelp')
-    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBeGreaterThanOrEqual(7)
+    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBeGreaterThanOrEqual(8)
   })
 
   it('uses a two-row horizontally scrollable metrics layout on narrow screens', () => {

@@ -56,6 +56,7 @@ const response = {
       cache_hit_rate: 0.45,
       average_latency_ms: 820,
       p95_latency_ms: 1400,
+      user_ttft_average_ms: 310,
       user_ttft_p95_ms: 560,
       request_count: 3021,
       collected_at: '2026-08-17T12:00:00Z',
@@ -75,6 +76,7 @@ const response = {
       cache_hit_rate: null,
       average_latency_ms: null,
       p95_latency_ms: null,
+      user_ttft_average_ms: null,
       user_ttft_p95_ms: null,
       request_count: 0,
       collected_at: null,
@@ -111,6 +113,7 @@ describe('VendorHallView', () => {
 
     expect(wrapper.text()).toContain('OpenAI East')
     expect(wrapper.text()).toContain('99.0%')
+    expect(wrapper.text()).toContain('310 ms')
     expect(wrapper.text()).toContain('560 ms')
     expect(wrapper.text()).toContain('--')
     expect(wrapper.find('[data-test="ttft-trend-7"]').exists()).toBe(true)

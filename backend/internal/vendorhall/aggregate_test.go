@@ -30,7 +30,18 @@ func TestAggregateMetricsUsesRawDenominatorsAndMergedHistograms(t *testing.T) {
 	require.InDelta(t, 0.3, *metrics.CacheHitRate, 0.0001)
 	require.Equal(t, float64(1000), *metrics.DurationP95Ms)
 	require.Equal(t, float64(500), *metrics.FirstTokenP95Ms)
+	require.Equal(t, float64(84), *metrics.FirstTokenAverageMs)
 	require.Equal(t, int64(10), metrics.RequestCount)
+}
+
+func TestHistogramAverageIgnoresInvalidAndNegativeBuckets(t *testing.T) {
+	average := histogramAverage(map[string]int64{"20": 2, "40": 1, "-5": 9, "bad": 3, "NaN": 2, "80": 0})
+	require.NotNil(t, average)
+	require.InDelta(t, 26.6667, *average, 0.0001)
+}
+
+func TestHistogramAverageReturnsNilForEmptySamples(t *testing.T) {
+	require.Nil(t, histogramAverage(map[string]int64{"-1": 2, "bad": 1, "10": 0}))
 }
 
 func TestAggregateMetricsBoundsTrendAndKeepsEmptyValuesNull(t *testing.T) {

@@ -40,8 +40,10 @@
               :points="account.trend"
               :label="t('admin.vendorHall.metrics.userTtft')"
             />
-            <strong>{{ formatMs(account.user_ttft_p95_ms) }}</strong>
-            <span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userTtft') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtft')" :description="t('admin.vendorHall.help.userTtft')" /></span>
+            <div class="vendor-trend__values">
+              <span><strong>{{ formatMs(account.user_ttft_average_ms) }}</strong><small>{{ t('admin.vendorHall.metrics.userTtftAvg') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtftAvg')" :description="t('admin.vendorHall.help.userTtftAvg')" /></small></span>
+              <span><strong>{{ formatMs(account.user_ttft_p95_ms) }}</strong><small>{{ t('admin.vendorHall.metrics.userTtft') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtft')" :description="t('admin.vendorHall.help.userTtft')" /></small></span>
+            </div>
           </div>
         </div>
       </div>
@@ -65,6 +67,7 @@
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.requests') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.requests')" :description="t('admin.vendorHall.help.requests')" /></span><strong>{{ formatNumber(account.request_count) }}</strong></div>
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.updated') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.updated')" :description="t('admin.vendorHall.help.updated')" /></span><strong>{{ formatDate(account.collected_at) }}</strong></div>
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.averageLatency') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.averageLatency')" :description="t('admin.vendorHall.help.averageLatency')" /></span><strong>{{ formatMs(account.average_latency_ms) }}</strong></div>
+      <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userTtftAvg') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtftAvg')" :description="t('admin.vendorHall.help.userTtftAvg')" /></span><strong>{{ formatMs(account.user_ttft_average_ms) }}</strong></div>
       <div><span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userTtft') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userTtft')" :description="t('admin.vendorHall.help.userTtft')" /></span><strong>{{ formatMs(account.user_ttft_p95_ms) }}</strong></div>
       <div class="vendor-account__detail-actions">
         <button type="button" class="btn btn-secondary" :data-test="`view-usage-account-${account.account_id}`" @click="$emit('usage')">
@@ -137,13 +140,16 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(loc
 .vendor-stat small { display: block; margin-top: 3px; font-size: 10px; color: #9ca3af; }
 .vendor-trend { grid-area: ttft; min-width: 0; }
 .vendor-trend strong { font-size: 13px; color: #111827; }
+.vendor-trend__values { display: flex; flex-wrap: wrap; gap: 8px; }
+.vendor-trend__values > span { min-width: 62px; }
+.vendor-trend__values small { display: flex; align-items: center; gap: 2px; margin-top: 2px; font-size: 10px; color: #6b7280; }
 .vendor-status { border-radius: 999px; padding: 4px 8px; font-size: 11px; white-space: nowrap; background: #f3f4f6; color: #4b5563; }
 .vendor-status--schedulable { background: #ecfdf5; color: #047857; }
 .vendor-status--paused { background: #fffbeb; color: #b45309; }
 .vendor-status--disabled { background: #fef2f2; color: #b91c1c; }
 .vendor-expand { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 5px; color: #6b7280; transition: background-color .16s; }
 .vendor-expand:hover { background: #e5e7eb; color: #111827; }
-.vendor-account__details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; border-top: 1px dashed #e5e7eb; padding: 14px 72px 18px; }
+.vendor-account__details { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; border-top: 1px dashed #e5e7eb; padding: 14px 72px 18px; }
 .vendor-account__details div { display: flex; flex-direction: column; gap: 3px; }
 .vendor-account__details span { font-size: 11px; color: #6b7280; }
 .vendor-account__details strong { font-size: 13px; color: #111827; }
@@ -158,10 +164,9 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(loc
   .vendor-account__grid { grid-template-areas: "identity actions" "metrics metrics"; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; padding: 16px 20px 10px; }
   .vendor-account__metrics-scroll { margin: 0 -20px; overflow-x: auto; overscroll-behavior-inline: contain; padding: 2px 20px 10px; scrollbar-gutter: stable; scrollbar-width: thin; }
   .vendor-account__metrics { grid-template-areas: "ttft latency availability cache multiplier"; grid-template-columns: 220px 130px 86px 86px 90px; min-width: 680px; gap: 16px; }
-  .vendor-trend { display: grid; grid-template-columns: 128px minmax(72px, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
+  .vendor-trend { display: grid; grid-template-columns: 128px minmax(72px, 1fr); grid-template-rows: auto; column-gap: 10px; align-items: center; }
   .vendor-trend > :deep(div) { grid-row: 1 / 3; }
-  .vendor-trend strong { align-self: end; }
-  .vendor-trend span { align-self: start; }
+  .vendor-trend__values { align-self: center; flex-direction: column; gap: 3px; }
 }
 @media (max-width: 760px) {
   .vendor-account__grid { gap: 10px 12px; padding: 14px 14px 8px; }
