@@ -31,9 +31,9 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	mock.ExpectQuery(`SELECT "id", "sourceAccountId"`).WillReturnRows(sqlmock.NewRows(accountColumns).
 		AddRow(1, "7", "Alpha", "openai", "oauth", "active", true, 50, `[{"id":2,"name":"Premium"}]`, nil, nil, now).
 		AddRow(2, "broken", "Ignored", nil, nil, nil, nil, 50, `[]`, nil, nil, nil))
-	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier"}
+	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
 	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
-		AddRow(1, windowEnd.Add(-time.Minute), 9, 1, 10, 10, 2000, `{"200":9,"1000":1}`, `{"40":9,"500":1}`, 50, 50, 0, 1.5))
+		AddRow(1, windowEnd.Add(-time.Minute), 9, 1, 10, 10, 2000, `{"200":9,"1000":1}`, `{"40":9,"500":1}`, 50, 50, 0, 1.5, 12.34))
 	service := NewServiceWithDB(db)
 	service.now = func() time.Time { return now }
 	params, err := ParseListParams(nil)
@@ -48,6 +48,8 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	require.InDelta(t, .9, *result.Items[0].Availability, .0001)
 	require.InDelta(t, .9, *result.Summary.AverageAvailability, .0001)
 	require.InDelta(t, 1.5, *result.Items[0].RateMultiplier, .0001)
+	require.NotNil(t, result.Items[0].BalanceUSD)
+	require.InDelta(t, 12.34, *result.Items[0].BalanceUSD, .0001)
 	require.Equal(t, windowEnd, result.WindowEnd)
 	payload, err := json.Marshal(result.Items[0])
 	require.NoError(t, err)

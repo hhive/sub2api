@@ -22,6 +22,7 @@ describe('admin vendor hall API', () => {
           platform: 'openai',
           group_name: 'premium',
           rate_multiplier: 1.2,
+          balance_usd: 12.34,
           scheduling_status: 'schedulable',
           availability: 0.99,
           cache_hit_rate: 0.5,
@@ -45,7 +46,7 @@ describe('admin vendor hall API', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/admin/ops/vendor-hall', {
       params: { window: '3h', search: 'openai', sort_by: 'user_ttft', sort_order: 'desc' },
     })
-    expect(result.items[0]).toEqual(expect.objectContaining({ account_name: 'OpenAI East', group_name: 'premium', user_ttft_p95_ms: 500, scheduling_status: 'schedulable' }))
+    expect(result.items[0]).toEqual(expect.objectContaining({ account_name: 'OpenAI East', group_name: 'premium', user_ttft_p95_ms: 500, balance_usd: 12.34, scheduling_status: 'schedulable' }))
     expect(result.items[0].trend).toEqual([{ timestamp: '2026-08-17T12:00:00Z', ttft_p95_ms: 500 }])
   })
 

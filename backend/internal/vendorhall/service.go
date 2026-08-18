@@ -140,7 +140,7 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 	}
 	minutesByAccount := map[int][]MinuteMetric{}
 	if len(monitorIDs) > 0 {
-		metricRows, err := db.QueryContext(queryCtx, `SELECT "accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", COALESCE("durationHistogram", '{}'::jsonb)::text, COALESCE("firstTokenHistogram", '{}'::jsonb)::text, "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier" FROM "AccountMetricMinute" WHERE "bucketStart" >= $1 AND "bucketStart" < $2 AND "accountId" = ANY($3) ORDER BY "accountId", "bucketStart"`, start, end, pq.Array(monitorIDs))
+		metricRows, err := db.QueryContext(queryCtx, `SELECT "accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", COALESCE("durationHistogram", '{}'::jsonb)::text, COALESCE("firstTokenHistogram", '{}'::jsonb)::text, "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd" FROM "AccountMetricMinute" WHERE "bucketStart" >= $1 AND "bucketStart" < $2 AND "accountId" = ANY($3) ORDER BY "accountId", "bucketStart"`, start, end, pq.Array(monitorIDs))
 		if err != nil {
 			return nil, fmt.Errorf("%w: metric query failed", ErrUnavailable)
 		}
@@ -149,7 +149,8 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 			var row MinuteMetric
 			var durationJSON, firstJSON []byte
 			var multiplier sql.NullFloat64
-			if err := metricRows.Scan(&row.AccountID, &row.BucketStart, &row.SuccessCount, &row.UpstreamErrorCount, &row.EligibleCount, &row.DurationCount, &row.DurationSumMs, &durationJSON, &firstJSON, &row.InputTokens, &row.CacheReadTokens, &row.CacheCreationTokens, &multiplier); err != nil {
+			var balance sql.NullFloat64
+			if err := metricRows.Scan(&row.AccountID, &row.BucketStart, &row.SuccessCount, &row.UpstreamErrorCount, &row.EligibleCount, &row.DurationCount, &row.DurationSumMs, &durationJSON, &firstJSON, &row.InputTokens, &row.CacheReadTokens, &row.CacheCreationTokens, &multiplier, &balance); err != nil {
 				return nil, fmt.Errorf("%w: metric row invalid", ErrUnavailable)
 			}
 			row.DurationHistogram = map[string]int64{}
@@ -158,6 +159,9 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 			_ = json.Unmarshal(firstJSON, &row.FirstTokenHistogram)
 			if multiplier.Valid {
 				row.UpstreamMultiplier = ptrFloat(multiplier.Float64)
+			}
+			if balance.Valid {
+				row.BalanceUSD = ptrFloat(balance.Float64)
 			}
 			minutesByAccount[row.AccountID] = append(minutesByAccount[row.AccountID], row)
 		}
@@ -333,6 +337,7 @@ func summarize(accounts []Account) Summary {
 
 func applyMetrics(account *Account, now time.Time) {
 	account.RateMultiplier = account.metrics.UpstreamMultiplier
+	account.BalanceUSD = account.metrics.BalanceUSD
 	account.Availability = account.metrics.Availability
 	account.CacheHitRate = account.metrics.CacheHitRate
 	account.AverageLatencyMs = account.metrics.AverageDurationMs

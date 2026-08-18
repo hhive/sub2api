@@ -23,6 +23,10 @@
             <span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.rateMultiplier') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.rateMultiplier')" :description="t('admin.vendorHall.help.rateMultiplier')" /></span>
             <strong>{{ formatMultiplier(account.rate_multiplier) }}</strong>
           </div>
+          <div class="vendor-stat vendor-stat--balance">
+            <span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.balance') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.balance')" :description="t('admin.vendorHall.help.balance')" /></span>
+            <strong>{{ formatUSD(account.balance_usd) }}</strong>
+          </div>
           <div class="vendor-stat vendor-stat--latency">
             <span class="vendor-metric-label">{{ t('admin.vendorHall.metrics.userLatency') }}<VendorMetricHelp :label="t('admin.vendorHall.metrics.userLatency')" :description="t('admin.vendorHall.help.userLatency')" /></span>
             <strong>{{ formatMs(account.average_latency_ms) }}</strong>
@@ -111,6 +115,11 @@ const { t, locale } = useI18n()
 const platformInitial = computed(() => (props.account.platform || props.account.account_name || '?').charAt(0).toUpperCase())
 const formatMs = (value: number | null) => value == null ? '--' : `${Math.round(value).toLocaleString(locale.value)} ms`
 const formatMultiplier = (value: number | null) => value == null ? '--' : `${value.toFixed(2)}x`
+const formatUSD = (value: number | null) => {
+  return value != null && Number.isFinite(value)
+    ? new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD' }).format(value)
+    : '--'
+}
 const formatNumber = (value: number) => value.toLocaleString(locale.value)
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(locale.value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '--'
 </script>
@@ -123,11 +132,12 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(loc
 .vendor-account__identity { grid-area: identity; }
 .vendor-account__actions { grid-area: actions; }
 .vendor-account__metrics-scroll { grid-area: metrics; min-width: 0; }
-.vendor-account__metrics { display: grid; grid-template-areas: "multiplier latency cache availability ttft"; grid-template-columns: .7fr 1fr 82px 82px minmax(140px, 1fr); gap: 18px; align-items: center; }
+.vendor-account__metrics { display: grid; grid-template-areas: "multiplier balance latency cache availability ttft"; grid-template-columns: .7fr .8fr 1fr 82px 82px minmax(140px, 1fr); gap: 18px; align-items: center; }
 .vendor-logo { display: grid; width: 36px; height: 36px; flex: none; place-items: center; border-radius: 7px; background: #111827; color: white; font-weight: 700; }
 .vendor-tag { border-radius: 4px; background: #eff6ff; padding: 2px 5px; color: #2563eb; }
 .vendor-stat { min-width: 0; }
 .vendor-stat--multiplier { grid-area: multiplier; }
+.vendor-stat--balance { grid-area: balance; }
 .vendor-stat--latency { grid-area: latency; }
 .vendor-metric--cache { grid-area: cache; }
 .vendor-metric--availability { grid-area: availability; }
@@ -160,7 +170,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(loc
 @media (max-width: 1100px) {
   .vendor-account__grid { grid-template-areas: "identity actions" "metrics metrics"; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; padding: 16px 20px 10px; }
   .vendor-account__metrics-scroll { margin: 0 -20px; overflow-x: auto; overscroll-behavior-inline: contain; padding: 2px 20px 10px; scrollbar-gutter: stable; scrollbar-width: thin; }
-  .vendor-account__metrics { grid-template-areas: "ttft latency availability cache multiplier"; grid-template-columns: 220px 130px 86px 86px 90px; min-width: 680px; gap: 16px; }
+  .vendor-account__metrics { grid-template-areas: "ttft latency availability cache balance multiplier"; grid-template-columns: 220px 130px 86px 86px 100px 90px; min-width: 796px; gap: 16px; }
   .vendor-trend { display: grid; grid-template-columns: 128px minmax(72px, 1fr); grid-template-rows: auto; column-gap: 10px; align-items: center; }
   .vendor-trend > :deep(div) { grid-row: 1 / 3; }
   .vendor-trend__values { align-self: center; flex-direction: column; gap: 3px; }

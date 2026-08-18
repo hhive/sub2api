@@ -3,9 +3,10 @@ export default {
     title: '供应商大厅', description: '集中查看供应商账号的真实流量健康度，并快速调整调度状态。', live: 'Monitor 实时采集', window: '时间范围', search: '搜索账号、平台或分组', allStatuses: '全部状态', details: '展开账号详情', empty: '当前筛选条件下没有供应商账号', failed: '供应商数据加载失败',
     summary: { total: '接入账号', accounts: '个供应商账号', healthy: '健康运行', running: '可正常参与调度', paused: '暂停调度', manual: '临时或永久停用', availability: '平均可用率' },
     columns: { account: '供应商账号', multiplier: '倍率', latency: '用户延迟', cache: '缓存命中', availability: '可用率', ttft: '用户 TTFT 趋势', status: '调度状态' },
-    metrics: { rateMultiplier: '上游倍率', userLatency: '用户延迟', cache: '缓存', availability: '可用率', userTtft: '用户 TTFT P95', userTtftAvg: '用户 TTFT 平均', requests: '请求量', updated: '最近采集', averageLatency: '平均延迟' },
+    metrics: { rateMultiplier: '上游倍率', balance: '上游余额', userLatency: '用户延迟', cache: '缓存', availability: '可用率', userTtft: '用户 TTFT P95', userTtftAvg: '用户 TTFT 平均', requests: '请求量', updated: '最近采集', averageLatency: '平均延迟' },
     help: {
       rateMultiplier: '上游当前费率相对标准费率的倍数。1.00x 表示标准费率，数值越高代表单位调用成本越高。',
+      balance: 'Monitor 最近一次采集到的上游账户可用余额，单位为美元；暂无数据表示上游未提供或最近一次采集失败。',
       userLatency: '真实用户请求从发出到响应完成的耗时。主数值是平均耗时；下方 P95 表示 95% 的请求总耗时不超过该值。',
       cache: '监控窗口内命中上游提示词缓存的有效请求占比。命中率越高，通常越有利于降低重复上下文的成本和延迟。',
       availability: '监控窗口内成功完成的真实请求占有效采样请求的比例。数值越高表示账号越稳定。',

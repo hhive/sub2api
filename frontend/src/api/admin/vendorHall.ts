@@ -15,6 +15,7 @@ export interface VendorHallAccount {
   platform: string
   group_name: string | null
   rate_multiplier: number | null
+  balance_usd: number | null
   scheduling_status: VendorHallSchedulingStatus
   availability: number | null
   cache_hit_rate: number | null

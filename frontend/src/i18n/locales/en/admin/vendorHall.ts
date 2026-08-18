@@ -3,9 +3,10 @@ export default {
     title: 'Vendor Hall', description: 'Inspect real-traffic health for provider accounts and control their scheduling state.', live: 'Live Monitor data', window: 'Time window', search: 'Search account, platform, or group', allStatuses: 'All statuses', details: 'Expand account details', empty: 'No provider accounts match these filters', failed: 'Failed to load vendor data',
     summary: { total: 'Connected accounts', accounts: 'provider accounts', healthy: 'Healthy', running: 'Available for scheduling', paused: 'Paused', manual: 'Temporarily or permanently off', availability: 'Average availability' },
     columns: { account: 'Provider account', multiplier: 'Multiplier', latency: 'User latency', cache: 'Cache hit', availability: 'Availability', ttft: 'User TTFT trend', status: 'Scheduling' },
-    metrics: { rateMultiplier: 'Upstream multiplier', userLatency: 'User latency', cache: 'Cache', availability: 'Availability', userTtft: 'User TTFT P95', userTtftAvg: 'User TTFT avg', requests: 'Requests', updated: 'Last collected', averageLatency: 'Average latency' },
+    metrics: { rateMultiplier: 'Upstream multiplier', balance: 'Upstream balance', userLatency: 'User latency', cache: 'Cache', availability: 'Availability', userTtft: 'User TTFT P95', userTtftAvg: 'User TTFT avg', requests: 'Requests', updated: 'Last collected', averageLatency: 'Average latency' },
     help: {
       rateMultiplier: 'The current upstream rate relative to the standard rate. 1.00x is the standard rate; a higher value means a higher unit cost.',
+      balance: 'The latest available upstream account balance collected by Monitor, in USD. No data means the upstream did not provide it or the latest collection failed.',
       userLatency: 'Elapsed time from a real user request until the response completes. The main value is the average; P95 means 95% of total request latencies are at or below that value.',
       cache: 'The share of eligible real requests that hit the upstream prompt cache during the selected window. Higher cache use can reduce repeated-context cost and latency.',
       availability: 'The share of valid sampled real requests that completed successfully during the selected window. Higher is more stable.',

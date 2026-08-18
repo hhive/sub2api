@@ -61,6 +61,7 @@ func aggregateMinutes(minutes []MinuteMetric, start, end time.Time, maxTrendPoin
 	firstTokenHist := map[string]int64{}
 	var durationCount, durationSum, input, cacheRead, cacheCreate int64
 	var latestMultiplierAt time.Time
+	var latestBalanceAt time.Time
 	for _, row := range minutes {
 		if result.collectedAt == nil || row.BucketStart.After(*result.collectedAt) {
 			value := row.BucketStart.UTC()
@@ -83,6 +84,10 @@ func aggregateMinutes(minutes []MinuteMetric, start, end time.Time, maxTrendPoin
 		if latestMultiplierAt.IsZero() || row.BucketStart.After(latestMultiplierAt) {
 			result.UpstreamMultiplier = row.UpstreamMultiplier
 			latestMultiplierAt = row.BucketStart
+		}
+		if latestBalanceAt.IsZero() || row.BucketStart.After(latestBalanceAt) {
+			result.BalanceUSD = row.BalanceUSD
+			latestBalanceAt = row.BucketStart
 		}
 	}
 	result.RequestCount = result.SuccessCount + result.UpstreamErrorCount

@@ -30,6 +30,7 @@ type Metrics struct {
 	FirstTokenP95Ms     *float64     `json:"first_token_p95_ms"`
 	FirstTokenAverageMs *float64     `json:"first_token_average_ms"`
 	UpstreamMultiplier  *float64     `json:"upstream_multiplier"`
+	BalanceUSD          *float64     `json:"balance_usd"`
 	Trend               []TrendPoint `json:"trend"`
 	inputTokens         int64
 	cacheReadTokens     int64
@@ -45,6 +46,7 @@ type Account struct {
 	Platform               string       `json:"platform"`
 	GroupName              *string      `json:"group_name"`
 	RateMultiplier         *float64     `json:"rate_multiplier"`
+	BalanceUSD             *float64     `json:"balance_usd"`
 	SchedulingStatus       string       `json:"scheduling_status"`
 	Availability           *float64     `json:"availability"`
 	CacheHitRate           *float64     `json:"cache_hit_rate"`
@@ -101,4 +103,5 @@ type MinuteMetric struct {
 	CacheReadTokens     int64
 	CacheCreationTokens int64
 	UpstreamMultiplier  *float64
+	BalanceUSD          *float64
 }

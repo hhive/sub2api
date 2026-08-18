@@ -51,6 +51,7 @@ const response = {
       platform: 'openai',
       group_name: 'premium',
       rate_multiplier: 1.2,
+      balance_usd: 12.34,
       scheduling_status: 'schedulable',
       availability: 0.99,
       cache_hit_rate: 0.45,
@@ -71,6 +72,7 @@ const response = {
       platform: 'anthropic',
       group_name: 'fallback',
       rate_multiplier: null,
+      balance_usd: null,
       scheduling_status: 'paused',
       availability: null,
       cache_hit_rate: null,
@@ -115,6 +117,7 @@ describe('VendorHallView', () => {
     expect(wrapper.text()).toContain('99.0%')
     expect(wrapper.text()).toContain('310 ms')
     expect(wrapper.text()).toContain('560 ms')
+    expect(wrapper.text()).toContain('$12.34')
     expect(wrapper.text()).toContain('--')
     expect(wrapper.find('[data-test="ttft-trend-7"]').exists()).toBe(true)
     expect(list).toHaveBeenCalledWith(expect.objectContaining({ window: '3h' }))

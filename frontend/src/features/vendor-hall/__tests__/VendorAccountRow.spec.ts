@@ -16,6 +16,8 @@ describe('VendorAccountRow responsive metrics', () => {
     expect(collapsedContent).toContain('account.user_ttft_average_ms')
     expect(collapsedContent).toContain('account.user_ttft_p95_ms')
     expect(collapsedContent).toContain("admin.vendorHall.metrics.userTtftAvg")
+    expect(collapsedContent).toContain('account.balance_usd')
+    expect(source).toContain("admin.vendorHall.metrics.balance")
   })
 
   it('keeps collapsed latency and TTFT metrics out of the expanded details', () => {
@@ -30,14 +32,14 @@ describe('VendorAccountRow responsive metrics', () => {
 
   it('offers a clickable definition for every displayed metric', () => {
     expect(source).toContain('VendorMetricHelp')
-    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBe(6)
+    expect(source.match(/:description="t\('admin\.vendorHall\.help\./g)?.length).toBe(7)
   })
 
   it('uses a two-row horizontally scrollable metrics layout on narrow screens', () => {
     expect(source).toContain('class="vendor-account__metrics-scroll"')
     expect(source).toContain('overflow-x: auto')
     expect(source).toContain('grid-template-areas: "identity actions" "metrics metrics"')
-    expect(source).toContain('grid-template-areas: "ttft latency availability cache multiplier"')
+    expect(source).toContain('grid-template-areas: "ttft latency availability cache balance multiplier"')
   })
 
   it('never hides the TTFT trend at responsive breakpoints', () => {
