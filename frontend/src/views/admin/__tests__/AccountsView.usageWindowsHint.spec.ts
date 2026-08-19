@@ -109,7 +109,10 @@ function mountView() {
         Pagination: true,
         ConfirmDialog: true,
         AccountTableActions: { template: '<div><slot name="beforeCreate" /><slot name="after" /></div>' },
-        AccountTableFilters: { template: '<div></div>' },
+        AccountTableFilters: {
+          props: ['groups'],
+          template: '<div data-test="account-filters" :data-group-count="groups.length"></div>'
+        },
         AccountBulkActionsBar: true,
         AccountActionMenu: true,
         ImportDataModal: true,
@@ -174,6 +177,16 @@ describe('admin AccountsView usage windows hint', () => {
 
     expect(getAccountById).toHaveBeenCalledWith(7)
     expect(wrapper.get('[data-test="routed-account-modal"]').text()).toBe('OpenAI East')
+  })
+
+  it('keeps groups available when loading proxies fails', async () => {
+    getAllProxies.mockRejectedValue(new Error('proxy service unavailable'))
+    getAllGroups.mockResolvedValue([{ id: 7, name: 'production' }])
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="account-filters"]').attributes('data-group-count')).toBe('1')
   })
 
   it('renders an explanatory tooltip next to the usage windows column header', async () => {
