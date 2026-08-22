@@ -285,6 +285,59 @@ describe('user KeysView column settings', () => {
     isCurrentStep.mockReturnValue(false)
   })
 
+  it('renders configured API endpoints above the key list', async () => {
+    const customEndpoints = [
+      {
+        name: 'US endpoint',
+        endpoint: 'https://us.example.com',
+        description: 'Low latency route',
+      },
+    ]
+    getPublicSettings.mockResolvedValueOnce({
+      api_base_url: 'https://api.example.com/v1',
+      custom_endpoints: customEndpoints,
+    })
+
+    const wrapper = await mountView()
+    const endpointPopover = wrapper.findComponent({ name: 'EndpointPopover' })
+
+    expect(endpointPopover.exists()).toBe(true)
+    expect(endpointPopover.props('apiBaseUrl')).toBe('https://api.example.com/v1')
+    expect(endpointPopover.props('customEndpoints')).toEqual(customEndpoints)
+  })
+
+  it('renders the endpoint popover when only custom endpoints are configured', async () => {
+    const customEndpoints = [
+      {
+        name: 'US endpoint',
+        endpoint: 'https://us.example.com',
+        description: 'Low latency route',
+      },
+    ]
+    getPublicSettings.mockResolvedValueOnce({
+      api_base_url: '',
+      custom_endpoints: customEndpoints,
+    })
+
+    const wrapper = await mountView()
+    const endpointPopover = wrapper.findComponent({ name: 'EndpointPopover' })
+
+    expect(endpointPopover.exists()).toBe(true)
+    expect(endpointPopover.props('apiBaseUrl')).toBe('')
+    expect(endpointPopover.props('customEndpoints')).toEqual(customEndpoints)
+  })
+
+  it('does not render an empty endpoint popover', async () => {
+    getPublicSettings.mockResolvedValueOnce({
+      api_base_url: '',
+      custom_endpoints: [],
+    })
+
+    const wrapper = await mountView()
+
+    expect(wrapper.findComponent({ name: 'EndpointPopover' }).exists()).toBe(false)
+  })
+
   it('uses the default API key columns with low-frequency columns hidden', async () => {
     const wrapper = await mountView()
 
