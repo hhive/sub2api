@@ -315,6 +315,23 @@ func buildSupportedModelsByGroupID(
 	return out
 }
 
+// toUserPricingIntervals converts service pricing intervals to the user DTO.
+func toUserPricingIntervals(src []service.PricingInterval) []userPricingIntervalDTO {
+	if src == nil {
+		return nil
+	}
+	intervals := make([]userPricingIntervalDTO, 0, len(src))
+	for _, iv := range src {
+		intervals = append(intervals, userPricingIntervalDTO{
+			MinTokens: iv.MinTokens, MaxTokens: iv.MaxTokens, TierLabel: iv.TierLabel,
+			InputPrice: iv.InputPrice, OutputPrice: iv.OutputPrice,
+			CacheWritePrice: iv.CacheWritePrice, CacheReadPrice: iv.CacheReadPrice,
+			PerRequestPrice: iv.PerRequestPrice,
+		})
+	}
+	return intervals
+}
+
 // toUserPricing 将 service 层定价转换为用户 DTO；入参为 nil 时返回 nil。
 func toUserPricing(p *service.ChannelModelPricing) *userSupportedModelPricing {
 	if p == nil {
