@@ -472,6 +472,7 @@ const baseSettingsResponse = {
   enable_claude_oauth_system_prompt_injection: true,
   claude_oauth_system_prompt: "",
   claude_oauth_system_prompt_blocks: "",
+  deepseek_system_prompt: "",
   enable_anthropic_cache_ttl_1h_injection: false,
   rewrite_message_cache_control: false,
   enable_client_dateline_normalization: true,
@@ -1206,6 +1207,27 @@ describe("admin SettingsView payment visible method controls", () => {
         },
       },
     ]);
+  });
+
+  it("submits DeepSeek system prompt gateway setting", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      deepseek_system_prompt: "Gateway DeepSeek rules",
+    });
+
+    const wrapper = mountView();
+
+    await flushPromises();
+    expect(wrapper.find('[data-testid="deepseek-system-prompt"]').exists()).toBe(true);
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deepseek_system_prompt: "Gateway DeepSeek rules",
+      }),
+    );
   });
 
   it("submits Antigravity user agent version gateway setting", async () => {
