@@ -77,10 +77,10 @@ chmod +x docker-deploy.sh
 docker compose -f docker-compose.local.yml up -d
 
 # View logs
-docker compose -f docker-compose.local.yml logs -f sub2api-docker
+docker compose -f docker-compose.local.yml logs -f sub2api
 
 # If admin password was auto-generated, find it in logs:
-docker compose -f docker-compose.local.yml logs sub2api-docker | grep "admin password"
+docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
 
 # Access Web UI
 # http://localhost:8080
@@ -113,7 +113,7 @@ mkdir -p data postgres_data redis_data
 docker compose -f docker-compose.local.yml up -d
 
 # View logs (check for auto-generated admin password)
-docker compose -f docker-compose.local.yml logs -f sub2api-docker
+docker compose -f docker-compose.local.yml logs -f sub2api
 
 # Access Web UI
 # http://localhost:8080
@@ -143,17 +143,30 @@ When using Docker Compose with `AUTO_SETUP=true`:
 
 3. If `ADMIN_PASSWORD` is not set, check logs for the generated password:
    ```bash
-docker compose logs sub2api-docker | grep "admin password"
+   docker compose logs sub2api | grep "admin password"
    ```
 
-### Reverse Proxy Notes
+### Startup and Database Recovery
 
-If you put Nginx in front of Sub2API, raise the request body limit as well. Otherwise large `/responses` payloads will be rejected by Nginx before they reach the app.
+Sub2API applies database migrations during application startup. PostgreSQL can
+remain in its recovery/startup phase briefly after a host or Docker daemon
+restart. The application retries transient PostgreSQL startup and connection
+errors with bounded exponential backoff, then starts automatically when the
+database becomes ready. Authentication errors, migration checksum mismatches,
+SQL errors, and other permanent configuration or data errors fail immediately.
 
-```nginx
-underscores_in_headers on;
-client_max_body_size 256m;
-```
+The Compose example also uses a PostgreSQL health check that verifies both
+server readiness and a simple SQL query. `depends_on: condition: service_healthy`
+controls dependency ordering for a fresh Compose start, but it is not a
+replacement for application-level retries when Docker restores existing
+containers after a host restart.
+
+For systemd deployments, keep `Restart=always` and `RestartSec` configured in
+`sub2api.service`; the application retry covers transient database startup,
+while systemd remains the supervisor for permanent process exits. For
+Kubernetes, use a PostgreSQL readiness probe and retain the Sub2API startup
+retry behavior; configure the application liveness probe separately so a
+database recovery period is not treated as a permanent process failure.
 
 ### Database Migration Notes (PostgreSQL)
 
@@ -199,10 +212,10 @@ docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml down
 
 # View logs
-docker compose -f docker-compose.local.yml logs -f sub2api-docker
+docker compose -f docker-compose.local.yml logs -f sub2api
 
 # Restart Sub2API only
-docker compose -f docker-compose.local.yml restart sub2api-docker
+docker compose -f docker-compose.local.yml restart sub2api
 
 # Update to latest version
 docker compose -f docker-compose.local.yml pull
@@ -223,10 +236,10 @@ docker compose up -d
 docker compose down
 
 # View logs
-docker compose logs -f sub2api-docker
+docker compose logs -f sub2api
 
 # Restart Sub2API only
-docker compose restart sub2api-docker
+docker compose restart sub2api
 
 # Update to latest version
 docker compose pull
@@ -527,7 +540,7 @@ For **local directory version**:
 docker compose -f docker-compose.local.yml ps
 
 # View detailed logs
-docker compose -f docker-compose.local.yml logs --tail=100 sub2api-docker
+docker compose -f docker-compose.local.yml logs --tail=100 sub2api
 
 # Check database connection
 docker compose -f docker-compose.local.yml exec postgres pg_isready
@@ -549,7 +562,7 @@ For **named volumes version**:
 docker compose ps
 
 # View detailed logs
-docker compose logs --tail=100 sub2api-docker
+docker compose logs --tail=100 sub2api
 
 # Check database connection
 docker compose exec postgres pg_isready
