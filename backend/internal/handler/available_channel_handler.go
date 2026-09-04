@@ -3,7 +3,6 @@ package handler
 import (
 	"sort"
 
-	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -287,8 +286,8 @@ func toUserSupportedModels(
 	return out
 }
 
-func buildSupportedModelsByGroupID(channels []service.AvailableChannel, allowedGroupIDs map[int64]struct{}) map[int64][]dto.UserSupportedModel {
-	out := make(map[int64][]dto.UserSupportedModel)
+func buildSupportedModelsByGroupID(channels []service.AvailableChannel, allowedGroupIDs map[int64]struct{}) map[int64][]userSupportedModel {
+	out := make(map[int64][]userSupportedModel)
 	seen := make(map[int64]map[string]struct{})
 	for _, ch := range channels {
 		if ch.Status != service.StatusActive {
