@@ -286,6 +286,42 @@ func toUserSupportedModels(
 	return out
 }
 
+func buildSupportedModelsByGroupID(channels []service.AvailableChannel, allowedGroupIDs map[int64]struct{}) map[int64][]dto.UserSupportedModel {
+	out := make(map[int64][]dto.UserSupportedModel)
+	seen := make(map[int64]map[string]struct{})
+	for _, ch := range channels {
+		if ch.Status != service.StatusActive {
+			continue
+		}
+		for _, g := range ch.Groups {
+			if _, ok := allowedGroupIDs[g.ID]; !ok || g.Platform == "" {
+				continue
+			}
+			models := toUserSupportedModels(ch.SupportedModels, map[string]struct{}{g.Platform: {}})
+			if seen[g.ID] == nil {
+				seen[g.ID] = make(map[string]struct{})
+			}
+			for _, m := range models {
+				key := m.Platform + "\x00" + m.Name
+				if _, ok := seen[g.ID][key]; ok {
+					continue
+				}
+				seen[g.ID][key] = struct{}{}
+				out[g.ID] = append(out[g.ID], m)
+			}
+		}
+	}
+	for id := range out {
+		sort.SliceStable(out[id], func(i, j int) bool {
+			if out[id][i].Platform == out[id][j].Platform {
+				return out[id][i].Name < out[id][j].Name
+			}
+			return out[id][i].Platform < out[id][j].Platform
+		})
+	}
+	return out
+}
+
 // toUserPricingIntervals 将定价区间转换为用户 DTO 白名单形态；nil 入参返回 nil（JSON omitempty 可省略）。
 func toUserPricingIntervals(src []service.PricingInterval) []userPricingIntervalDTO {
 	if src == nil {
