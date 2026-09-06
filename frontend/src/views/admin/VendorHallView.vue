@@ -44,6 +44,7 @@
           v-else
           :key="account.account_id"
           :account="account"
+          :homepage-url="homepageUrls.get(account.account_id)"
           :expanded="expandedId === account.account_id"
           :action-loading="actionLoading"
           @toggle="expandedId = expandedId === account.account_id ? null : account.account_id"
@@ -51,6 +52,7 @@
           @manage="goToAccount(account)"
           @pause="openConfirmFor(account, 'pause')"
           @disable="openConfirmFor(account, 'disable')"
+          @enable="openConfirmFor(account, 'enable')"
         />
         <Pagination v-if="!loading && !error && total > pageSize" :page="page" :total="total" :page-size="pageSize" :show-page-size-selector="false" @update:page="page = $event; loadData()" />
       </section>
@@ -73,6 +75,7 @@ import VendorAccountRow from '@/features/vendor-hall/VendorAccountRow.vue'
 import type { VendorHallAccount, VendorHallSummary, VendorHallWindow, VendorHallSort } from '@/api/admin/vendorHall'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
+import { sanitizeUrl } from '@/utils/url'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -91,16 +94,34 @@ const loading = ref(false)
 const actionLoading = ref(false)
 const error = ref('')
 const expandedId = ref<number | null>(null)
-const confirmAction = ref<'pause' | 'disable' | null>(null)
+const confirmAction = ref<'pause' | 'disable' | 'enable' | null>(null)
 const actionAccount = ref<VendorHallAccount | null>(null)
 const schedulingOverrides = new Map<number, VendorHallAccount['scheduling_status']>()
-const confirmTitle = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableTitle') : t('admin.vendorHall.confirm.pauseTitle'))
-const confirmMessage = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableMessage') : t('admin.vendorHall.confirm.pauseMessage'))
+const homepageUrls = ref(new Map<number, string>())
+const confirmTitle = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableTitle') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableTitle') : t('admin.vendorHall.confirm.pauseTitle'))
+const confirmMessage = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableMessage') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableMessage') : t('admin.vendorHall.confirm.pauseMessage'))
 
 const loadData = async () => {
   loading.value = true; error.value = ''
   try {
-    const result = await adminAPI.vendorHall.list({ window: window.value, search: search.value.trim() || undefined, status: status.value || undefined, sort_by: sortBy.value, sort_order: 'desc', page: page.value, page_size: pageSize })
+    const [vendorResult, accountResult] = await Promise.allSettled([
+      adminAPI.vendorHall.list({ window: window.value, search: search.value.trim() || undefined, status: status.value || undefined, sort_by: sortBy.value, sort_order: 'desc', page: page.value, page_size: pageSize }),
+      typeof adminAPI.accounts?.list === 'function'
+        ? adminAPI.accounts.list(1, 1000, { lite: 'true' })
+        : Promise.reject(new Error('Account metadata unavailable')),
+    ])
+    if (vendorResult.status === 'rejected') throw vendorResult.reason
+    const result = vendorResult.value
+    const nextHomepageUrls = new Map<number, string>()
+    if (accountResult.status === 'fulfilled') {
+      for (const account of accountResult.value.items || []) {
+        if (account.type !== 'apikey' || typeof account.credentials?.base_url !== 'string') continue
+        const baseUrl = sanitizeUrl(account.credentials.base_url)
+        if (!baseUrl) continue
+        try { nextHomepageUrls.set(account.id, new URL(baseUrl).origin) } catch { /* Ignore malformed URLs. */ }
+      }
+    }
+    homepageUrls.value = nextHomepageUrls
     const rawItems = result.items || []
     const mergedItems = rawItems.map((item) => {
       const overriddenStatus = schedulingOverrides.get(item.account_id)
@@ -116,6 +137,7 @@ const loadData = async () => {
       if (!overriddenStatus || overriddenStatus === item.scheduling_status) continue
       if (item.scheduling_status === 'schedulable') nextSummary.healthy_accounts = Math.max(0, nextSummary.healthy_accounts - 1)
       if (item.scheduling_status === 'paused') nextSummary.paused_accounts = Math.max(0, nextSummary.paused_accounts - 1)
+      if (overriddenStatus === 'schedulable') nextSummary.healthy_accounts += 1
       if (overriddenStatus === 'paused') nextSummary.paused_accounts += 1
     }
     summary.value = nextSummary
@@ -124,7 +146,7 @@ const loadData = async () => {
   } finally { loading.value = false }
 }
 const applyFilters = () => { page.value = 1; void loadData() }
-const openConfirmFor = (account: VendorHallAccount, action: 'pause' | 'disable') => {
+const openConfirmFor = (account: VendorHallAccount, action: 'pause' | 'disable' | 'enable') => {
   if (actionLoading.value) return
   actionAccount.value = account
   confirmAction.value = action
@@ -139,10 +161,10 @@ const performAction = async () => {
       await adminAPI.vendorHall.pauseScheduling(account.account_id)
       schedulingOverrides.set(account.account_id, 'paused')
     } else {
-      await adminAPI.accounts.setSchedulable(account.account_id, false)
-      schedulingOverrides.set(account.account_id, 'disabled')
+      await adminAPI.accounts.setSchedulable(account.account_id, action === 'enable')
+      schedulingOverrides.set(account.account_id, action === 'enable' ? 'schedulable' : 'disabled')
     }
-    appStore.showSuccess(t(action === 'pause' ? 'admin.vendorHall.success.paused' : 'admin.vendorHall.success.disabled'))
+    appStore.showSuccess(t(action === 'pause' ? 'admin.vendorHall.success.paused' : action === 'enable' ? 'admin.vendorHall.success.enabled' : 'admin.vendorHall.success.disabled'))
     await loadData()
   } catch (err) { appStore.showError(extractApiErrorMessage(err, t('admin.vendorHall.failed'))) }
   finally { actionLoading.value = false }

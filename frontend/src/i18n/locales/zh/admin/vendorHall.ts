@@ -18,8 +18,8 @@ export default {
     },
     status: { schedulable: '调度中', paused: '暂停中', disabled: '已关闭', unknown: '未知' },
     sort: { availability: '按可用率', cache: '按缓存命中', ttft: '按 TTFT', requests: '按请求量' },
-    actions: { usage: '查看使用记录', manage: '账号管理', pause: '暂停 1 小时', disable: '关闭调度' },
-    confirm: { pauseTitle: '暂停账号调度', pauseMessage: '该账号将在 1 小时内不参与新请求调度，到期后自动恢复。', disableTitle: '关闭账号调度', disableMessage: '该账号将持续退出调度，除非管理员手动重新开启。历史记录和凭据不会删除。' },
-    success: { paused: '已暂停调度 1 小时', disabled: '已关闭账号调度' },
+    actions: { usage: '查看使用记录', manage: '账号管理', pause: '暂停 1 小时', disable: '关闭调度', enable: '开启调度' },
+    confirm: { pauseTitle: '暂停账号调度', pauseMessage: '该账号将在 1 小时内不参与新请求调度，到期后自动恢复。', disableTitle: '关闭账号调度', disableMessage: '该账号将持续退出调度，除非管理员手动重新开启。历史记录和凭据不会删除。', enableTitle: '开启账号调度', enableMessage: '该账号将重新参与新的请求调度。' },
+    success: { paused: '已暂停调度 1 小时', disabled: '已关闭账号调度', enabled: '已开启账号调度' },
   },
 }

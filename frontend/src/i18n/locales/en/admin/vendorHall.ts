@@ -18,8 +18,8 @@ export default {
     },
     status: { schedulable: 'Scheduling', paused: 'Paused', disabled: 'Disabled', unknown: 'Unknown' },
     sort: { availability: 'By availability', cache: 'By cache hit', ttft: 'By TTFT', requests: 'By requests' },
-    actions: { usage: 'View usage', manage: 'Manage account', pause: 'Pause 1 hour', disable: 'Disable scheduling' },
-    confirm: { pauseTitle: 'Pause account scheduling', pauseMessage: 'This account will not receive new scheduled requests for one hour, then resume automatically.', disableTitle: 'Disable account scheduling', disableMessage: 'This account will remain out of scheduling until an administrator enables it. Credentials and history are preserved.' },
-    success: { paused: 'Scheduling paused for one hour', disabled: 'Account scheduling disabled' },
+    actions: { usage: 'View usage', manage: 'Manage account', pause: 'Pause 1 hour', disable: 'Disable scheduling', enable: 'Enable scheduling' },
+    confirm: { pauseTitle: 'Pause account scheduling', pauseMessage: 'This account will not receive new scheduled requests for one hour, then resume automatically.', disableTitle: 'Disable account scheduling', disableMessage: 'This account will remain out of scheduling until an administrator enables it. Credentials and history are preserved.', enableTitle: 'Enable account scheduling', enableMessage: 'This account will participate in new scheduled requests again.' },
+    success: { paused: 'Scheduling paused for one hour', disabled: 'Account scheduling disabled', enabled: 'Account scheduling enabled' },
   },
 }

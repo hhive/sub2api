@@ -159,6 +159,28 @@ describe('VendorHallView', () => {
     await flushPromises()
   })
 
+  it('enables scheduling for a disabled account after confirmation', async () => {
+    let loadCount = 0
+    list.mockImplementation(async () => ({
+      ...response,
+      items: [{ ...response.items[0], account_id: 9, account_name: 'Disabled account', scheduling_status: loadCount++ === 0 ? 'disabled' : 'schedulable' }],
+      total: 1,
+    }))
+    setSchedulable.mockResolvedValue({ id: 9, schedulable: true })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.vendor-expand').trigger('click')
+    expect(wrapper.get('[data-test="enable-account-9"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="disable-account-9"]').exists()).toBe(false)
+    await wrapper.get('[data-test="enable-account-9"]').trigger('click')
+    await wrapper.get('[data-test="confirm-action"]').trigger('click')
+    await flushPromises()
+
+    expect(setSchedulable).toHaveBeenCalledWith(9, true)
+    expect(wrapper.text()).toContain('admin.vendorHall.status.schedulable')
+  })
+
   it('keeps account actions in the expanded row instead of the toolbar', async () => {
     const wrapper = mountView()
     await flushPromises()

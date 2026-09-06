@@ -45,4 +45,11 @@ describe('VendorAccountRow responsive metrics', () => {
   it('never hides the TTFT trend at responsive breakpoints', () => {
     expect(source).not.toMatch(/\.vendor-trend\s*\{[^}]*display:\s*none/)
   })
+
+  it('opens the upstream homepage in a new tab when available', () => {
+    expect(source).toContain('v-if="homepageUrl"')
+    expect(source).toContain(':href="homepageUrl"')
+    expect(source).toContain('target="_blank"')
+    expect(source).toContain('rel="noopener noreferrer"')
+  })
 })

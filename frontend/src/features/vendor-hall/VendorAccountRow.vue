@@ -4,7 +4,14 @@
       <div class="vendor-account__identity flex min-w-0 items-center gap-3">
         <span class="vendor-logo">{{ platformInitial }}</span>
         <span class="min-w-0">
-          <strong class="block truncate text-sm text-gray-900 dark:text-white">{{ account.account_name }}</strong>
+          <a
+            v-if="homepageUrl"
+            :href="homepageUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block truncate border-b border-dotted border-gray-300 text-sm font-medium text-gray-900 dark:border-dark-600 dark:text-white"
+          >{{ account.account_name }}</a>
+          <strong v-else class="block truncate text-sm text-gray-900 dark:text-white">{{ account.account_name }}</strong>
           <span class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <span>{{ account.platform }}</span>
             <span v-if="account.group_name" class="vendor-tag">{{ account.group_name }}</span>
@@ -55,8 +62,7 @@
         <span class="vendor-status" :class="`vendor-status--${account.scheduling_status}`">
           {{ t(`admin.vendorHall.status.${account.scheduling_status}`) }}
         </span>
-        <button
-          type="button"
+        <button type="button"
           class="vendor-expand"
           :aria-expanded="expanded"
           :aria-label="t('admin.vendorHall.details')"
@@ -78,6 +84,7 @@
           {{ t('admin.vendorHall.actions.manage') }}
         </button>
         <button
+          v-if="account.scheduling_status !== 'disabled'"
           type="button"
           class="btn btn-secondary"
           :disabled="actionLoading || account.scheduling_status === 'disabled'"
@@ -87,6 +94,7 @@
           {{ t('admin.vendorHall.actions.pause') }}
         </button>
         <button
+          v-if="account.scheduling_status !== 'disabled'"
           type="button"
           class="btn btn-danger"
           :disabled="actionLoading || account.scheduling_status === 'disabled'"
@@ -94,6 +102,16 @@
           @click="$emit('disable')"
         >
           {{ t('admin.vendorHall.actions.disable') }}
+        </button>
+        <button
+          v-if="account.scheduling_status === 'disabled'"
+          type="button"
+          class="btn btn-primary"
+          :disabled="actionLoading"
+          :data-test="`enable-account-${account.account_id}`"
+          @click="$emit('enable')"
+        >
+          {{ t('admin.vendorHall.actions.enable') }}
         </button>
       </div>
     </div>
@@ -109,8 +127,8 @@ import VendorMetricHelp from './VendorMetricHelp.vue'
 import VendorTtftSparkline from './VendorTtftSparkline.vue'
 import Icon from '@/components/icons/Icon.vue'
 
-const props = defineProps<{ account: VendorHallAccount; expanded: boolean; actionLoading: boolean }>()
-defineEmits<{ toggle: []; usage: []; manage: []; pause: []; disable: [] }>()
+const props = defineProps<{ account: VendorHallAccount; homepageUrl?: string; expanded: boolean; actionLoading: boolean }>()
+defineEmits<{ toggle: []; usage: []; manage: []; pause: []; disable: []; enable: [] }>()
 const { t, locale } = useI18n()
 const platformInitial = computed(() => (props.account.platform || props.account.account_name || '?').charAt(0).toUpperCase())
 const formatMs = (value: number | null) => value == null ? '--' : `${Math.round(value).toLocaleString(locale.value)} ms`
