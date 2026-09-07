@@ -87,7 +87,7 @@
           v-if="account.scheduling_status !== 'disabled'"
           type="button"
           class="btn btn-secondary"
-          :disabled="actionLoading || account.scheduling_status === 'disabled'"
+          :disabled="actionLoading"
           :data-test="`pause-account-${account.account_id}`"
           @click="$emit('pause')"
         >
@@ -97,7 +97,7 @@
           v-if="account.scheduling_status !== 'disabled'"
           type="button"
           class="btn btn-danger"
-          :disabled="actionLoading || account.scheduling_status === 'disabled'"
+          :disabled="actionLoading"
           :data-test="`disable-account-${account.account_id}`"
           @click="$emit('disable')"
         >
