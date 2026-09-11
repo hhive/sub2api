@@ -194,7 +194,9 @@ describe('AppSidebar purchase menu wiring', () => {
     expect(componentSource).toContain('externalUrl?: string')
     expect(componentSource).toContain('target="_blank"')
     expect(componentSource).toContain("path: '__purchase_external__'")
-    expect(componentSource).toContain("label: t('nav.buySubscription')")
+    // 购买入口文案改由站点计费模式派生（上游行为），默认分支仍为「充值/订阅」。
+    expect(componentSource).toContain('label: purchaseNavLabel.value')
+    expect(componentSource).toContain("return t('nav.buySubscription')")
     expect(componentSource).toContain('featureFlag: flagRechargeSubscription')
     expect(componentSource).not.toContain("externalUrl: 'https://pay.ldxp.cn/shop/xiaoni-ai'")
   })
@@ -221,5 +223,24 @@ describe('AppSidebar victory menu wiring', () => {
     expect(componentSource.match(/item\.action === 'lobehub' \|\| item\.action === 'mediaPlayground' \|\| item\.action === 'victoryMenu'/g)).toHaveLength(3)
     expect(componentSource).toContain('target="_blank"')
     expect(componentSource).toContain('rel="noopener noreferrer"')
+  })
+})
+
+describe('AppSidebar subscription feature flag', () => {
+  it('gates the My Subscriptions entry behind the subscription public-settings flag', () => {
+    expect(componentSource).toContain('const flagSubscription = makeSidebarFlag(FeatureFlags.subscription)')
+    expect(componentSource).toMatch(/path: '\/subscriptions'[^\n]*featureFlag: flagSubscription/)
+  })
+
+  it('also hides the admin Subscription Management entry on recharge-only sites', () => {
+    expect(componentSource).toMatch(/path: '\/admin\/subscriptions'[^\n]*featureFlag: flagSubscription/)
+  })
+
+  it('derives the purchase entry label from the site billing mode', () => {
+    expect(componentSource).toContain("import { resolveSiteBillingMode } from '@/utils/siteBillingMode'")
+    expect(componentSource).toMatch(/case 'recharge_only':\s*return t\('nav\.recharge'\)/)
+    expect(componentSource).toMatch(/case 'subscription_only':\s*return t\('nav\.subscribe'\)/)
+    // 本地定制：内建 /purchase 页已由外部购买入口取代，文案行为落在 __purchase_external__ 上。
+    expect(componentSource).toMatch(/path: '__purchase_external__'[^\n]*label: purchaseNavLabel\.value/)
   })
 })

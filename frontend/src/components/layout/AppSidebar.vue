@@ -420,6 +420,7 @@ import {
 } from '@/api/launch'
 import type { AdminExternalApp } from '@/api/launch'
 import { openAdminExternalAppWindow } from '@/utils/adminExternalAppLaunch'
+import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
 interface NavItem {
@@ -952,6 +953,19 @@ const ChevronDownIcon = {
 const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
+const flagSubscription = makeSidebarFlag(FeatureFlags.subscription)
+
+// 购买入口文案随站点计费模式切换：仅充值 → 「充值」，仅订阅 → 「订阅」，否则「充值/订阅」。
+const purchaseNavLabel = computed(() => {
+  switch (resolveSiteBillingMode(appStore.cachedPublicSettings)) {
+    case 'recharge_only':
+      return t('nav.recharge')
+    case 'subscription_only':
+      return t('nav.subscribe')
+    default:
+      return t('nav.buySubscription')
+  }
+})
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagMediaPlayground = makeSidebarFlag(FeatureFlags.mediaPlayground)
@@ -993,9 +1007,12 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
-    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
+    // 本地定制：内建 /purchase 页已由外部购买入口 __purchase_external__ 取代（见下），
+    // 这里只保留订阅入口，并按上游新增的 flagSubscription 在「仅充值」站点收起。
+    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true, featureFlag: flagSubscription },
     { path: '/orders', label: t('nav.myOrders'), icon: OrderListIcon, hideInSimpleMode: true, featureFlag: flagPayment },
-    { path: '__purchase_external__', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, externalUrl: purchaseSubscriptionUrl.value, hideInSimpleMode: true, featureFlag: flagRechargeSubscription },
+    // 购买入口文案跟随站点计费模式（上游 behavior），本地保留外部购买入口作为落点。
+    { path: '__purchase_external__', label: purchaseNavLabel.value, icon: RechargeSubscriptionIcon, externalUrl: purchaseSubscriptionUrl.value, hideInSimpleMode: true, featureFlag: flagRechargeSubscription },
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
@@ -1079,7 +1096,8 @@ const adminNavItems = computed((): NavItem[] => {
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },
-    { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
+    // 「仅充值」站点连管理端的「订阅管理」入口也一并收起（路由本身不拦截）。
+    { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true, featureFlag: flagSubscription },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
     { path: '/admin/plugins', label: t('nav.plugins'), icon: PluginIcon, featureFlag: flagPluginManagement },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
