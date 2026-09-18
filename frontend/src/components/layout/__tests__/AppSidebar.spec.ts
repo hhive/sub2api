@@ -206,8 +206,9 @@ describe('AppSidebar victory menu wiring', () => {
   it('adds configurable jump menus as top-level items at the end of the user menu', () => {
     const selfNavBlock = componentSource.match(/function buildSelfNavItems[\s\S]*?return items\n}/)?.[0] ?? ''
 
-    expect(componentSource).toContain("label: 'Vibe论坛'")
-    expect(componentSource).toContain("externalUrl: 'https://vibe.xiaoni-ai.top'")
+    // 本地定制：Vibe 论坛菜单项已移除，不再出现在用户菜单里。
+    expect(componentSource).not.toContain("label: 'Vibe论坛'")
+    expect(componentSource).not.toContain("externalUrl: 'https://vibe.xiaoni-ai.top'")
     expect(selfNavBlock).not.toContain("path: '__victory_menu__'")
     expect(selfNavBlock).not.toContain("label: '旗开得胜'")
     expect(selfNavBlock).not.toContain('children: victoryMenuItems.value.map')

@@ -1004,7 +1004,6 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '__lobehub__', label: t('nav.lobehub'), icon: ChatIcon, hideInSimpleMode: true, featureFlag: flagLobeHub, action: 'lobehub' },
     { path: '__media_playground__', label: t('nav.mediaPlayground'), icon: ImageIcon, hideInSimpleMode: true, featureFlag: flagMediaPlayground, action: 'mediaPlayground' },
-    { path: '__vibe_forum__', label: 'Vibe论坛', icon: GlobeIcon, externalUrl: 'https://vibe.xiaoni-ai.top', hideInSimpleMode: true },
     { path: '/available-channels', label: t('nav.availableChannels'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
     // 本地定制：内建 /purchase 页已由外部购买入口 __purchase_external__ 取代（见下），
