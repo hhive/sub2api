@@ -73,6 +73,25 @@ type Summary struct {
 	UpdatedAt           *time.Time `json:"updated_at"`
 }
 
+// FacetAccount is one selectable account in the vendor hall filters. Only the
+// fields needed to label a filter option are exposed; the account's metrics
+// live on the list row itself.
+type FacetAccount struct {
+	AccountID   int64  `json:"account_id"`
+	AccountName string `json:"account_name"`
+	Platform    string `json:"platform"`
+}
+
+// Facets carries the filter option sets for the current Monitor snapshot. They
+// are collected from every visible account before the request's own filters are
+// applied, so any offered option has at least one matching row and the option
+// sets do not narrow themselves as filters are combined.
+type Facets struct {
+	Platforms []string       `json:"platforms"`
+	Groups    []Group        `json:"groups"`
+	Accounts  []FacetAccount `json:"accounts"`
+}
+
 type ListResult struct {
 	Items       []Account `json:"items"`
 	Total       int       `json:"total"`
@@ -83,6 +102,7 @@ type ListResult struct {
 	WindowStart time.Time `json:"window_start"`
 	WindowEnd   time.Time `json:"window_end"`
 	Summary     Summary   `json:"summary"`
+	Facets      Facets    `json:"facets"`
 }
 
 type Lister interface {

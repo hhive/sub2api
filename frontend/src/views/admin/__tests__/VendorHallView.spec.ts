@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, ref } from 'vue'
 
+import Select from '@/components/common/Select.vue'
+
 import VendorHallView from '../VendorHallView.vue'
 
 const { list, pauseScheduling, setSchedulable, push, showSuccess, showError } = vi.hoisted(() => ({
@@ -88,6 +90,17 @@ const response = {
   total: 2,
   page: 1,
   page_size: 20,
+  facets: {
+    platforms: ['anthropic', 'openai'],
+    groups: [
+      { id: 3, name: 'premium' },
+      { id: 5, name: 'fallback' },
+    ],
+    accounts: [
+      { account_id: 7, account_name: 'OpenAI East', platform: 'openai' },
+      { account_id: 8, account_name: 'OpenAI East', platform: 'anthropic' },
+    ],
+  },
 }
 
 function mountView() {
@@ -213,6 +226,45 @@ describe('VendorHallView', () => {
 
     await wrapper.get('[data-test="pause-account-7"]').trigger('click')
     expect(wrapper.get('[data-test="confirm-action"]').exists()).toBe(true)
+  })
+
+  it('builds account, platform, and group options from the response facets', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const selects = wrapper.findAllComponents(Select)
+    expect(selects).toHaveLength(3)
+    expect(selects[0].props('options')).toContainEqual({ value: null, label: 'admin.vendorHall.allAccounts' })
+    expect(selects[1].props('options')).toContainEqual({ value: 'openai', label: 'OpenAI' })
+    expect(selects[2].props('options')).toContainEqual({ value: 3, label: 'premium' })
+    // Duplicate account names are allowed upstream, so the id stays searchable.
+    expect(selects[0].props('options')).toContainEqual({ value: 8, label: 'OpenAI East', description: '#8' })
+  })
+
+  it('reloads the list with exact account, platform, and group filters', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    const [accountSelect, platformSelect, groupSelect] = wrapper.findAllComponents(Select)
+
+    platformSelect.vm.$emit('update:modelValue', 'openai')
+    platformSelect.vm.$emit('change', 'openai', null)
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ platform: 'openai', account_id: undefined, page: 1 }))
+
+    accountSelect.vm.$emit('update:modelValue', 7)
+    accountSelect.vm.$emit('change', 7, null)
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: 'openai' }))
+
+    groupSelect.vm.$emit('update:modelValue', 3)
+    groupSelect.vm.$emit('change', 3, null)
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: 'openai', group: '3' }))
+
+    platformSelect.vm.$emit('update:modelValue', null)
+    platformSelect.vm.$emit('change', null, null)
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: undefined, group: '3' }))
   })
 
   it('shows structured API error messages', async () => {

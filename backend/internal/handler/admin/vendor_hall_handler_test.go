@@ -34,6 +34,12 @@ func TestListVendorHallAccountsValidatesQuery(t *testing.T) {
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/vendor-hall?window=1h", nil))
 
 	require.Equal(t, http.StatusBadRequest, recorder.Code)
+
+	for _, query := range []string{"account_id=0", "account_id=abc", "account_id=-3"} {
+		recorder = httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/vendor-hall?"+query, nil))
+		require.Equal(t, http.StatusBadRequest, recorder.Code, query)
+	}
 }
 
 func TestListVendorHallAccountsMapsUnavailableWithoutLeakingDetails(t *testing.T) {
@@ -59,10 +65,13 @@ func TestListVendorHallAccountsReturnsParsedResult(t *testing.T) {
 	router.GET("/vendor-hall", h.ListVendorHallAccounts)
 
 	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/vendor-hall?window=3d&page=2&page_size=10&sort_by=user_ttft&sort_order=asc", nil))
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/vendor-hall?window=3d&page=2&page_size=10&sort_by=user_ttft&sort_order=asc&account_id=7&platform=openai&group=3", nil))
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "3d", stub.params.Window)
 	require.Equal(t, "user_ttft", stub.params.SortBy)
+	require.Equal(t, int64(7), stub.params.AccountID)
+	require.Equal(t, "openai", stub.params.Platform)
+	require.Equal(t, "3", stub.params.Group)
 	require.Contains(t, recorder.Body.String(), `"page":2`)
 }

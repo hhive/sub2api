@@ -29,6 +29,21 @@ export interface VendorHallAccount {
   trend: VendorHallTrendPoint[]
 }
 
+// Filter option sets collected by the backend from every visible Monitor
+// account before the request's own filters are applied, so an offered option
+// always has at least one matching row.
+export interface VendorHallFacetAccount {
+  account_id: number
+  account_name: string
+  platform: string
+}
+
+export interface VendorHallFacets {
+  platforms: string[]
+  groups: Array<{ id: number; name: string }>
+  accounts: VendorHallFacetAccount[]
+}
+
 export interface VendorHallSummary {
   total_accounts: number
   healthy_accounts: number
@@ -43,12 +58,15 @@ export interface VendorHallResponse {
   total: number
   page: number
   page_size: number
+  facets?: VendorHallFacets
 }
 
 export interface VendorHallQuery {
   window?: VendorHallWindow
   search?: string
   group?: string
+  account_id?: number
+  platform?: string
   status?: string
   sort_by?: VendorHallSort
   sort_order?: 'asc' | 'desc'

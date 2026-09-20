@@ -21,6 +21,25 @@ func TestParseListParamsAcceptsSupportedWindowsAndBoundsPagination(t *testing.T)
 	require.Equal(t, 100, params.PageSize)
 }
 
+func TestParseListParamsReadsExactAccountAndPlatformFilters(t *testing.T) {
+	params, err := ParseListParams(url.Values{"account_id": {"7"}, "platform": {" OpenAI "}})
+	require.NoError(t, err)
+	require.Equal(t, int64(7), params.AccountID)
+	require.Equal(t, "OpenAI", params.Platform)
+
+	params, err = ParseListParams(url.Values{"account_id": {""}, "platform": {"  "}})
+	require.NoError(t, err)
+	require.Equal(t, int64(0), params.AccountID)
+	require.Equal(t, "", params.Platform)
+}
+
+func TestParseListParamsRejectsInvalidAccountID(t *testing.T) {
+	for _, raw := range []string{"0", "-1", "abc", "7.5", "99999999999999999999"} {
+		_, err := ParseListParams(url.Values{"account_id": {raw}})
+		require.Error(t, err, raw)
+	}
+}
+
 func TestParseListParamsRejectsUnknownWindowSortAndOrder(t *testing.T) {
 	for _, values := range []url.Values{
 		{"window": {"6h"}},

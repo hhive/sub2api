@@ -26,7 +26,18 @@
           <div class="vendor-window" role="group" :aria-label="t('admin.vendorHall.window')">
             <button v-for="option in windows" :key="option.value" type="button" :class="{ active: window === option.value }" @click="window = option.value; applyFilters()">{{ option.label }}</button>
           </div>
-          <input v-model="search" class="input vendor-search" :placeholder="t('admin.vendorHall.search')" @keyup.enter="applyFilters" />
+          <div class="vendor-filter">
+            <span class="vendor-filter__label">{{ t('admin.vendorHall.accountFilter') }}</span>
+            <Select v-model="accountId" class="vendor-filter__select" :options="accountOptions" searchable @change="applyFilters" />
+          </div>
+          <div class="vendor-filter">
+            <span class="vendor-filter__label">{{ t('admin.vendorHall.platformFilter') }}</span>
+            <Select v-model="platform" class="vendor-filter__select" :options="platformOptions" searchable @change="applyFilters" />
+          </div>
+          <div class="vendor-filter">
+            <span class="vendor-filter__label">{{ t('admin.vendorHall.groupFilter') }}</span>
+            <Select v-model="groupId" class="vendor-filter__select" :options="groupOptions" searchable @change="applyFilters" />
+          </div>
           <select v-model="status" class="input vendor-select" @change="applyFilters"><option value="">{{ t('admin.vendorHall.allStatuses') }}</option><option value="schedulable">{{ t('admin.vendorHall.status.schedulable') }}</option><option value="paused">{{ t('admin.vendorHall.status.paused') }}</option><option value="disabled">{{ t('admin.vendorHall.status.disabled') }}</option></select>
         </div>
         <div class="flex items-center gap-2">
@@ -71,10 +82,12 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Pagination from '@/components/common/Pagination.vue'
+import Select, { type SelectOption } from '@/components/common/Select.vue'
 import VendorAccountRow from '@/features/vendor-hall/VendorAccountRow.vue'
-import type { VendorHallAccount, VendorHallSummary, VendorHallWindow, VendorHallSort } from '@/api/admin/vendorHall'
+import type { VendorHallAccount, VendorHallFacets, VendorHallSummary, VendorHallWindow, VendorHallSort } from '@/api/admin/vendorHall'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
+import { platformLabel } from '@/utils/platformColors'
 import { sanitizeUrl } from '@/utils/url'
 
 const { t, locale } = useI18n()
@@ -82,7 +95,9 @@ const router = useRouter()
 const appStore = useAppStore()
 const windows: Array<{ value: VendorHallWindow; label: string }> = [{ value: '3h', label: '3H' }, { value: '24h', label: '24H' }, { value: '3d', label: '3D' }]
 const window = ref<VendorHallWindow>('3h')
-const search = ref('')
+const accountId = ref<number | null>(null)
+const platform = ref<string | null>(null)
+const groupId = ref<number | null>(null)
 const status = ref('')
 const sortBy = ref<VendorHallSort>('availability')
 const page = ref(1)
@@ -98,6 +113,25 @@ const confirmAction = ref<'pause' | 'disable' | 'enable' | null>(null)
 const actionAccount = ref<VendorHallAccount | null>(null)
 const schedulingOverrides = new Map<number, VendorHallAccount['scheduling_status']>()
 const homepageUrls = ref(new Map<number, string>())
+// Filter options come from the list response, collected by the backend over the
+// unfiltered account set, so every offered option has at least one matching row.
+const facets = ref<VendorHallFacets>({ platforms: [], groups: [], accounts: [] })
+const accountOptions = computed<SelectOption[]>(() => [
+  { value: null, label: t('admin.vendorHall.allAccounts') },
+  ...facets.value.accounts.map((account) => ({
+    value: account.account_id,
+    label: account.account_name,
+    description: `#${account.account_id}`,
+  })),
+])
+const platformOptions = computed<SelectOption[]>(() => [
+  { value: null, label: t('admin.vendorHall.allPlatforms') },
+  ...facets.value.platforms.map((value) => ({ value, label: platformLabel(value) })),
+])
+const groupOptions = computed<SelectOption[]>(() => [
+  { value: null, label: t('admin.vendorHall.allGroups') },
+  ...facets.value.groups.map((group) => ({ value: group.id, label: group.name })),
+])
 const confirmTitle = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableTitle') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableTitle') : t('admin.vendorHall.confirm.pauseTitle'))
 const confirmMessage = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableMessage') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableMessage') : t('admin.vendorHall.confirm.pauseMessage'))
 
@@ -105,7 +139,17 @@ const loadData = async () => {
   loading.value = true; error.value = ''
   try {
     const [vendorResult, accountResult] = await Promise.allSettled([
-      adminAPI.vendorHall.list({ window: window.value, search: search.value.trim() || undefined, status: status.value || undefined, sort_by: sortBy.value, sort_order: 'desc', page: page.value, page_size: pageSize }),
+      adminAPI.vendorHall.list({
+        window: window.value,
+        account_id: accountId.value ?? undefined,
+        platform: platform.value ?? undefined,
+        group: groupId.value == null ? undefined : String(groupId.value),
+        status: status.value || undefined,
+        sort_by: sortBy.value,
+        sort_order: 'desc',
+        page: page.value,
+        page_size: pageSize,
+      }),
       typeof adminAPI.accounts?.list === 'function'
         ? adminAPI.accounts.list(1, 1000, { lite: 'true' })
         : Promise.reject(new Error('Account metadata unavailable')),
@@ -122,6 +166,7 @@ const loadData = async () => {
       }
     }
     homepageUrls.value = nextHomepageUrls
+    facets.value = result.facets ?? { platforms: [], groups: [], accounts: [] }
     const rawItems = result.items || []
     const mergedItems = rawItems.map((item) => {
       const overriddenStatus = schedulingOverrides.get(item.account_id)
@@ -187,7 +232,9 @@ onMounted(loadData)
 .vendor-window button { min-width: 46px; padding: 7px 10px; font-size: 12px; color: #6b7280; }
 .vendor-window button + button { border-left: 1px solid #e5e7eb; }
 .vendor-window button.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
-.vendor-search { width: 180px; }
+.vendor-filter { display: flex; align-items: center; gap: 6px; flex: none; }
+.vendor-filter__label { flex: none; font-size: 12px; color: #6b7280; }
+.vendor-filter__select { width: 170px; }
 .vendor-select { width: 150px; min-width: 145px; flex: none; }
 .vendor-table__head { display: grid; grid-template-columns: minmax(210px, 1.7fr) .7fr 1fr 82px 82px minmax(140px, 1fr) minmax(120px, .8fr); gap: 18px; padding: 11px 20px; background: #f8fafc; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 :global(.dark .vendor-hero) { border-color: #374151; }
@@ -195,5 +242,5 @@ onMounted(loadData)
 :global(.dark .vendor-summary strong) { color: #f9fafb; }
 :global(.dark .vendor-table__head) { background: #111827; }
 @media (max-width: 1100px) { .vendor-table__head { display: none; } }
-@media (max-width: 760px) { .vendor-hero { align-items: flex-start; flex-direction: column; } .vendor-toolbar > div:last-child { width: 100%; } .vendor-toolbar > div:last-child .vendor-select { width: 100%; } .vendor-search { width: 100%; } .vendor-select { width: auto; min-width: 0; flex: 1; } }
+@media (max-width: 760px) { .vendor-hero { align-items: flex-start; flex-direction: column; } .vendor-toolbar > div:last-child { width: 100%; } .vendor-toolbar > div:last-child .vendor-select { width: 100%; } .vendor-filter { width: 100%; flex: 1 1 100%; } .vendor-filter__select { width: auto; flex: 1; } .vendor-select { width: auto; min-width: 0; flex: 1; } }
 </style>

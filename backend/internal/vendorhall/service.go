@@ -92,6 +92,7 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 	end := now.Truncate(time.Minute)
 	start := end.Add(-windowDurations[params.Window])
 	accounts := make([]Account, 0, len(raw))
+	facets := newFacetCollector()
 	monitorToIndex := map[int]int{}
 	monitorIDs := make([]int64, 0, len(raw))
 	for _, item := range raw {
@@ -131,6 +132,10 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 				account.GroupName = &name
 			}
 		}
+		// Filter options are collected before this request's filters so that an
+		// offered option always has a matching row and combining filters does
+		// not remove the options the user needs to undo them.
+		facets.add(account)
 		if !matches(account, params, now) {
 			continue
 		}
@@ -185,7 +190,57 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 	if limit > total {
 		limit = total
 	}
-	return &ListResult{Items: accounts[offset:limit], Total: total, Page: params.Page, PageSize: params.PageSize, Pages: pages, Window: params.Window, WindowStart: start, WindowEnd: end, Summary: summary}, nil
+	return &ListResult{Items: accounts[offset:limit], Total: total, Page: params.Page, PageSize: params.PageSize, Pages: pages, Window: params.Window, WindowStart: start, WindowEnd: end, Summary: summary, Facets: facets.facets()}, nil
+}
+
+// facetCollector accumulates the option sets for the vendor hall filters while
+// the account rows are already being scanned, so facets cost no extra query.
+type facetCollector struct {
+	platforms map[string]struct{}
+	groups    map[int64]Group
+	accounts  []FacetAccount
+}
+
+func newFacetCollector() *facetCollector {
+	return &facetCollector{platforms: map[string]struct{}{}, groups: map[int64]Group{}, accounts: []FacetAccount{}}
+}
+
+func (c *facetCollector) add(account Account) {
+	if account.Platform != "" {
+		c.platforms[account.Platform] = struct{}{}
+	}
+	for _, group := range account.groups {
+		name := strings.TrimSpace(group.Name)
+		if name == "" {
+			continue
+		}
+		if _, seen := c.groups[group.ID]; !seen {
+			c.groups[group.ID] = Group{ID: group.ID, Name: name}
+		}
+	}
+	c.accounts = append(c.accounts, FacetAccount{AccountID: account.AccountID, AccountName: account.AccountName, Platform: account.Platform})
+}
+
+// facets returns the collected options in a stable order so the filter menus do
+// not reshuffle between requests.
+func (c *facetCollector) facets() Facets {
+	platforms := make([]string, 0, len(c.platforms))
+	for platform := range c.platforms {
+		platforms = append(platforms, platform)
+	}
+	sort.Strings(platforms)
+	groups := make([]Group, 0, len(c.groups))
+	for _, group := range c.groups {
+		groups = append(groups, group)
+	}
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i].Name != groups[j].Name {
+			return groups[i].Name < groups[j].Name
+		}
+		return groups[i].ID < groups[j].ID
+	})
+	sort.Slice(c.accounts, func(i, j int) bool { return c.accounts[i].AccountID < c.accounts[j].AccountID })
+	return Facets{Platforms: platforms, Groups: groups, Accounts: c.accounts}
 }
 
 func matches(account Account, params ListParams, now time.Time) bool {
@@ -211,6 +266,14 @@ func matches(account Account, params ListParams, now time.Time) bool {
 		if !found {
 			return false
 		}
+	}
+	// Exact filters. Unlike search, these match a single dimension: an account
+	// whose group or name merely contains the platform word must not match.
+	if params.AccountID > 0 && account.AccountID != params.AccountID {
+		return false
+	}
+	if params.Platform != "" && !strings.EqualFold(account.Platform, params.Platform) {
+		return false
 	}
 	disabled := account.schedulable != nil && !*account.schedulable
 	paused := !disabled && account.TempUnschedulableUntil != nil && account.TempUnschedulableUntil.After(now)

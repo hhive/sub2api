@@ -12,6 +12,8 @@ type ListParams struct {
 	Window    string
 	Search    string
 	Group     string
+	AccountID int64
+	Platform  string
 	Status    string
 	SortBy    string
 	SortOrder string
@@ -30,7 +32,8 @@ var supportedSorts = map[string]bool{
 func ParseListParams(values url.Values) (ListParams, error) {
 	params := ListParams{
 		Window: strings.TrimSpace(values.Get("window")), Search: strings.TrimSpace(values.Get("search")),
-		Group: strings.TrimSpace(values.Get("group")), Status: strings.ToLower(strings.TrimSpace(values.Get("status"))),
+		Group: strings.TrimSpace(values.Get("group")), Platform: strings.TrimSpace(values.Get("platform")),
+		Status: strings.ToLower(strings.TrimSpace(values.Get("status"))),
 		SortBy: strings.ToLower(strings.TrimSpace(values.Get("sort_by"))), SortOrder: strings.ToLower(strings.TrimSpace(values.Get("sort_order"))),
 		Page: 1, PageSize: 20,
 	}
@@ -59,6 +62,16 @@ func ParseListParams(values url.Values) (ListParams, error) {
 	case "all", "schedulable", "paused", "disabled", "unavailable":
 	default:
 		return ListParams{}, fmt.Errorf("unsupported status")
+	}
+	// account_id is an exact filter: empty means "every account", while a value
+	// that cannot identify an account is a client error rather than a silent
+	// no-op that would return an unrelated list.
+	if raw := strings.TrimSpace(values.Get("account_id")); raw != "" {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || value <= 0 {
+			return ListParams{}, fmt.Errorf("invalid account id")
+		}
+		params.AccountID = value
 	}
 	if raw := values.Get("page"); raw != "" {
 		value, err := strconv.Atoi(raw)

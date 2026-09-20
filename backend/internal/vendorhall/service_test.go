@@ -3,6 +3,7 @@ package vendorhall
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"testing"
 	"time"
 
@@ -59,6 +60,60 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	require.Contains(t, string(payload), `"ttft_p95_ms":500`)
 	require.NotContains(t, string(payload), `"metrics"`)
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestServiceFacetsCoverEveryVisibleAccountBeforeFilters(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	now := time.Date(2026, 8, 17, 12, 0, 45, 0, time.UTC)
+	windowEnd := now.Truncate(time.Minute)
+	accountColumns := []string{"id", "sourceAccountId", "name", "platform", "type", "remoteStatus", "schedulable", "priority", "groupProjection", "tempUnschedulableUntil", "tempUnschedulableReason", "lastSyncedAt"}
+	mock.ExpectQuery(`SELECT "id", "sourceAccountId"`).WillReturnRows(sqlmock.NewRows(accountColumns).
+		AddRow(1, "7", "Alpha", "openai", "oauth", "active", true, 50, `[{"id":3,"name":"Premium"},{"id":1,"name":"Beta"}]`, nil, nil, now).
+		AddRow(2, "9", "Alpha", "anthropic", "oauth", "active", true, 50, `[{"id":3,"name":"Premium"}]`, nil, nil, now).
+		AddRow(3, "11", "NoPlatform", nil, nil, nil, nil, 50, `[]`, nil, nil, nil).
+		AddRow(4, "broken", "Ignored", "openai", nil, nil, nil, 50, `[]`, nil, nil, nil))
+	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
+	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
+		AddRow(1, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil))
+	service := NewServiceWithDB(db)
+	service.now = func() time.Time { return now }
+	params, err := ParseListParams(url.Values{"account_id": {"7"}})
+	require.NoError(t, err)
+
+	result, err := service.List(context.Background(), params)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Total)
+	require.Equal(t, []string{"anthropic", "openai"}, result.Facets.Platforms)
+	require.Equal(t, []Group{{ID: 1, Name: "Beta"}, {ID: 3, Name: "Premium"}}, result.Facets.Groups)
+	require.Equal(t, []FacetAccount{
+		{AccountID: 7, AccountName: "Alpha", Platform: "openai"},
+		{AccountID: 9, AccountName: "Alpha", Platform: "anthropic"},
+		{AccountID: 11, AccountName: "NoPlatform"},
+	}, result.Facets.Accounts)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestServiceEmptyFacetSlicesSerializeAsArrays(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	now := time.Date(2026, 8, 17, 12, 0, 45, 0, time.UTC)
+	accountColumns := []string{"id", "sourceAccountId", "name", "platform", "type", "remoteStatus", "schedulable", "priority", "groupProjection", "tempUnschedulableUntil", "tempUnschedulableReason", "lastSyncedAt"}
+	mock.ExpectQuery(`SELECT "id", "sourceAccountId"`).WillReturnRows(sqlmock.NewRows(accountColumns))
+	service := NewServiceWithDB(db)
+	service.now = func() time.Time { return now }
+	params, err := ParseListParams(nil)
+	require.NoError(t, err)
+
+	result, err := service.List(context.Background(), params)
+
+	require.NoError(t, err)
+	payload, err := json.Marshal(result)
+	require.NoError(t, err)
+	require.Contains(t, string(payload), `"facets":{"platforms":[],"groups":[],"accounts":[]}`)
 }
 
 func TestSortAccountsKeepsMissingMetricsLastForBothOrders(t *testing.T) {
