@@ -79,7 +79,6 @@ type Summary struct {
 type FacetAccount struct {
 	AccountID   int64  `json:"account_id"`
 	AccountName string `json:"account_name"`
-	Platform    string `json:"platform"`
 }
 
 // Facets carries the filter option sets for the current Monitor snapshot. They

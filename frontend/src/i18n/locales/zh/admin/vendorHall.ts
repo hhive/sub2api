@@ -1,6 +1,6 @@
 export default {
   vendorHall: {
-    title: '供应商大厅', description: '集中查看供应商账号的真实流量健康度，并快速调整调度状态。', live: 'Monitor 实时采集', window: '时间范围', accountFilter: '账号', platformFilter: '平台', groupFilter: '分组', allAccounts: '全部账号', allPlatforms: '全部平台', allGroups: '全部分组', allStatuses: '全部状态', details: '展开账号详情', empty: '当前筛选条件下没有供应商账号', failed: '供应商数据加载失败',
+    title: '供应商大厅', description: '集中查看供应商账号的真实流量健康度，并快速调整调度状态。', live: 'Monitor 实时采集', window: '时间范围', accountFilter: '账号', platformFilter: '平台', groupFilter: '分组', allAccounts: '全部账号', allPlatforms: '全部平台', allGroups: '全部分组', allStatuses: '全部状态', details: '展开账号详情', empty: '当前筛选条件下没有供应商账号', failed: '供应商数据加载失败', facetsUnavailable: '筛选选项加载失败，请刷新重试',
     summary: { total: '接入账号', accounts: '个供应商账号', healthy: '健康运行', running: '可正常参与调度', paused: '暂停调度', manual: '临时或永久停用', availability: '平均可用率' },
     columns: { account: '供应商账号', multiplier: '倍率', latency: '用户延迟', cache: '缓存命中', availability: '可用率', ttft: '用户 TTFT 趋势', status: '调度状态' },
     metrics: { rateMultiplier: '上游倍率', balance: '上游余额', userLatency: '用户延迟', cache: '缓存', availability: '可用率', userTtft: '用户 TTFT P95', userTtftAvg: '用户 TTFT 平均', requests: '请求量', updated: '最近采集', averageLatency: '平均延迟' },

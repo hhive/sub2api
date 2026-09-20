@@ -218,7 +218,7 @@ func (c *facetCollector) add(account Account) {
 			c.groups[group.ID] = Group{ID: group.ID, Name: name}
 		}
 	}
-	c.accounts = append(c.accounts, FacetAccount{AccountID: account.AccountID, AccountName: account.AccountName, Platform: account.Platform})
+	c.accounts = append(c.accounts, FacetAccount{AccountID: account.AccountID, AccountName: account.AccountName})
 }
 
 // facets returns the collected options in a stable order so the filter menus do
@@ -256,9 +256,20 @@ func matches(account Account, params ListParams, now time.Time) bool {
 		}
 	}
 	if params.Group != "" {
+		// A numeric parameter is a group id, anything else a name. Matching both
+		// namespaces at once would let a group merely *named* "5" answer an id
+		// filter for group 5, which the hall presents as an exact filter.
+		groupID, isID := parseGroupID(params.Group)
 		found := false
 		for _, group := range account.groups {
-			if strconv.FormatInt(group.ID, 10) == params.Group || strings.EqualFold(group.Name, params.Group) {
+			if isID {
+				if group.ID == groupID {
+					found = true
+					break
+				}
+				continue
+			}
+			if strings.EqualFold(group.Name, params.Group) {
 				found = true
 				break
 			}
@@ -290,6 +301,16 @@ func matches(account Account, params ListParams, now time.Time) bool {
 		return unavailable
 	}
 	return true
+}
+
+// parseGroupID reports whether the filter value names a group by id. Only a
+// positive integer counts, so names stay usable for non-numeric groups.
+func parseGroupID(value string) (int64, bool) {
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
 }
 
 func nullableMetric(account Account, field string) *float64 {

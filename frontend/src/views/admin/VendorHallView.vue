@@ -28,15 +28,15 @@
           </div>
           <div class="vendor-filter">
             <span class="vendor-filter__label">{{ t('admin.vendorHall.accountFilter') }}</span>
-            <Select v-model="accountId" class="vendor-filter__select" :options="accountOptions" searchable @change="applyFilters" />
+            <Select :model-value="accountId" data-test="filter-account" class="vendor-filter__select" :options="accountOptions" searchable @change="applyAccountFilter" />
           </div>
           <div class="vendor-filter">
             <span class="vendor-filter__label">{{ t('admin.vendorHall.platformFilter') }}</span>
-            <Select v-model="platform" class="vendor-filter__select" :options="platformOptions" searchable @change="applyFilters" />
+            <Select :model-value="platform" data-test="filter-platform" class="vendor-filter__select" :options="platformOptions" searchable @change="applyPlatformFilter" />
           </div>
           <div class="vendor-filter">
             <span class="vendor-filter__label">{{ t('admin.vendorHall.groupFilter') }}</span>
-            <Select v-model="groupId" class="vendor-filter__select" :options="groupOptions" searchable @change="applyFilters" />
+            <Select :model-value="groupId" data-test="filter-group" class="vendor-filter__select" :options="groupOptions" searchable @change="applyGroupFilter" />
           </div>
           <select v-model="status" class="input vendor-select" @change="applyFilters"><option value="">{{ t('admin.vendorHall.allStatuses') }}</option><option value="schedulable">{{ t('admin.vendorHall.status.schedulable') }}</option><option value="paused">{{ t('admin.vendorHall.status.paused') }}</option><option value="disabled">{{ t('admin.vendorHall.status.disabled') }}</option></select>
         </div>
@@ -116,22 +116,27 @@ const homepageUrls = ref(new Map<number, string>())
 // Filter options come from the list response, collected by the backend over the
 // unfiltered account set, so every offered option has at least one matching row.
 const facets = ref<VendorHallFacets>({ platforms: [], groups: [], accounts: [] })
-const accountOptions = computed<SelectOption[]>(() => [
+// A selected value stays visible even when it drops out of the latest snapshot,
+// so an active filter is never hidden behind a bare placeholder.
+const withSelectedOption = (options: SelectOption[], value: string | number | null, fallbackLabel: string): SelectOption[] => {
+  if (value == null || options.some((option) => option.value === value)) return options
+  return [...options, { value, label: fallbackLabel }]
+}
+const accountOptions = computed<SelectOption[]>(() => withSelectedOption([
   { value: null, label: t('admin.vendorHall.allAccounts') },
-  ...facets.value.accounts.map((account) => ({
-    value: account.account_id,
-    label: account.account_name,
-    description: `#${account.account_id}`,
-  })),
-])
-const platformOptions = computed<SelectOption[]>(() => [
+  // Duplicate account names are allowed upstream, so the id rides in the label
+  // itself: Select renders only the label, and both the option row and the
+  // trigger must tell two same-named accounts apart.
+  ...facets.value.accounts.map((account) => ({ value: account.account_id, label: `${account.account_name} (#${account.account_id})` })),
+], accountId.value, `#${accountId.value}`))
+const platformOptions = computed<SelectOption[]>(() => withSelectedOption([
   { value: null, label: t('admin.vendorHall.allPlatforms') },
   ...facets.value.platforms.map((value) => ({ value, label: platformLabel(value) })),
-])
-const groupOptions = computed<SelectOption[]>(() => [
+], platform.value, platform.value == null ? '' : platformLabel(platform.value)))
+const groupOptions = computed<SelectOption[]>(() => withSelectedOption([
   { value: null, label: t('admin.vendorHall.allGroups') },
   ...facets.value.groups.map((group) => ({ value: group.id, label: group.name })),
-])
+], groupId.value, `#${groupId.value}`))
 const confirmTitle = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableTitle') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableTitle') : t('admin.vendorHall.confirm.pauseTitle'))
 const confirmMessage = computed(() => confirmAction.value === 'disable' ? t('admin.vendorHall.confirm.disableMessage') : confirmAction.value === 'enable' ? t('admin.vendorHall.confirm.enableMessage') : t('admin.vendorHall.confirm.pauseMessage'))
 
@@ -156,6 +161,9 @@ const loadData = async () => {
     ])
     if (vendorResult.status === 'rejected') throw vendorResult.reason
     const result = vendorResult.value
+    // Fail closed: without facets the three filters would offer nothing while
+    // still sending whatever is selected, which reads as a broken page.
+    if (!result.facets) throw new Error(t('admin.vendorHall.facetsUnavailable'))
     const nextHomepageUrls = new Map<number, string>()
     if (accountResult.status === 'fulfilled') {
       for (const account of accountResult.value.items || []) {
@@ -166,7 +174,7 @@ const loadData = async () => {
       }
     }
     homepageUrls.value = nextHomepageUrls
-    facets.value = result.facets ?? { platforms: [], groups: [], accounts: [] }
+    facets.value = result.facets
     const rawItems = result.items || []
     const mergedItems = rawItems.map((item) => {
       const overriddenStatus = schedulingOverrides.get(item.account_id)
@@ -191,6 +199,11 @@ const loadData = async () => {
   } finally { loading.value = false }
 }
 const applyFilters = () => { page.value = 1; void loadData() }
+// Read each filter from the Select payload rather than relying on v-model having
+// applied first, so the query never depends on the component's emit order.
+const applyAccountFilter = (value: string | number | boolean | null) => { accountId.value = typeof value === 'number' ? value : null; applyFilters() }
+const applyPlatformFilter = (value: string | number | boolean | null) => { platform.value = typeof value === 'string' ? value : null; applyFilters() }
+const applyGroupFilter = (value: string | number | boolean | null) => { groupId.value = typeof value === 'number' ? value : null; applyFilters() }
 const openConfirmFor = (account: VendorHallAccount, action: 'pause' | 'disable' | 'enable') => {
   if (actionLoading.value) return
   actionAccount.value = account

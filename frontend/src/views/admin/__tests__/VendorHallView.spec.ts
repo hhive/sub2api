@@ -97,8 +97,8 @@ const response = {
       { id: 5, name: 'fallback' },
     ],
     accounts: [
-      { account_id: 7, account_name: 'OpenAI East', platform: 'openai' },
-      { account_id: 8, account_name: 'OpenAI East', platform: 'anthropic' },
+      { account_id: 7, account_name: 'OpenAI East' },
+      { account_id: 8, account_name: 'OpenAI East' },
     ],
   },
 }
@@ -232,40 +232,63 @@ describe('VendorHallView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const selects = wrapper.findAllComponents(Select)
-    expect(selects).toHaveLength(3)
-    expect(selects[0].props('options')).toContainEqual({ value: null, label: 'admin.vendorHall.allAccounts' })
-    expect(selects[1].props('options')).toContainEqual({ value: 'openai', label: 'OpenAI' })
-    expect(selects[2].props('options')).toContainEqual({ value: 3, label: 'premium' })
-    // Duplicate account names are allowed upstream, so the id stays searchable.
-    expect(selects[0].props('options')).toContainEqual({ value: 8, label: 'OpenAI East', description: '#8' })
+    expect(wrapper.findComponent('[data-test="filter-account"]').props('options')).toContainEqual({ value: null, label: 'admin.vendorHall.allAccounts' })
+    expect(wrapper.findComponent('[data-test="filter-platform"]').props('options')).toContainEqual({ value: 'openai', label: 'OpenAI' })
+    expect(wrapper.findComponent('[data-test="filter-group"]').props('options')).toContainEqual({ value: 3, label: 'premium' })
+    // Duplicate account names are allowed upstream, so the id rides in the label
+    // itself: Select renders only the label, never `description`.
+    expect(wrapper.findComponent('[data-test="filter-account"]').props('options')).toContainEqual({ value: 8, label: 'OpenAI East (#8)' })
   })
 
   it('reloads the list with exact account, platform, and group filters', async () => {
     const wrapper = mountView()
     await flushPromises()
-    const [accountSelect, platformSelect, groupSelect] = wrapper.findAllComponents(Select)
+    const accountSelect = wrapper.findComponent('[data-test="filter-account"]')
+    const platformSelect = wrapper.findComponent('[data-test="filter-platform"]')
+    const groupSelect = wrapper.findComponent('[data-test="filter-group"]')
 
-    platformSelect.vm.$emit('update:modelValue', 'openai')
     platformSelect.vm.$emit('change', 'openai', null)
     await flushPromises()
     expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ platform: 'openai', account_id: undefined, page: 1 }))
 
-    accountSelect.vm.$emit('update:modelValue', 7)
     accountSelect.vm.$emit('change', 7, null)
     await flushPromises()
     expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: 'openai' }))
 
-    groupSelect.vm.$emit('update:modelValue', 3)
     groupSelect.vm.$emit('change', 3, null)
     await flushPromises()
     expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: 'openai', group: '3' }))
 
-    platformSelect.vm.$emit('update:modelValue', null)
     platformSelect.vm.$emit('change', null, null)
     await flushPromises()
     expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7, platform: undefined, group: '3' }))
   })
+
+  it('keeps a selected filter visible after it drops out of the latest facets', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    const accountSelect = wrapper.findComponent('[data-test="filter-account"]')
+
+    accountSelect.vm.$emit('change', 7, null)
+    await flushPromises()
+    list.mockResolvedValue({ ...response, facets: { ...response.facets, accounts: [] } })
+    await wrapper.get('button.btn-secondary').trigger('click')
+    await flushPromises()
+
+    expect(accountSelect.props('modelValue')).toBe(7)
+    expect(accountSelect.props('options')).toContainEqual({ value: 7, label: '#7' })
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 7 }))
+  })
+
+  it('fails closed when the response omits filter facets', async () => {
+    list.mockResolvedValue({ ...response, facets: undefined })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('admin.vendorHall.facetsUnavailable')
+  })
+
 
   it('shows structured API error messages', async () => {
     list.mockRejectedValue({ status: 503, message: 'Vendor hall data is unavailable' })

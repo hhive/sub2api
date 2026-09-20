@@ -89,8 +89,8 @@ func TestServiceFacetsCoverEveryVisibleAccountBeforeFilters(t *testing.T) {
 	require.Equal(t, []string{"anthropic", "openai"}, result.Facets.Platforms)
 	require.Equal(t, []Group{{ID: 1, Name: "Beta"}, {ID: 3, Name: "Premium"}}, result.Facets.Groups)
 	require.Equal(t, []FacetAccount{
-		{AccountID: 7, AccountName: "Alpha", Platform: "openai"},
-		{AccountID: 9, AccountName: "Alpha", Platform: "anthropic"},
+		{AccountID: 7, AccountName: "Alpha"},
+		{AccountID: 9, AccountName: "Alpha"},
 		{AccountID: 11, AccountName: "NoPlatform"},
 	}, result.Facets.Accounts)
 	require.NoError(t, mock.ExpectationsWereMet())

@@ -71,6 +71,21 @@ func TestMatchesCombinesAccountPlatformGroupAndStatusFilters(t *testing.T) {
 	require.False(t, matches(account, params, now))
 }
 
+func TestGroupFilterTreatsNumericValuesAsIDsOnly(t *testing.T) {
+	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+
+	params, err := ParseListParams(url.Values{"group": {"5"}})
+	require.NoError(t, err)
+	require.True(t, matches(Account{AccountID: 2, groups: []Group{{ID: 5, Name: "国模"}}}, params, now))
+	require.False(t, matches(Account{AccountID: 1, groups: []Group{{ID: 9, Name: "5"}}}, params, now))
+	require.False(t, matches(Account{AccountID: 3, groups: []Group{{ID: 15, Name: "Premium"}}}, params, now))
+
+	params, err = ParseListParams(url.Values{"group": {"Premium"}})
+	require.NoError(t, err)
+	require.True(t, matches(Account{AccountID: 4, groups: []Group{{ID: 9, Name: "premium"}}}, params, now))
+	require.False(t, matches(Account{AccountID: 5, groups: []Group{{ID: 7, Name: "Beta"}}}, params, now))
+}
+
 func TestSummaryDoesNotCountPermanentlyDisabledAccountAsPaused(t *testing.T) {
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	until := now.Add(time.Hour)

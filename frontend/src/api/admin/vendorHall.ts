@@ -35,7 +35,6 @@ export interface VendorHallAccount {
 export interface VendorHallFacetAccount {
   account_id: number
   account_name: string
-  platform: string
 }
 
 export interface VendorHallFacets {
