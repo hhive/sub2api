@@ -182,7 +182,64 @@ export interface AdminUserTierAward {
 export interface AdminUserTierResponse {
   user_id: number
   consumed_amount: number
+  /** 当前等级指派；无指派时为 null（只读展示，写入走 /admin/tiers/assignments） */
+  assignment: AdminTierAssignment | null
   tiers: AdminUserTierState[]
   awards: AdminUserTierAward[]
   effects: AdminUserTierEffect[]
+}
+
+/** 指派来源：管理端人工配置 / 2026-09-24 一次性历史批量指派 */
+export type UserTierAssignmentSource = 'admin' | 'historical_20260924'
+
+/**
+ * 管理端等级指派记录
+ *
+ * 指派只把「是否达成」的下限抬高：被指派档位及其之前的档位都变为可领取，
+ * 权益仍需用户自行领取（不写授予记录，也不发放额度）。
+ */
+export interface AdminTierAssignment {
+  user_id: number
+  /** 目标档位行被直接改库删除后为 null，此时只能依赖快照 */
+  tier_id: number | null
+  tier_code: string
+  tier_name_snapshot: string
+  sort_order_snapshot: number
+  source: UserTierAssignmentSource
+  note: string
+  /** 执行指派的管理员 ID；历史批量指派为 null */
+  assigned_by: number | null
+  assigned_at: string
+  updated_at: string
+}
+
+/** 按邮箱解析到的用户 */
+export interface AdminTierAssignmentUser {
+  id: number
+  email: string
+  username: string
+}
+
+/** GET/PUT /admin/tiers/assignments 响应体 */
+export interface AdminUserTierAssignmentResponse {
+  user: AdminTierAssignmentUser
+  /** 无指派时为 null */
+  assignment: AdminTierAssignment | null
+}
+
+/** DELETE /admin/tiers/assignments 响应体（removed 为 false 表示本来就没有指派） */
+export interface AdminUserTierAssignmentRemoveResponse extends AdminUserTierAssignmentResponse {
+  removed: boolean
+}
+
+/**
+ * PUT /admin/tiers/assignments 请求体
+ *
+ * 用 tier_code 而不是 tier_id 定位目标档位：code 是稳定且对人可读的标识，
+ * 且不受 URL 编码影响（后端只接受消费档，首充档返回 400）。
+ */
+export interface AdminTierAssignmentSaveRequest {
+  email: string
+  tier_code: string
+  note: string
 }

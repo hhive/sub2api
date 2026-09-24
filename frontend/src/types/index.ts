@@ -2582,4 +2582,10 @@ export type {
   AdminUserTierEffect,
   AdminUserTierAward,
   AdminUserTierResponse,
+  UserTierAssignmentSource,
+  AdminTierAssignment,
+  AdminTierAssignmentUser,
+  AdminUserTierAssignmentResponse,
+  AdminUserTierAssignmentRemoveResponse,
+  AdminTierAssignmentSaveRequest,
 } from './userTier'

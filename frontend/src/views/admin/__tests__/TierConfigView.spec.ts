@@ -6,7 +6,7 @@ import TierConfigView from '../TierConfigView.vue'
 import Select from '@/components/common/Select.vue'
 import en from '@/i18n/locales/en'
 import zh from '@/i18n/locales/zh'
-import type { AdminTier } from '@/types'
+import type { AdminTier, AdminTierAssignment } from '@/types'
 
 const {
   createTier,
@@ -14,9 +14,12 @@ const {
   fetchPublicSettings,
   getFeatureSwitch,
   getGroups,
+  getTierAssignment,
   getUserTier,
   listTiers,
+  removeTierAssignment,
   reorderTiers,
+  saveTierAssignment,
   showError,
   showSuccess,
   updateFeatureSwitch,
@@ -27,9 +30,12 @@ const {
   fetchPublicSettings: vi.fn(),
   getFeatureSwitch: vi.fn(),
   getGroups: vi.fn(),
+  getTierAssignment: vi.fn(),
   getUserTier: vi.fn(),
   listTiers: vi.fn(),
+  removeTierAssignment: vi.fn(),
   reorderTiers: vi.fn(),
+  saveTierAssignment: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
   updateFeatureSwitch: vi.fn(),
@@ -46,6 +52,9 @@ vi.mock('@/api/admin/userTiers', () => ({
     getUserTier,
     getFeatureSwitch,
     updateFeatureSwitch,
+    getTierAssignment,
+    saveTierAssignment,
+    removeTierAssignment,
   },
 }))
 
@@ -79,6 +88,18 @@ const MESSAGES: Record<string, string> = {
   'admin.tierConfig.switchSaveFailed': '保存等级与权益总开关失败',
   // 说明文案内容另由下方的多语言用例校验真实词条，这里只验证卡片接线
   'admin.tierConfig.switchHint': '关闭后用户端不再显示等级入口与等级页面',
+  // 按邮箱配置等级
+  'admin.tierConfig.assignEmpty': '该用户暂无等级指派',
+  'admin.tierConfig.assignSourceAdmin': '管理端配置',
+  'admin.tierConfig.assignTierOptionLabel': '{name}（{code}）',
+  'admin.tierConfig.assignRemove': '取消配置',
+  'admin.tierConfig.assignEmailRequired': '请先输入用户邮箱',
+  'admin.tierConfig.assignTierRequired': '请先选择要指派的档位',
+  'admin.tierConfig.assignSaveSuccess': '等级指派已保存',
+  'admin.tierConfig.assignRemoveSuccess': '已取消等级指派',
+  'admin.tierConfig.USER_TIER_ASSIGN_USER_NOT_FOUND': '该邮箱未匹配到用户',
+  'admin.tierConfig.USER_TIER_ASSIGNMENT_TARGET_DISABLED': '该等级已停用',
+  'admin.tierConfig.codeHint': '等级标识可为任意字符，最长 64 个字符',
 }
 
 function translate(key: string, params?: Record<string, unknown>): string {
@@ -583,6 +604,18 @@ describe('TierConfigView', () => {
     getUserTier.mockResolvedValue({
       user_id: 42,
       consumed_amount: 640,
+      assignment: {
+        user_id: 42,
+        tier_id: 2,
+        tier_code: 'tier_1000',
+        tier_name_snapshot: '白银',
+        sort_order_snapshot: 1,
+        source: 'historical_20260924',
+        note: '历史累计（订阅+兑换）一次性核算 2026-09-24',
+        assigned_by: null,
+        assigned_at: '2026-09-24T10:00:00Z',
+        updated_at: '2026-09-24T10:00:00Z',
+      },
       tiers: [
         { tier_id: 1, code: 'tier_500', name: '青铜', achieved: true, claimed: true, claimable: false },
         { tier_id: 2, code: 'tier_1000', name: '白银', achieved: false, claimed: false, claimable: false },
@@ -603,6 +636,31 @@ describe('TierConfigView', () => {
     expect(text).toContain('$640.00')
     expect(text).toContain('青铜')
     expect(text).toContain('admin.tierConfig.lookupAchieved')
+    // 指派来自历史一次性批量：来源要显示为「历史批量」而不是「管理端配置」
+    expect(text).toContain('admin.tierConfig.assignCurrent')
+    expect(text).toContain('admin.tierConfig.assignSourceHistorical20260924')
+    expect(text).toContain('tier_1000')
+  })
+
+  it('shows the empty assignment state in the read-only lookup when there is none', async () => {
+    getUserTier.mockResolvedValue({
+      user_id: 43,
+      consumed_amount: 0,
+      assignment: null,
+      tiers: [],
+      awards: [],
+      effects: [],
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('input[type="number"]').setValue('43')
+    await wrapper.findAll('button').find((button) => button.text() === 'admin.tierConfig.lookup')!.trigger('click')
+    await flushPromises()
+
+    // 该键在测试 i18n 桩里有真实文案（其余键渲染为键名）
+    expect(wrapper.text()).toContain('该用户暂无等级指派')
   })
 
   it('warns instead of calling the API when the lookup id is empty', async () => {
@@ -775,6 +833,293 @@ describe('TierConfigView', () => {
 
       expect(fetchPublicSettings).not.toHaveBeenCalled()
       expect(showError).toHaveBeenCalledWith('保存等级与权益总开关失败')
+    })
+  })
+
+  describe('assign a tier by email', () => {
+    const ASSIGNED_USER = { id: 42, email: 'alice@example.com', username: 'alice' }
+
+    function assignment(overrides: Partial<AdminTierAssignment> = {}): AdminTierAssignment {
+      return {
+        user_id: 42,
+        tier_id: 2,
+        tier_code: 'tier_1000',
+        tier_name_snapshot: '白银',
+        sort_order_snapshot: 1,
+        source: 'admin',
+        note: '运营手工配置',
+        assigned_by: 1,
+        assigned_at: '2026-09-24T10:00:00Z',
+        updated_at: '2026-09-24T10:00:00Z',
+        ...overrides,
+      }
+    }
+
+    async function lookup(wrapper: ReturnType<typeof mountView>, email: string) {
+      await wrapper.find('#tier-assign-email').setValue(email)
+      await wrapper.find('#tier-assign-lookup').trigger('click')
+      await flushPromises()
+    }
+
+    async function saveButton(wrapper: ReturnType<typeof mountView>) {
+      return wrapper.findAll('button').find((button) => button.text() === 'common.save')
+    }
+
+    it('shows the resolved user and the current assignment after a lookup', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: assignment() })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      expect(getTierAssignment).toHaveBeenCalledWith('alice@example.com')
+      const text = wrapper.text()
+      expect(text).toContain('alice')
+      expect(text).toContain('alice@example.com')
+      expect(text).toContain('42')
+      expect(text).toContain('白银')
+      expect(text).toContain('tier_1000')
+      expect(text).toContain('运营手工配置')
+      // 来源显示为可读文案，而不是后端枚举值
+      expect(text).toContain('管理端配置')
+      expect(text).not.toContain('historical_20260924')
+    })
+
+    it('prefills the target tier and note from the current assignment', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: assignment() })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      expect((wrapper.find('#tier-assign-tier').element as HTMLSelectElement).value).toBe('tier_1000')
+      expect((wrapper.find('#tier-assign-note').element as HTMLInputElement).value).toBe('运营手工配置')
+    })
+
+    it('shows the empty state and hides removal when the user has no assignment', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      expect(wrapper.text()).toContain('该用户暂无等级指派')
+      expect(wrapper.findAll('button').some((button) => button.text() === '取消配置')).toBe(false)
+    })
+
+    // 首充档后端明确拒绝（只允许消费档），停用档指派后无法领取，因此都不进下拉
+    it('offers only enabled consumption tiers in the assignment dropdown', async () => {
+      listTiers.mockResolvedValue([
+        tier({
+          id: 4,
+          code: 'first_recharge',
+          name: '新客',
+          trigger_type: 'first_recharge',
+          threshold_usd: null,
+          sort_order: 0,
+        }),
+        tier({ id: 1, code: 'tier_500', name: '青铜', sort_order: 1 }),
+        tier({ id: 3, code: 'tier_1500', name: '领航', enabled: false, sort_order: 2 }),
+      ])
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      const select = wrapper.find('#tier-assign-tier')
+      const options = select.findAll('option')
+      // 第 0 项是「请选择档位」占位项
+      expect(options.map((option) => option.attributes('value'))).toEqual(['', 'tier_500'])
+      expect(options[1].text()).toBe('青铜（tier_500）')
+      // 表格里仍会渲染这两个档位，因此只在录入区的下拉范围内断言
+      expect(select.text()).not.toContain('新客')
+      expect(select.text()).not.toContain('领航')
+    })
+
+    it('leaves the target tier empty when the assigned tier is no longer assignable', async () => {
+      listTiers.mockResolvedValue([tier({ id: 1, code: 'tier_500', name: '青铜', sort_order: 0 })])
+      getTierAssignment.mockResolvedValue({
+        user: ASSIGNED_USER,
+        assignment: assignment({ tier_code: 'tier_1500', tier_name_snapshot: '领航', tier_id: null }),
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      // 保留既有指派的展示，但不预填一个后端会拒绝的档位
+      expect(wrapper.text()).toContain('领航')
+      expect((wrapper.find('#tier-assign-tier').element as HTMLSelectElement).value).toBe('')
+    })
+
+    it('saves the assignment and refreshes the shown value from the response', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+      saveTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: assignment() })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      await wrapper.find('#tier-assign-tier').setValue('tier_1000')
+      await wrapper.find('#tier-assign-note').setValue('运营手工配置')
+      await (await saveButton(wrapper))!.trigger('click')
+      await flushPromises()
+
+      expect(saveTierAssignment).toHaveBeenCalledTimes(1)
+      expect(saveTierAssignment).toHaveBeenCalledWith({
+        email: 'alice@example.com',
+        tier_code: 'tier_1000',
+        note: '运营手工配置',
+      })
+      expect(wrapper.text()).toContain('白银')
+      expect(showSuccess).toHaveBeenCalledWith('等级指派已保存')
+    })
+
+    // 查询后若又改了邮箱输入框，按输入框提交会把指派写到另一个用户上
+    it('saves against the resolved email even when the input was edited afterwards', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+      saveTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: assignment() })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      await wrapper.find('#tier-assign-email').setValue('bob@example.com')
+      await wrapper.find('#tier-assign-tier').setValue('tier_1000')
+      await (await saveButton(wrapper))!.trigger('click')
+      await flushPromises()
+
+      expect(saveTierAssignment).toHaveBeenCalledWith({
+        email: 'alice@example.com',
+        tier_code: 'tier_1000',
+        note: '',
+      })
+    })
+
+    it('removes the assignment and falls back to the empty state', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: assignment() })
+      removeTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null, removed: true })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      await wrapper.findAll('button').find((button) => button.text() === '取消配置')!.trigger('click')
+      await flushPromises()
+
+      expect(removeTierAssignment).toHaveBeenCalledWith('alice@example.com')
+      expect(showSuccess).toHaveBeenCalledWith('已取消等级指派')
+      expect(wrapper.text()).toContain('该用户暂无等级指派')
+      // 取消后不再有可取消的对象
+      expect(wrapper.findAll('button').some((button) => button.text() === '取消配置')).toBe(false)
+    })
+
+    it('requires an email before looking up', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.find('#tier-assign-lookup').trigger('click')
+      await flushPromises()
+
+      expect(getTierAssignment).not.toHaveBeenCalled()
+      expect(showError).toHaveBeenCalledWith('请先输入用户邮箱')
+    })
+
+    it('requires a target tier before saving', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      await (await saveButton(wrapper))!.trigger('click')
+      await flushPromises()
+
+      expect(saveTierAssignment).not.toHaveBeenCalled()
+      expect(showError).toHaveBeenCalledWith('请先选择要指派的档位')
+    })
+
+    it('maps the unknown-email lookup error to localized copy and clears the result', async () => {
+      getTierAssignment.mockRejectedValueOnce({ status: 404, reason: 'USER_TIER_ASSIGN_USER_NOT_FOUND' })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'nobody@example.com')
+
+      expect(showError).toHaveBeenCalledWith('该邮箱未匹配到用户')
+      // 失败时不残留可操作的录入区
+      expect(wrapper.find('#tier-assign-tier').exists()).toBe(false)
+    })
+
+    it('maps a rejected save error code to localized copy', async () => {
+      getTierAssignment.mockResolvedValue({ user: ASSIGNED_USER, assignment: null })
+      saveTierAssignment.mockRejectedValueOnce({
+        status: 400,
+        reason: 'USER_TIER_ASSIGNMENT_TARGET_DISABLED',
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await lookup(wrapper, 'alice@example.com')
+
+      await wrapper.find('#tier-assign-tier').setValue('tier_1000')
+      await (await saveButton(wrapper))!.trigger('click')
+      await flushPromises()
+
+      expect(showError).toHaveBeenCalledWith('该等级已停用')
+      expect(showSuccess).not.toHaveBeenCalled()
+    })
+
+    // 上面的断言依赖 mock 词条，这一条校验真实词条确实存在：缺键会让英文语系管理员看到后端中文
+    it('ships real localized copy for every assignment error code', () => {
+      const codes = [
+        'USER_TIER_ASSIGN_USER_NOT_FOUND',
+        'USER_TIER_ASSIGN_EMAIL_AMBIGUOUS',
+        'USER_TIER_ASSIGNMENT_TARGET_NOT_CONSUMPTION',
+        'USER_TIER_ASSIGNMENT_TARGET_DISABLED',
+        'USER_TIER_HAS_ASSIGNMENTS',
+        'USER_TIER_NOT_FOUND',
+        'USER_TIER_FEATURE_DISABLED',
+      ]
+      for (const code of codes) {
+        expect((zh.admin.tierConfig as Record<string, string>)[code], `zh missing ${code}`).toBeTruthy()
+        expect((en.admin.tierConfig as Record<string, string>)[code], `en missing ${code}`).toBeTruthy()
+      }
+    })
+
+    // 文案是向管理员解释「指派生效范围」的唯一位置，因此直接校验真实词条
+    it('documents the coverage rule of an assignment in both locales', () => {
+      expect(zh.admin.tierConfig.assignHint).toContain('被指派档位及其之前的档位都变为可领取')
+      expect(zh.admin.tierConfig.assignHint).toContain('权益仍需用户自行领取')
+      expect(zh.admin.tierConfig.assignHint).toContain('调整档位顺序会同步改变覆盖范围')
+      expect(en.admin.tierConfig.assignHint).toContain('become claimable')
+      expect(en.admin.tierConfig.assignHint).toContain('Reordering tiers also changes the covered range')
+    })
+
+    // 等级标识已放开为任意字符，只剩 64 字符上限，提示文案必须写清上限，避免运营反复撞 400
+    it('shows the relaxed code hint under the code input', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await rowActionButton(wrapper, 'common.edit')!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('等级标识可为任意字符，最长 64 个字符')
+      expect(zh.admin.tierConfig.codeHint).toContain('64')
+      expect(en.admin.tierConfig.codeHint).toContain('64')
+    })
+
+    it('replaces the code hint with the locked hint once awards exist', async () => {
+      listTiers.mockResolvedValue([tier({ id: 1, code: 'tier_500', award_count: 2 })])
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      await rowActionButton(wrapper, 'common.edit')!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('等级标识可为任意字符，最长 64 个字符')
     })
   })
 })

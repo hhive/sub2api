@@ -6,7 +6,10 @@
 import { apiClient } from '../client'
 import type {
   AdminTier,
+  AdminTierAssignmentSaveRequest,
   AdminTierSaveRequest,
+  AdminUserTierAssignmentRemoveResponse,
+  AdminUserTierAssignmentResponse,
   AdminUserTierResponse,
   UserTierFeatureSwitch,
 } from '@/types'
@@ -72,6 +75,38 @@ export async function getFeatureSwitch(): Promise<UserTierFeatureSwitch> {
 }
 
 /**
+ * Resolve a user by email and read their current tier assignment.
+ * 邮箱不存在返回 404 USER_TIER_ASSIGN_USER_NOT_FOUND；无指派时 assignment 为 null。
+ */
+export async function getTierAssignment(email: string): Promise<AdminUserTierAssignmentResponse> {
+  const { data } = await apiClient.get<AdminUserTierAssignmentResponse>('/admin/tiers/assignments', {
+    params: { email }
+  })
+  return data
+}
+
+/**
+ * Create or overwrite the tier assignment (one assignment per user; re-assigning replaces it).
+ * 只接受消费档且必须是启用中的档位，否则后端返回 400。
+ */
+export async function saveTierAssignment(
+  request: AdminTierAssignmentSaveRequest,
+): Promise<AdminUserTierAssignmentResponse> {
+  const { data } = await apiClient.put<AdminUserTierAssignmentResponse>('/admin/tiers/assignments', request)
+  return data
+}
+
+/**
+ * Remove the tier assignment. 幂等：本来就没有指派时 removed 为 false 且仍返回 200。
+ */
+export async function removeTierAssignment(email: string): Promise<AdminUserTierAssignmentRemoveResponse> {
+  const { data } = await apiClient.delete<AdminUserTierAssignmentRemoveResponse>('/admin/tiers/assignments', {
+    params: { email }
+  })
+  return data
+}
+
+/**
  * Update the user-tier feature master switch. The response echoes the stored value.
  */
 export async function updateFeatureSwitch(enabled: boolean): Promise<UserTierFeatureSwitch> {
@@ -88,6 +123,9 @@ export const userTiersAPI = {
   getUserTier,
   getFeatureSwitch,
   updateFeatureSwitch,
+  getTierAssignment,
+  saveTierAssignment,
+  removeTierAssignment,
 }
 
 export default userTiersAPI

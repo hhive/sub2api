@@ -82,6 +82,26 @@
           </div>
 
           <div>
+            <p class="text-xs font-medium text-gray-500 dark:text-dark-400">
+              {{ t('admin.tierConfig.assignCurrent') }}
+            </p>
+            <p v-if="!lookupResult.assignment" class="mt-1 text-xs text-gray-400 dark:text-dark-500">
+              {{ t('admin.tierConfig.assignEmpty') }}
+            </p>
+            <p v-else class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              <span class="font-medium">{{ lookupResult.assignment.tier_name_snapshot }}</span>
+              <span class="ml-2 text-xs text-gray-400">{{ lookupResult.assignment.tier_code }}</span>
+              <span class="ml-2 text-xs text-gray-400">
+                {{ t('admin.tierConfig.assignSource') }}: {{ assignmentSourceLabel(lookupResult.assignment.source) }}
+              </span>
+              <span class="ml-2 text-xs text-gray-400">
+                {{ t('admin.tierConfig.assignAssignedAt') }}:
+                {{ formatDateTime(lookupResult.assignment.assigned_at) }}
+              </span>
+            </p>
+          </div>
+
+          <div>
             <p class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('admin.tierConfig.lookupTiers') }}</p>
             <ul class="mt-2 space-y-1">
               <li
@@ -146,6 +166,125 @@
                 </span>
               </li>
             </ul>
+          </div>
+        </div>
+
+        <!-- 按邮箱配置用户等级：指派只抬高可领取下限，权益仍由用户自行领取 -->
+        <div class="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-dark-700">
+          <div>
+            <h4 class="text-xs font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.tierConfig.assignTitle') }}
+            </h4>
+            <p class="mt-1 max-w-3xl text-xs text-gray-500 dark:text-dark-400">
+              {{ t('admin.tierConfig.assignHint') }}
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-2">
+            <div class="min-w-0 flex-1">
+              <label for="tier-assign-email" class="input-label">{{ t('admin.tierConfig.assignEmail') }}</label>
+              <input
+                id="tier-assign-email"
+                v-model="assignEmail"
+                type="email"
+                class="input"
+                :placeholder="t('admin.tierConfig.assignEmailPlaceholder')"
+                @keyup.enter="lookupAssignment"
+              />
+            </div>
+            <button
+              id="tier-assign-lookup"
+              type="button"
+              class="btn btn-secondary"
+              :disabled="assignLoading"
+              @click="lookupAssignment"
+            >
+              {{ t('admin.tierConfig.lookup') }}
+            </button>
+          </div>
+
+          <div v-if="assignResult" class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-700">
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div>
+                <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.tierConfig.assignUserName') }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ assignResult.user.username }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.tierConfig.assignUserEmail') }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ assignResult.user.email }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.tierConfig.userIdPlaceholder') }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ assignResult.user.id }}</p>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                {{ t('admin.tierConfig.assignCurrent') }}
+              </p>
+              <p v-if="!assignResult.assignment" class="mt-1 text-xs text-gray-400 dark:text-dark-500">
+                {{ t('admin.tierConfig.assignEmpty') }}
+              </p>
+              <p v-else class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                <span class="font-medium">{{ assignResult.assignment.tier_name_snapshot }}</span>
+                <span class="ml-2 text-xs text-gray-400">{{ assignResult.assignment.tier_code }}</span>
+                <span class="ml-2 text-xs text-gray-400">
+                  {{ t('admin.tierConfig.assignSource') }}: {{ assignmentSourceLabel(assignResult.assignment.source) }}
+                </span>
+                <span class="ml-2 text-xs text-gray-400">
+                  {{ t('admin.tierConfig.assignAssignedAt') }}:
+                  {{ formatDateTime(assignResult.assignment.assigned_at) }}
+                </span>
+                <span v-if="assignResult.assignment.note" class="ml-2 text-xs text-gray-400">
+                  {{ t('admin.tierConfig.assignNote') }}: {{ assignResult.assignment.note }}
+                </span>
+              </p>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label for="tier-assign-tier" class="input-label">{{ t('admin.tierConfig.assignTier') }}</label>
+                <select id="tier-assign-tier" v-model="assignTierCode" class="input">
+                  <option value="">{{ t('admin.tierConfig.assignTierPlaceholder') }}</option>
+                  <option v-for="option in assignableTierOptions" :key="option.code" :value="option.code">
+                    {{ option.label }}
+                  </option>
+                </select>
+                <!-- 无可指派档位时说明原因，否则下拉为空看起来像加载失败 -->
+                <p
+                  v-if="assignableTierOptions.length === 0"
+                  class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+                >
+                  {{ t('admin.tierConfig.assignNoAssignableTiers') }}
+                </p>
+              </div>
+              <div>
+                <label for="tier-assign-note" class="input-label">{{ t('admin.tierConfig.assignNote') }}</label>
+                <input id="tier-assign-note" v-model="assignNote" type="text" class="input" />
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <!-- 没有指派时没有可取消的对象，不显示该按钮 -->
+              <button
+                v-if="assignResult.assignment"
+                type="button"
+                class="btn btn-secondary"
+                :disabled="assignSaving || assignRemoving"
+                @click="removeAssignment"
+              >
+                {{ t('admin.tierConfig.assignRemove') }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="assignSaving || assignRemoving"
+                @click="saveAssignment"
+              >
+                {{ assignSaving ? t('common.saving') : t('common.save') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -293,6 +432,10 @@
             <input v-model="form.code" type="text" class="input" :disabled="tierCodeLocked" />
             <p v-if="tierCodeLocked" class="mt-1 text-xs text-gray-500 dark:text-dark-400">
               {{ t('admin.tierConfig.codeLockedHint') }}
+            </p>
+            <!-- 已锁定时上一条提示已足够，两条叠加只会互相干扰 -->
+            <p v-else class="mt-1 text-xs text-gray-500 dark:text-dark-400">
+              {{ t('admin.tierConfig.codeHint') }}
             </p>
           </div>
         </div>
@@ -453,6 +596,7 @@ import type {
   AdminTier,
   AdminTierBenefitInput,
   AdminTierSaveRequest,
+  AdminUserTierAssignmentResponse,
   AdminUserTierResponse,
   UserTierBenefitType,
   UserTierTriggerType,
@@ -823,6 +967,111 @@ async function lookupUserTier() {
     appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.lookupFailed')))
   } finally {
     lookupLoading.value = false
+  }
+}
+
+// ==================== Assign a tier by email ====================
+
+const assignEmail = ref('')
+const assignLoading = ref(false)
+const assignSaving = ref(false)
+const assignRemoving = ref(false)
+const assignResult = ref<AdminUserTierAssignmentResponse | null>(null)
+/** 目标档位 code：后端用 code 定位档位，不用 tier_id */
+const assignTierCode = ref('')
+const assignNote = ref('')
+
+/**
+ * 可指派档位：只用页面已有的等级列表 state，不再发请求。
+ * 首充档后端明确拒绝（只允许消费档），停用档指派后无法领取，因此都不列出。
+ */
+const assignableTierOptions = computed(() =>
+  tiers.value
+    .filter((item) => item.trigger_type === 'consumption' && item.enabled)
+    .map((item) => ({
+      code: item.code,
+      label: t('admin.tierConfig.assignTierOptionLabel', { name: item.name, code: item.code }),
+    })),
+)
+
+function assignmentSourceLabel(source: string): string {
+  if (source === 'admin') return t('admin.tierConfig.assignSourceAdmin')
+  if (source === 'historical_20260924') return t('admin.tierConfig.assignSourceHistorical20260924')
+  // 未知来源直接显示原值，不隐藏
+  return source
+}
+
+/** 查询/写入结果变化后同步录入区：默认选中当前指派档位（仍需可指派）与既有备注 */
+function syncAssignForm(result: AdminUserTierAssignmentResponse) {
+  const current = result.assignment
+  const stillAssignable = assignableTierOptions.value.some((option) => option.code === current?.tier_code)
+  // 当前档位已停用或已被删除时留空，避免保存一个后端会拒绝的档位
+  assignTierCode.value = current && stillAssignable ? current.tier_code : ''
+  assignNote.value = current?.note ?? ''
+}
+
+async function lookupAssignment() {
+  const email = assignEmail.value.trim()
+  if (!email) {
+    appStore.showError(t('admin.tierConfig.assignEmailRequired'))
+    return
+  }
+  assignLoading.value = true
+  try {
+    const result = await userTiersAPI.getTierAssignment(email)
+    assignResult.value = result
+    syncAssignForm(result)
+  } catch (err: unknown) {
+    // 邮箱不存在等按 error code 映射到 admin.tierConfig.<code>；缺键时回落后端文案
+    assignResult.value = null
+    appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.assignLookupFailed')))
+  } finally {
+    assignLoading.value = false
+  }
+}
+
+async function saveAssignment() {
+  const current = assignResult.value
+  if (!current) return
+  if (!assignTierCode.value) {
+    appStore.showError(t('admin.tierConfig.assignTierRequired'))
+    return
+  }
+  // 在途保护：重指派本身幂等，但双击会多发一次写请求
+  if (assignSaving.value || assignRemoving.value) return
+  assignSaving.value = true
+  try {
+    // 用解析结果里的邮箱而不是输入框的值：查询后若又改了输入框，
+    // 按输入框提交会把指派写到另一个用户上。
+    const result = await userTiersAPI.saveTierAssignment({
+      email: current.user.email,
+      tier_code: assignTierCode.value,
+      note: assignNote.value,
+    })
+    assignResult.value = result
+    syncAssignForm(result)
+    appStore.showSuccess(t('admin.tierConfig.assignSaveSuccess'))
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.assignSaveFailed')))
+  } finally {
+    assignSaving.value = false
+  }
+}
+
+async function removeAssignment() {
+  const current = assignResult.value
+  if (!current?.assignment) return
+  if (assignSaving.value || assignRemoving.value) return
+  assignRemoving.value = true
+  try {
+    const result = await userTiersAPI.removeTierAssignment(current.user.email)
+    assignResult.value = result
+    syncAssignForm(result)
+    appStore.showSuccess(t('admin.tierConfig.assignRemoveSuccess'))
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.assignRemoveFailed')))
+  } finally {
+    assignRemoving.value = false
   }
 }
 

@@ -71,11 +71,53 @@ export default {
       lookupEffectStatus: 'Status',
       lookupEffectAttempts: 'Attempts',
       lookupEffectLastError: 'Last Error',
+      // Assign a tier by email: raises the claimable floor only, benefits are still claimed by the user
+      assignTitle: 'Assign a Tier by Email',
+      assignHint:
+        'An assignment follows the current tier order: the assigned tier and every tier before it become claimable, and the user still claims the benefits. Reordering tiers also changes the covered range.',
+      assignEmail: 'User Email',
+      // vue-i18n treats @ as a special character, so it must be escaped
+      assignEmailPlaceholder: "user{'@'}example.com",
+      assignEmailRequired: 'Enter a user email first',
+      assignLookupFailed: 'Failed to look up the tier assignment',
+      assignCurrent: 'Current Assignment',
+      assignEmpty: 'This user has no tier assignment',
+      assignSource: 'Source',
+      assignSourceAdmin: 'Admin configuration',
+      assignSourceHistorical20260924: 'Historical bulk assignment',
+      assignNote: 'Note',
+      assignAssignedAt: 'Assigned At',
+      assignUserName: 'Username',
+      assignUserEmail: 'Email',
+      assignTier: 'Target Tier',
+      assignTierPlaceholder: 'Select a tier',
+      assignTierRequired: 'Select a tier to assign first',
+      assignTierOptionLabel: '{name} ({code})',
+      assignNoAssignableTiers: 'No enabled consumption tier is available to assign',
+      assignSaveSuccess: 'Tier assignment saved',
+      assignRemove: 'Remove Assignment',
+      assignRemoveSuccess: 'Tier assignment removed',
+      assignSaveFailed: 'Failed to save the tier assignment',
+      assignRemoveFailed: 'Failed to remove the tier assignment',
+      // The backend relaxed the tier code format: only non-empty and a 64-character cap remain
+      codeHint: 'Any characters, up to 64 characters',
       // Backend error-code keys (extractI18nErrorMessage looks up `<namespace>.<code>`);
       // a missing key falls back to the raw backend message
       USER_TIER_HAS_AWARDS: 'This tier already has awards; it can only be disabled',
       USER_TIER_FIRST_RECHARGE_CODE_LOCKED:
         'The first-recharge tier must keep the fixed code "first_recharge" and cannot be renamed',
+      USER_TIER_ASSIGN_USER_NOT_FOUND: 'No user matches this email; please double-check it',
+      USER_TIER_ASSIGN_EMAIL_AMBIGUOUS:
+        'This email matches multiple users after normalization, so the assignment target is ambiguous',
+      USER_TIER_ASSIGNMENT_TARGET_NOT_CONSUMPTION:
+        'Only tiers reached by accumulated spend can be assigned',
+      USER_TIER_ASSIGNMENT_TARGET_DISABLED:
+        'This tier is disabled, so an assignment to it could never be claimed; enable the tier first',
+      USER_TIER_HAS_ASSIGNMENTS:
+        'This tier is assigned to users; remove those assignments before deleting it',
+      USER_TIER_NOT_FOUND: 'The target tier no longer exists; refresh and try again',
+      USER_TIER_FEATURE_DISABLED:
+        'Tiers and benefits are turned off; enable the master switch before assigning',
       // Master switch: when off, the user surface is hidden and no new benefits are granted
       switchTitle: 'Tiers & Benefits Master Switch',
       switchHint:
