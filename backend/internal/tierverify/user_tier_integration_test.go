@@ -404,7 +404,7 @@ func TestVerify_FirstRechargeSingleSource(t *testing.T) {
 	trigger := service.UserTierTriggerFirstRecharge
 	enabled := false
 	benefits := []service.UserTierBenefitInput{{BenefitType: service.UserTierBenefitBalanceCredit, Amount: 5, ValidityDays: 3, Enabled: true}}
-	_, err = svc.CreateTier(context.Background(), service.UserTierInput{
+	created, err := svc.CreateTier(context.Background(), service.UserTierInput{
 		Code: &code, Name: &name, TriggerType: &trigger, Enabled: &enabled, Benefits: &benefits,
 	})
 	require.NoError(t, err)
@@ -415,16 +415,106 @@ func TestVerify_FirstRechargeSingleSource(t *testing.T) {
 	require.InDelta(t, 5, grant.Amount, 1e-9)
 	require.Equal(t, 3, grant.ValidityDays)
 
-	// 阈值约束：首充档不允许带阈值（数据库 CHECK 兜底）
+	// 阈值约束：首充档不允许带阈值（数据库 CHECK 兜底）。
+	// 首充档 code 固定（见下一条），故在既有 canonical 档上验证「写阈值会被服务层清空」。
 	badThreshold := 100.0
-	badCode := "first_recharge_bad"
-	_, err = svc.CreateTier(context.Background(), service.UserTierInput{
-		Code: &badCode, Name: &name, TriggerType: &trigger, ThresholdUSD: &badThreshold,
-	})
-	require.NoError(t, err, "服务层会清空首充档阈值后再落库")
+	_, err = svc.UpdateTier(context.Background(), created.ID, service.UserTierInput{ThresholdUSD: &badThreshold})
+	require.NoError(t, err)
 	var stored *float64
-	require.NoError(t, db.QueryRow(`SELECT threshold_usd FROM user_tiers WHERE code = $1`, badCode).Scan(&stored))
-	require.Nil(t, stored)
+	require.NoError(t, db.QueryRow(`SELECT threshold_usd FROM user_tiers WHERE id = $1`, created.ID).Scan(&stored))
+	require.Nil(t, stored, "首充档的阈值必须被清空")
+
+	// 首充档唯一且 code 固定：另建第二个首充档会让它永远不可领取（GetUserTierView 只认
+	// 排序最前的首充档，且首充档不可手动领取），改名则会静默停掉首充赠送。
+	secondCode := "first_recharge_bad"
+	_, err = svc.CreateTier(context.Background(), service.UserTierInput{
+		Code: &secondCode, Name: &name, TriggerType: &trigger,
+	})
+	require.ErrorIs(t, err, service.ErrUserTierFirstRechargeCodeLocked)
+
+	renamed := "welcome_v2"
+	_, err = svc.UpdateTier(context.Background(), created.ID, service.UserTierInput{Code: &renamed})
+	require.ErrorIs(t, err, service.ErrUserTierFirstRechargeCodeLocked)
+	var unchanged string
+	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, created.ID).Scan(&unchanged))
+	require.Equal(t, service.UserTierCodeFirstRecharge, unchanged, "被拒后库内 code 不变")
+}
+
+// TestVerify_UpdateTierPersistsCodeInDatabase 真库守住改名落库：
+// UPDATE 曾漏写 code，服务层与前端都以为改名成功，库里却仍是旧 code。
+func TestVerify_UpdateTierPersistsCodeInDatabase(t *testing.T) {
+	db, client := openHarness(t)
+	svc := newService(t, db, client)
+	_, groupID := seedUserAndGroup(t, db)
+	seedTiers(t, svc, groupID)
+	tiers := tierList(t, svc)
+	low := findTier(t, tiers, "consume_500")
+	ctx := context.Background()
+
+	renamed := "consume_500_v2"
+	updated, err := svc.UpdateTier(ctx, low.ID, service.UserTierInput{Code: &renamed})
+	require.NoError(t, err)
+	require.Equal(t, renamed, updated.Code)
+
+	var stored string
+	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, low.ID).Scan(&stored))
+	require.Equal(t, renamed, stored, "改名必须真的落到库里")
+
+	// 非法 code 在更新路径同样被拒（此前只在新增时校验）
+	for _, bad := range []string{"Consume 500", "", "consume-500"} {
+		badCode := bad
+		_, err = svc.UpdateTier(ctx, low.ID, service.UserTierInput{Code: &badCode})
+		require.ErrorIs(t, err, service.ErrUserTierInvalidConfig, "code=%q 必须被拒", bad)
+	}
+	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, low.ID).Scan(&stored))
+	require.Equal(t, renamed, stored, "被拒的改名不得写库")
+}
+
+// TestVerify_ConsumedAmountExcludesExpiredCredit 真库守住消费口径：
+// 额度到期作废时到期任务把 remaining_amount 置 0，口径若不减 expired_amount，
+// 未使用的部分会被整额算成「已消费」——一张从未用过的兑换码到期即可让用户达标领钱。
+func TestVerify_ConsumedAmountExcludesExpiredCredit(t *testing.T) {
+	db, client := openHarness(t)
+	svc := newService(t, db, client)
+	creditRepo := repository.NewBalanceCreditRepository(client, db)
+	userID, _ := seedUserAndGroup(t, db)
+	ctx := context.Background()
+
+	// 基线：把 seed 的额度改成「全未消费」，隔离本用例影响面
+	_, err := db.ExecContext(ctx, `UPDATE user_balance_credits SET remaining_amount = amount WHERE user_id = $1`, userID)
+	require.NoError(t, err)
+	base, err := svc.GetUserTierView(ctx, userID)
+	require.NoError(t, err)
+	require.InDelta(t, 0, base.ConsumedAmount, 1e-9)
+
+	// 一张用过一部分、随后到期作废的兑换额度：真实消费 300，到期作废 1200
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO user_balance_credits (user_id, email, source_type, source_id, source_code, amount, remaining_amount, expires_at, status, created_at, updated_at)
+		VALUES ($1, 'tier-verify-expire@example.test', 'redeem', '9', 'EXPIRE', 1500, 1200,
+		        NOW() - INTERVAL '1 hour', 'active', NOW() - INTERVAL '2 day', NOW())
+	`, userID)
+	require.NoError(t, err)
+
+	expired, err := creditRepo.ExpireDueCredits(ctx, time.Now(), time.Now(), 50)
+	require.NoError(t, err)
+	require.Len(t, expired, 1, "该行应被到期任务处理")
+
+	var storedExpired float64
+	require.NoError(t, db.QueryRow(`SELECT expired_amount FROM user_balance_credits WHERE source_code = 'EXPIRE'`).Scan(&storedExpired))
+	require.InDelta(t, 1200, storedExpired, 1e-9, "到期作废金额必须落库")
+
+	// 反证：旧口径（不减 expired_amount）会把这一行算成 1500，用户凭空达标
+	var naive float64
+	require.NoError(t, db.QueryRow(`
+		SELECT COALESCE(sum(amount - remaining_amount), 0)
+		FROM user_balance_credits WHERE user_id = $1 AND source_type = 'redeem'
+	`, userID).Scan(&naive))
+	require.InDelta(t, 1500, naive, 1e-9, "旧口径会把到期作废整额算成消费")
+
+	// 现行口径：只有真实消费的 300
+	view, err := svc.GetUserTierView(ctx, userID)
+	require.NoError(t, err)
+	require.InDelta(t, 300, view.ConsumedAmount, 1e-9, "到期作废的 1200 不得被算成已消费")
 }
 
 // ---------- 7. 停用档位与删除保护 ----------

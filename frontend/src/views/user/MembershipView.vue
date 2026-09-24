@@ -18,15 +18,6 @@
       </div>
 
       <template v-else-if="tier">
-        <!-- 口径说明：等级只统计兑换额度消费，不含订阅消费 -->
-        <div
-          class="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20"
-        >
-          <p class="text-sm text-primary-700 dark:text-primary-300">
-            {{ t('membership.subscriptionDisclaimer') }}
-          </p>
-        </div>
-
         <!-- 概览：当前等级 / 累计消费 / 下一等级 -->
         <div class="grid gap-4 sm:grid-cols-3">
           <div class="card p-5">
@@ -135,14 +126,6 @@
               </div>
             </div>
 
-            <!-- 历史授予说明：活动期手工授予且现行口径下未达标 -->
-            <p
-              v-if="item.source === HISTORICAL_GRANT_SOURCE && !item.achieved"
-              class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
-            >
-              {{ t('membership.historicalGrantNote') }}
-            </p>
-
             <!-- 权益清单 -->
             <ul v-if="item.benefits.length" class="mt-3 space-y-1.5">
               <li
@@ -197,8 +180,6 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-/** 2026-09-24 活动期手工授予的档位来源标识 */
-const HISTORICAL_GRANT_SOURCE = 'manual_20260924'
 /** 已有专属倍率时后端跳过倍率权益的原因 */
 const SKIPPED_MANUAL_RATE_MULTIPLIER = 'manual_rate_multiplier_present'
 /** 管理员关闭等级总开关后，领取接口返回的 403 原因 */
@@ -277,9 +258,20 @@ function describeClaim(result: UserTierClaimResponse): string[] {
       ]
     }
     if (benefit.benefit_type === 'group_rate') {
+      const group = benefit.group_name || `#${benefit.group_id ?? 0}`
+      // 后端把「已存在的专属倍率优先、等级倍率跳过」的权益也放在 applied 里，
+      // 若一律提示「已生效」，就是在对用户谎报到账（实际没写覆盖层）。
+      if (benefit.skipped_reason) {
+        return [
+          t('membership.claimSkippedRate', {
+            group,
+            reason: skippedReasonText(benefit.skipped_reason),
+          }),
+        ]
+      }
       return [
         t('membership.claimSuccessRate', {
-          group: benefit.group_name || `#${benefit.group_id ?? 0}`,
+          group,
           rate: benefit.rate_multiplier ?? 0,
         }),
       ]

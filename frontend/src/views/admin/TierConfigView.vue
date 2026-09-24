@@ -221,6 +221,10 @@
                     <span v-else class="ml-1 text-gray-500 dark:text-dark-400">
                       {{ groupName(benefit.group_id) }} / {{ benefit.rate_multiplier }}x
                     </span>
+                    <!-- 停用权益不会发放，列表必须显式标出，否则看起来像生效中 -->
+                    <span v-if="!benefit.enabled" class="ml-1 text-amber-600 dark:text-amber-400">
+                      {{ t('admin.tierConfig.benefitDisabled') }}
+                    </span>
                   </li>
                 </ul>
               </td>
@@ -228,8 +232,9 @@
               <td class="px-3 py-3">
                 <button
                   type="button"
+                  :disabled="togglingTierId !== null"
                   :class="[
-                    'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                     item.enabled ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
                   ]"
                   @click="toggleEnabled(item)"
@@ -348,7 +353,12 @@
                 </span>
                 <div class="min-w-0 flex-1 space-y-3">
                   <div class="flex items-center gap-3">
-                    <Select v-model="benefit.benefit_type" :options="benefitTypeOptions" class="flex-1" />
+                    <Select
+                      v-model="benefit.benefit_type"
+                      :options="benefitTypeOptions"
+                      :aria-label="t('admin.tierConfig.benefitType')"
+                      class="flex-1"
+                    />
                     <label class="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-400">
                       <Toggle v-model="benefit.enabled" />
                       {{ t('admin.tierConfig.enabled') }}
@@ -498,6 +508,10 @@ async function applyFeatureSwitch(enabled: boolean) {
   try {
     const result = await userTiersAPI.updateFeatureSwitch(enabled)
     featureEnabled.value = result.enabled
+    // 刷新缓存的公开设置，否则侧边栏「我的等级」入口仍按旧值渲染：
+    // 关掉开关后操作者本会话里入口不消失，「关闭后用户看不到」这条无法被观察到。
+    // 与设置页保存后的收尾一致（SettingsView 中的 fetchPublicSettings(true)）。
+    await appStore.fetchPublicSettings(true)
     appStore.showSuccess(
       t(enabled ? 'admin.tierConfig.switchEnableSuccess' : 'admin.tierConfig.switchDisableSuccess'),
     )
@@ -514,6 +528,8 @@ async function applyFeatureSwitch(enabled: boolean) {
 const loading = ref(false)
 const saving = ref(false)
 const tiers = ref<AdminTier[]>([])
+/** 启停请求在途：双击会让本地状态与服务端相反，需禁用按钮并挡掉第二次调用 */
+const togglingTierId = ref<number | null>(null)
 /** 拖拽期间的本地顺序副本，@end 之后回写并提交 */
 const localTiers = ref<AdminTier[]>([])
 
@@ -588,11 +604,17 @@ async function applyOrder() {
 
 /** Quick toggle enabled from the list */
 async function toggleEnabled(tier: AdminTier) {
+  // 在途保护：双击时两次调用会读到同一个旧值（payload 相同），
+  // 各自执行 `tier.enabled = !tier.enabled` 后本地状态会与服务端相反。
+  if (togglingTierId.value !== null) return
+  togglingTierId.value = tier.id
   try {
     await userTiersAPI.updateTier(tier.id, { enabled: !tier.enabled })
     tier.enabled = !tier.enabled
   } catch (err: unknown) {
     appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.saveFailed')))
+  } finally {
+    togglingTierId.value = null
   }
 }
 
@@ -672,6 +694,9 @@ function validateForm(): string | null {
     if (!Number.isFinite(threshold) || threshold <= 0) return t('admin.tierConfig.thresholdRequired')
   }
   for (const benefit of form.benefits) {
+    // 停用权益后端显式跳过校验与发放（validateTierConfig 的 `!benefit.Enabled → continue`），
+    // 这里同样跳过：否则「先加一项、停用、稍后再填」的合理配置会被前端挡住，服务端却接受。
+    if (!benefit.enabled) continue
     if (benefit.benefit_type === 'balance_credit') {
       const amount = Number(benefit.amount)
       if (!Number.isFinite(amount) || amount <= 0) return t('admin.tierConfig.amountInvalid')
@@ -742,6 +767,8 @@ async function saveTier() {
 
 const showDeleteDialog = ref(false)
 const deletingTier = ref<AdminTier | null>(null)
+/** 删除请求在途：确认按钮不禁用，需要在这里挡掉第二次提交 */
+const deletingInFlight = ref(false)
 
 const deleteMessage = computed(() =>
   deletingTier.value
@@ -759,14 +786,21 @@ function confirmDeleteTier(tier: AdminTier) {
 async function handleDeleteTier() {
   const tier = deletingTier.value
   if (!tier) return
+  // 在途保护：确认弹窗的按钮不禁用，双击会发两次 DELETE，
+  // 第二次报「不存在」把一次成功操作变成一条错误提示。
+  if (deletingInFlight.value) return
+  deletingInFlight.value = true
   try {
     await userTiersAPI.deleteTier(tier.id)
     appStore.showSuccess(t('admin.tierConfig.deleteSuccess'))
     showDeleteDialog.value = false
     await loadTiers()
   } catch (err: unknown) {
-    // 后端 409 USER_TIER_HAS_AWARDS 的文案按 error code 映射后展示
+    // 后端 409 USER_TIER_HAS_AWARDS / 400 USER_TIER_FIRST_RECHARGE_CODE_LOCKED 等
+    // 按 error code 映射到 admin.tierConfig.<code>；缺键时回落到后端文案
     appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.deleteFailed')))
+  } finally {
+    deletingInFlight.value = false
   }
 }
 

@@ -48,6 +48,9 @@ var (
 	ErrUserTierCodeExists     = infraerrors.Conflict("USER_TIER_CODE_EXISTS", "等级标识已存在")
 	ErrUserTierInvalidBenefit = infraerrors.BadRequest("USER_TIER_INVALID_BENEFIT", "权益参数非法")
 	ErrUserTierInvalidConfig  = infraerrors.BadRequest("USER_TIER_INVALID_CONFIG", "等级配置非法")
+	// ErrUserTierFirstRechargeCodeLocked 首充档唯一且标识固定：既不可改名（首充发放按
+	// UserTierCodeFirstRecharge 查找，改名会静默停发），也不可另建第二个首充档（永远不可领取）
+	ErrUserTierFirstRechargeCodeLocked = infraerrors.BadRequest("USER_TIER_FIRST_RECHARGE_CODE_LOCKED", "首充档必须使用固定标识 first_recharge，且不可更改")
 	// ErrUserTierFeatureDisabled 总开关关闭（服务端强制，不只靠前端隐藏入口）
 	ErrUserTierFeatureDisabled = infraerrors.Forbidden("USER_TIER_FEATURE_DISABLED", "用户等级体系当前已关闭")
 )
@@ -270,8 +273,10 @@ type UserTierRepository interface {
 	EnsureAward(ctx context.Context, award *UserTierAward) (int64, bool, error)
 	// EnsureEffect 幂等创建权益发放记录，返回 (当前库内状态, 是否新建, err)
 	EnsureEffect(ctx context.Context, effect *UserTierEffect) (*UserTierEffect, bool, error)
+	// MarkEffectApplied 标记单项权益已发放。
+	// 刻意没有 MarkEffectFailed：任一权益失败即整事务回滚，回滚后 effect 行不存在，
+	// 没有可标记为 failed 的对象；重试语义 = 用户重新发起领取（见 ClaimTier 注释）。
 	MarkEffectApplied(ctx context.Context, effectID int64, detail map[string]any) error
-	MarkEffectFailed(ctx context.Context, effectID int64, failure string) error
 
 	HasManualRateMultiplier(ctx context.Context, userID, groupID int64) (bool, error)
 	UpsertRateOverlay(ctx context.Context, overlay UserTierRateOverlay) error

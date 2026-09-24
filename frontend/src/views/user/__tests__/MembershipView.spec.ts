@@ -28,6 +28,7 @@ const MESSAGES: Record<string, string> = {
   'membership.nextTierRemaining': '还差 {amount}',
   'membership.claimSuccessBalance': '{amount} 已到账，有效期至 {expires}',
   'membership.claimSuccessRate': '{group} 倍率已生效：{rate}x',
+  'membership.claimSkippedRate': '{group} 倍率未变更：{reason}',
   'membership.claimAllSuccess': '已领取 {count} 个档位',
   'membership.benefitNeverExpires': '永不过期',
   'membership.benefitAmount': '金额 {amount}',
@@ -38,8 +39,6 @@ const MESSAGES: Record<string, string> = {
   'membership.claimedAt': '领取于 {time}',
   'membership.skippedReason': '已跳过：{reason}',
   'membership.skippedManualRateMultiplier': '因已有专属倍率而跳过',
-  'membership.subscriptionDisclaimer': '口径不含订阅消费',
-  'membership.historicalGrantNote': '2026-09-24 活动期授予，现行口径已不含订阅消费',
   'membership.firstRechargeAuto': '首充自动发放',
   'membership.notAchieved': '未达标',
   'membership.claimed': '已领取',
@@ -198,13 +197,14 @@ describe('MembershipView', () => {
     expect(wrapper.findAll('button').some((button) => button.text().includes('claimAll'))).toBe(false)
   })
 
-  it('always renders the subscription-exclusion note and the historical grant note for manual_20260924', async () => {
+  it('explains a historically granted tier through the configured description, with no built-in note', async () => {
     getMyTier.mockResolvedValue(
       tierResponse({
         tiers: [
           tierState({
             tier_id: 4,
             name: '历史档',
+            description: '2026-09-24 活动期授予，非现行消费口径达标',
             threshold_usd: 900,
             achieved: false,
             claimed: true,
@@ -219,21 +219,9 @@ describe('MembershipView', () => {
     await flushPromises()
 
     const text = wrapper.text()
-    expect(text).toContain('口径不含订阅消费')
-    expect(text).toContain('2026-09-24 活动期授予，现行口径已不含订阅消费')
-  })
-
-  it('does not render the historical grant note for the same tier once it is achieved', async () => {
-    getMyTier.mockResolvedValue(
-      tierResponse({
-        tiers: [tierState({ tier_id: 4, achieved: true, claimed: true, source: 'manual_20260924' })],
-      }),
-    )
-
-    const wrapper = mountView()
-    await flushPromises()
-
-    expect(wrapper.text()).not.toContain('2026-09-24 活动期授予')
+    // 说明文案由档位备注承载（管理端可改），页面不再内置任何授予来源文案
+    expect(text).toContain('2026-09-24 活动期授予，非现行消费口径达标')
+    expect(text).toContain('历史档')
   })
 
   it('explains a rate benefit skipped because the group already has a dedicated multiplier', async () => {
@@ -266,6 +254,74 @@ describe('MembershipView', () => {
     expect(text).toContain('SVIP')
     expect(text).toContain('倍率 0.5x')
     expect(text).toContain('已跳过：因已有专属倍率而跳过')
+  })
+
+  // 后端把「因已有手工倍率而跳过」的权益也放进 applied，若一律提示「倍率已生效」，
+  // 就是对用户谎报到账（实际没有写任何覆盖层）。
+  it('does not report a skipped rate benefit as applied in the claim toast', async () => {
+    getMyTier.mockResolvedValue(
+      tierResponse({
+        tiers: [tierState({ tier_id: 5, achieved: true, claimed: false, claimable: true })],
+        claimable_count: 1,
+      }),
+    )
+    claimTier.mockResolvedValueOnce(
+      claimResponse({
+        tier_id: 5,
+        applied: [
+          {
+            benefit_type: 'group_rate',
+            group_id: 7,
+            group_name: 'SVIP',
+            rate_multiplier: 0.5,
+            skipped_reason: 'manual_rate_multiplier_present',
+          },
+        ],
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((node) => node.text().includes('领取'))
+      ?.trigger('click')
+    await flushPromises()
+
+    expect(showSuccess).toHaveBeenCalledTimes(1)
+    const message = showSuccess.mock.calls[0][0] as string
+    expect(message).toContain('SVIP 倍率未变更')
+    expect(message).toContain('因已有专属倍率而跳过')
+    expect(message).not.toContain('已生效')
+  })
+
+  it('still reports a granted rate benefit as applied', async () => {
+    getMyTier.mockResolvedValue(
+      tierResponse({
+        tiers: [tierState({ tier_id: 5, achieved: true, claimed: false, claimable: true })],
+        claimable_count: 1,
+      }),
+    )
+    claimTier.mockResolvedValueOnce(
+      claimResponse({
+        tier_id: 5,
+        applied: [
+          { benefit_type: 'group_rate', group_id: 7, group_name: 'SVIP', rate_multiplier: 0.5 },
+        ],
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((node) => node.text().includes('领取'))
+      ?.trigger('click')
+    await flushPromises()
+
+    const message = showSuccess.mock.calls[0][0] as string
+    expect(message).toContain('SVIP 倍率已生效')
+    expect(message).toContain('0.5x')
   })
 
   it('claims every unclaimed tier serially and reports the credited amount with its expiry', async () => {
@@ -349,11 +405,10 @@ describe('MembershipView', () => {
     expect(text).toContain('该功能未开放')
     expect(text).toContain('等级与权益功能当前未开放，如有疑问请联系客服。')
 
-    // 等级内容整体不渲染：概览、累计消费、各档权益、口径说明与领取入口都不出现
+    // 等级内容整体不渲染：概览、累计消费、各档权益与领取入口都不出现
     expect(text).not.toContain('当前等级')
     expect(text).not.toContain('累计消费')
     expect(text).not.toContain('各档权益')
-    expect(text).not.toContain('口径不含订阅消费')
     expect(text).not.toContain('青铜')
     expect(text).not.toContain('尚未达成任何等级')
     expect(wrapper.findAll('button').filter((button) => button.text() === '领取')).toHaveLength(0)

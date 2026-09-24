@@ -37,6 +37,7 @@ export default {
       selectGroup: 'Select a group',
       rateMultiplier: 'Rate Multiplier',
       removeBenefit: 'Remove this benefit',
+      benefitDisabled: 'Disabled',
       nameRequired: 'Enter the tier name',
       codeRequired: 'Enter the tier code',
       amountInvalid: 'Benefit amount must be greater than 0',
@@ -70,11 +71,15 @@ export default {
       lookupEffectStatus: 'Status',
       lookupEffectAttempts: 'Attempts',
       lookupEffectLastError: 'Last Error',
-      lookupEffectAppliedAt: 'Applied At',
+      // Backend error-code keys (extractI18nErrorMessage looks up `<namespace>.<code>`);
+      // a missing key falls back to the raw backend message
+      USER_TIER_HAS_AWARDS: 'This tier already has awards; it can only be disabled',
+      USER_TIER_FIRST_RECHARGE_CODE_LOCKED:
+        'The first-recharge tier must keep the fixed code "first_recharge" and cannot be renamed',
       // Master switch: when off, the user surface is hidden and no new benefits are granted
       switchTitle: 'Tiers & Benefits Master Switch',
       switchHint:
-        'When off, users no longer see the tier entry or the tier page, and no new tier benefits are granted. Benefits already granted are kept and never clawed back. First-recharge gifting is driven by the first-recharge tier; turning the master switch off falls back to the pre-migration system-settings value (currently off), so no first-recharge gift is granted automatically. To restore it, turn this switch back on and make sure the first-recharge tier is enabled.',
+        'When off, users no longer see the tier entry or the tier page, and no new tier benefits are granted. Benefits already granted are kept and never clawed back.',
       switchEnabled: 'On',
       switchDisabled: 'Off',
       switchDisableTitle: 'Turn Off Tiers & Benefits',

@@ -436,12 +436,6 @@ export default {
         balanceCreditValidityDaysHint: 'Independent validity for each balance top-up or redeem. 0 means never expires.',
         balanceCreditDailySettlementHour: 'Daily Settlement Run Time',
         balanceCreditDailySettlementHourHint: 'Runs once per day using server local time. Enter 5 for 05:00; leave unconfigured to disable balance daily settlement.',
-        firstRechargeBonusEnabled: 'First Recharge/Redeem Bonus',
-        firstRechargeBonusEnabledHint: 'Grant an extra balance once after the user first successfully recharges, redeems balance, or redeems a subscription.',
-        firstRechargeBonusAmount: 'First Bonus Amount',
-        firstRechargeBonusAmountHint: 'Extra balance granted on the first successful recharge, balance redeem, or subscription redeem.',
-        firstRechargeBonusValidityDays: 'First Bonus Validity (Days)',
-        firstRechargeBonusValidityDaysHint: 'Independent validity for the first bonus balance. 0 means never expires.',
         affiliateRebateRate: 'Affiliate Rebate Rate',
         affiliateRebateRateHint:
           'Rebate percentage credited to inviter after recharge (0-100%, e.g. 10 means 10%)',

@@ -115,7 +115,7 @@ func (s *UserTierService) CreateTier(ctx context.Context, input UserTierInput) (
 			}
 		}
 	}
-	if err := s.validateTierConfig(ctx, tier, true); err != nil {
+	if err := s.validateTierConfig(ctx, tier); err != nil {
 		return nil, err
 	}
 	if err := s.repo.CreateTier(ctx, tier); err != nil {
@@ -168,7 +168,7 @@ func (s *UserTierService) UpdateTier(ctx context.Context, id int64, input UserTi
 		tier.Benefits = benefitsFromInput(*input.Benefits)
 	}
 
-	if err := s.validateTierConfig(ctx, tier, false); err != nil {
+	if err := s.validateTierConfig(ctx, tier); err != nil {
 		return nil, err
 	}
 	if err := s.repo.UpdateTier(ctx, tier); err != nil {
@@ -222,13 +222,24 @@ func benefitsFromInput(inputs []UserTierBenefitInput) []UserTierBenefit {
 }
 
 // validateTierConfig 权益参数按类型显式校验（jsonb 不能靠数据库约束兜底）。
-// requireCode=true 时要求 code 非空（新增场景；更新场景沿用既有 code）。
-func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier, requireCode bool) error {
+// 新增与更新走同一套校验：code 是幂等键（award 唯一约束与首充查找都用它），
+// 更新路径同样不能写入非法 code（此前只在新增时校验，改名可绕过）。
+func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier) error {
 	if tier == nil {
 		return ErrUserTierInvalidConfig
 	}
-	if requireCode && !tierCodePattern.MatchString(tier.Code) {
+	if !tierCodePattern.MatchString(tier.Code) {
 		return ErrUserTierInvalidConfig
+	}
+	// 首充档是被写死查找的档位（见 UserTierCodeFirstRecharge）：语义上全系统只有一个，
+	// 且必须用固定 code。两种情况都在此拦下——
+	//   ① 把首充档改名：首充发放只认 UserTierCodeFirstRecharge，改完会静默停掉首充赠送；
+	//   ② 另建一个 first_recharge 档：GetUserTierView 只认排序最前的首充档，且首充档不可手动
+	//      领取，新建的那个永远不可领取（死档）。
+	if tier.TriggerType == UserTierTriggerFirstRecharge && tier.Code != UserTierCodeFirstRecharge {
+		logger.LegacyPrintf("service.user_tier",
+			"reject non-canonical first_recharge tier: code=%s", tier.Code)
+		return ErrUserTierFirstRechargeCodeLocked
 	}
 	name := strings.TrimSpace(tier.Name)
 	if name == "" || len([]rune(name)) > 128 {
@@ -609,6 +620,12 @@ func (s *UserTierService) claim(ctx context.Context, userID, tierID int64) (*Use
 
 		applied, err := s.applyBenefit(ctx, userID, awardID, effect.ID, benefit, result)
 		if err != nil {
+			// 失败即整事务回滚。刻意不写 effect.status='failed'：回滚后 effect 行本身不存在，
+			// 没有可标记的对象（保留 failed 语义需要一个「等级已获得但权益缺失」的半成品状态，
+			// 与失败整体回滚互斥）。故这里打一条带上下文的日志，作为发放失败的唯一可见面。
+			logger.LegacyPrintf("service.user_tier",
+				"claim benefit failed, transaction rolls back: user_id=%d tier=%s benefit_key=%s benefit_type=%s err=%v",
+				userID, tier.Code, key, benefit.BenefitType, err)
 			return nil, false, err
 		}
 		if applied {

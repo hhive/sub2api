@@ -250,18 +250,7 @@ func (s *tierRepoStub) MarkEffectApplied(_ context.Context, effectID int64, deta
 	return nil
 }
 
-func (s *tierRepoStub) MarkEffectFailed(_ context.Context, effectID int64, failure string) error {
-	for key, effect := range s.effects {
-		if effect.ID != effectID {
-			continue
-		}
-		effect.Status = UserTierEffectFailed
-		effect.LastError = failure
-		effect.Attempts++
-		s.effects[key] = effect
-	}
-	return nil
-}
+// 刻意没有 MarkEffectFailed：失败整体回滚，回滚后没有可标记的 effect 行（见 UserTierRepository 注释）。
 
 func (s *tierRepoStub) HasManualRateMultiplier(_ context.Context, userID, groupID int64) (bool, error) {
 	return s.manualRates[fmt.Sprintf("%d:%d", userID, groupID)], nil
@@ -710,12 +699,80 @@ func TestCreateTier_RequiresValidCodeAndThreshold(t *testing.T) {
 	require.ErrorIs(t, err, ErrUserTierInvalidConfig, "consumption 档缺阈值必须被拒")
 
 	firstRecharge := UserTierTriggerFirstRecharge
+	// 首充档必须用固定标识：非 canonical code 的 first_recharge 档一律拒绝（见
+	// TestFirstRechargeTierCodeIsLocked），故此处用 canonical code
+	firstRechargeCode := UserTierCodeFirstRecharge
 	created, err := svc.CreateTier(context.Background(), UserTierInput{
-		Code: &goodCode, Name: &name, TriggerType: &firstRecharge,
+		Code: &firstRechargeCode, Name: &name, TriggerType: &firstRecharge,
 	})
 	require.NoError(t, err)
 	require.Nil(t, created.ThresholdUSD)
 	require.Equal(t, 0, created.SortOrder)
+}
+
+func TestUpdateTier_ValidatesCodeFormatOnUpdatePath(t *testing.T) {
+	repo := newTierRepoStub()
+	tier := repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
+	svc := newTierServiceForTest(repo, nil)
+
+	// 更新路径同样必须校验 code 格式：此前只在新增时校验（requireCode 开关），改名可绕过
+	for _, bad := range []string{"Consume 500", "Consume500", "consume-500", ""} {
+		code := bad
+		_, err := svc.UpdateTier(context.Background(), tier.ID, UserTierInput{Code: &code})
+		require.ErrorIs(t, err, ErrUserTierInvalidConfig, "code=%q 必须被拒", bad)
+	}
+
+	// 合法改名在无授予记录时放行，且改后的 code 必须传给仓储
+	// （仓储 UPDATE 漏写 code 是本轮修复的缺陷，已由 repository 层测试守住）
+	good := "consume_500_v2"
+	updated, err := svc.UpdateTier(context.Background(), tier.ID, UserTierInput{Code: &good})
+	require.NoError(t, err)
+	require.Equal(t, good, updated.Code)
+	require.Equal(t, good, repo.tiers[0].Code, "改名必须落到仓储")
+}
+
+// TestFirstRechargeTierCodeIsLocked 首充档全系统唯一且 code 固定：
+// 改名会静默停掉首充赠送（发放按 UserTierCodeFirstRecharge 查找），
+// 另建第二个首充档则是永远不可领取的死档（GetUserTierView 只认排序最前的一个）。
+func TestFirstRechargeTierCodeIsLocked(t *testing.T) {
+	repo := newTierRepoStub()
+	canonical := repo.addTier(UserTier{
+		Code: UserTierCodeFirstRecharge, Name: "新客",
+		TriggerType: UserTierTriggerFirstRecharge, Enabled: true,
+	})
+	svc := newTierServiceForTest(repo, nil)
+
+	t.Run("首充档改名被拒", func(t *testing.T) {
+		renamed := "welcome"
+		_, err := svc.UpdateTier(context.Background(), canonical.ID, UserTierInput{Code: &renamed})
+		require.ErrorIs(t, err, ErrUserTierFirstRechargeCodeLocked)
+		require.Equal(t, UserTierCodeFirstRecharge, repo.tiers[0].Code, "被拒后库内 code 不变")
+	})
+
+	t.Run("另建第二个首充档被拒", func(t *testing.T) {
+		other := "vip_welcome"
+		name := "欢迎"
+		firstRecharge := UserTierTriggerFirstRecharge
+		_, err := svc.CreateTier(context.Background(), UserTierInput{
+			Code: &other, Name: &name, TriggerType: &firstRecharge,
+		})
+		require.ErrorIs(t, err, ErrUserTierFirstRechargeCodeLocked)
+	})
+
+	t.Run("消费档改成首充类型被拒", func(t *testing.T) {
+		consumption := repo.addTier(balanceTier(0, "consume_500", 1, 500, 50))
+		firstRecharge := UserTierTriggerFirstRecharge
+		_, err := svc.UpdateTier(context.Background(), consumption.ID, UserTierInput{TriggerType: &firstRecharge})
+		require.ErrorIs(t, err, ErrUserTierFirstRechargeCodeLocked)
+	})
+
+	t.Run("canonical 首充档改名以外的字段仍可更新", func(t *testing.T) {
+		newName := "新客档"
+		updated, err := svc.UpdateTier(context.Background(), canonical.ID, UserTierInput{Name: &newName})
+		require.NoError(t, err)
+		require.Equal(t, newName, updated.Name)
+		require.Equal(t, UserTierCodeFirstRecharge, updated.Code)
+	})
 }
 
 func TestUpdateTier_KeepsExistingBenefitIDsAndBlocksCodeChangeAfterAwards(t *testing.T) {

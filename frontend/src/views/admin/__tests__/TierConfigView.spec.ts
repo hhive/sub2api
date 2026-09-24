@@ -11,6 +11,7 @@ import type { AdminTier } from '@/types'
 const {
   createTier,
   deleteTier,
+  fetchPublicSettings,
   getFeatureSwitch,
   getGroups,
   getUserTier,
@@ -23,6 +24,7 @@ const {
 } = vi.hoisted(() => ({
   createTier: vi.fn(),
   deleteTier: vi.fn(),
+  fetchPublicSettings: vi.fn(),
   getFeatureSwitch: vi.fn(),
   getGroups: vi.fn(),
   getUserTier: vi.fn(),
@@ -52,7 +54,7 @@ vi.mock('@/api/admin', () => ({
 }))
 
 vi.mock('@/stores/app', () => ({
-  useAppStore: () => ({ showError, showSuccess }),
+  useAppStore: () => ({ showError, showSuccess, fetchPublicSettings }),
 }))
 
 // 只保留参与断言的文案模板，缺失的键回落到键名。
@@ -214,6 +216,70 @@ describe('TierConfigView', () => {
 
     expect(updateTier).toHaveBeenCalledTimes(1)
     expect(updateTier).toHaveBeenCalledWith(2, { enabled: false })
+  })
+
+  // 双击时两次调用会读到同一个旧值，各自翻转本地状态后会与服务端相反。
+  it('sends only one toggle request when clicked twice and disables the switch meanwhile', async () => {
+    let resolveUpdate: ((value: unknown) => void) | undefined
+    updateTier.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveUpdate = resolve }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const toggles = wrapper.findAll('tbody button').filter((button) => button.classes().includes('rounded-full'))
+    await toggles[1].trigger('click')
+    await toggles[1].trigger('click')
+    expect(toggles[1].attributes('disabled')).toBeDefined()
+
+    resolveUpdate?.(tier())
+    await flushPromises()
+
+    expect(updateTier).toHaveBeenCalledTimes(1)
+  })
+
+  // 后端对停用权益显式跳过校验与发放，前端若仍强制校验，合理配置会被挡住。
+  it('saves a tier holding a disabled benefit with empty values', async () => {
+    listTiers.mockResolvedValue([
+      tier({
+        id: 1,
+        benefits: [
+          {
+            id: 11,
+            benefit_type: 'group_rate',
+            amount: 0,
+            validity_days: 0,
+            group_id: 0,
+            rate_multiplier: 0,
+            enabled: false,
+            sort_order: 0,
+          },
+        ],
+      }),
+    ])
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await rowActionButton(wrapper, 'common.edit')!.trigger('click')
+    await flushPromises()
+    await wrapper.find('form#tier-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(showError).not.toHaveBeenCalled()
+    expect(updateTier).toHaveBeenCalledTimes(1)
+    expect(updateTier.mock.calls[0][1].benefits).toEqual([
+      {
+        id: 11,
+        benefit_type: 'group_rate',
+        amount: 0,
+        validity_days: 0,
+        group_id: 0,
+        rate_multiplier: 0,
+        enabled: false,
+      },
+    ])
   })
 
   it('submits the reordered ids after a drag', async () => {
@@ -448,6 +514,53 @@ describe('TierConfigView', () => {
     expect(showError).toHaveBeenCalledWith('有授予记录的等级只能停用')
   })
 
+  // 上面的断言依赖 mock 词条，这一条校验真实词条确实存在：否则 extractI18nErrorMessage
+  // 查不到 `命名空间.错误码` 会回落到后端中文，英文语系管理员会看到中文。
+  it('maps backend tier error codes to real localized messages', () => {
+    expect(zh.admin.tierConfig.USER_TIER_HAS_AWARDS).toBe('该等级已产生授予记录，只能停用')
+    expect(en.admin.tierConfig.USER_TIER_HAS_AWARDS).toBeTruthy()
+    expect(zh.admin.tierConfig.USER_TIER_FIRST_RECHARGE_CODE_LOCKED).toContain('first_recharge')
+    expect(en.admin.tierConfig.USER_TIER_FIRST_RECHARGE_CODE_LOCKED).toContain('first_recharge')
+  })
+
+  it('sends only one delete when the confirm button is clicked twice', async () => {
+    let resolveDelete: ((value: unknown) => void) | undefined
+    deleteTier.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveDelete = resolve }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await rowActionButton(wrapper, 'common.delete')!.trigger('click')
+    await flushPromises()
+    await wrapper.find('.confirm-ok').trigger('click')
+    await wrapper.find('.confirm-ok').trigger('click')
+    resolveDelete?.({ message: 'ok' })
+    await flushPromises()
+
+    expect(deleteTier).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks disabled benefits in the list so they do not read as active', async () => {
+    listTiers.mockResolvedValue([
+      tier({
+        id: 1,
+        benefits: [
+          { id: 11, benefit_type: 'balance_credit', amount: 10, validity_days: 3, group_id: 0, rate_multiplier: 0, enabled: false },
+          { id: 12, benefit_type: 'balance_credit', amount: 20, validity_days: 3, group_id: 0, rate_multiplier: 0, enabled: true },
+        ],
+      }),
+    ])
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody li')
+    expect(rows[0].text()).toContain('admin.tierConfig.benefitDisabled')
+    expect(rows[1].text()).not.toContain('admin.tierConfig.benefitDisabled')
+  })
+
   it('locks the tier code once awards exist and omits it from the update payload', async () => {
     listTiers.mockResolvedValue([tier({ id: 1, code: 'tier_500', award_count: 2 })])
 
@@ -544,22 +657,18 @@ describe('TierConfigView', () => {
     })
 
     // 文案是唯一向管理员解释关闭后果的地方，因此直接校验真实词条而不经过 mock
-    it('documents all four consequences of switching off in Chinese', () => {
+    it('documents the consequences of switching off in Chinese', () => {
       const hint = zh.admin.tierConfig.switchHint
       expect(hint).toContain('用户端不再显示等级入口')
       expect(hint).toContain('不再发放新的等级权益')
       expect(hint).toContain('已发放的权益保留，不回收')
-      expect(hint).toContain('首充赠送由等级配置里的首充档决定')
-      expect(hint).toContain('回到迁移前的系统设置取值')
     })
 
-    it('documents all four consequences of switching off in English', () => {
+    it('documents the consequences of switching off in English', () => {
       const hint = en.admin.tierConfig.switchHint
       expect(hint).toContain('no longer see the tier entry')
       expect(hint).toContain('no new tier benefits are granted')
       expect(hint).toContain('already granted are kept and never clawed back')
-      expect(hint).toContain('First-recharge gifting is driven by the first-recharge tier')
-      expect(hint).toContain('pre-migration system-settings value')
     })
 
     it('asks for confirmation when switching off and does not submit on cancel', async () => {
@@ -636,6 +745,36 @@ describe('TierConfigView', () => {
 
       expect(showError).toHaveBeenCalledWith('加载等级与权益总开关失败')
       expect(wrapper.findAll('tbody tr')).toHaveLength(3)
+    })
+
+    // 不刷新缓存的公开设置，侧边栏「我的等级」入口会按旧值继续渲染：
+    // 操作者自己关掉开关后入口不消失，「关闭后用户看不到」这条无法被观察到。
+    it('refreshes the cached public settings after a successful switch write', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+      await wrapper.find('.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(updateFeatureSwitch).toHaveBeenCalledWith(false)
+      expect(fetchPublicSettings).toHaveBeenCalledWith(true)
+    })
+
+    it('does not refresh public settings when the switch write fails', async () => {
+      updateFeatureSwitch.mockRejectedValueOnce({ status: 500, reason: 'USER_TIER_SWITCH_SAVE_FAILED' })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+      await wrapper.find('.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(fetchPublicSettings).not.toHaveBeenCalled()
+      expect(showError).toHaveBeenCalledWith('保存等级与权益总开关失败')
     })
   })
 })

@@ -507,6 +507,7 @@ expired AS (
 UPDATE user_balance_credits ubc
 SET status = 'expired',
     remaining_amount = 0,
+    expired_amount = expired.expired_amount,
     expired_at = $1,
     updated_at = NOW()
 FROM expired

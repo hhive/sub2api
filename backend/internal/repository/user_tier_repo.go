@@ -294,11 +294,13 @@ func (r *userTierRepository) UpdateTier(ctx context.Context, tier *service.UserT
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// code 必须一起写：服务层在无授予记录时允许改名，漏写会让「改名成功」变成静默不生效
+	// （响应体返回新 code、库里仍是旧 code）。改名的前置校验见 UserTierService.UpdateTier。
 	if _, err := tx.Client().ExecContext(ctx, `
 		UPDATE user_tiers
-		SET name = $2, description = $3, trigger_type = $4, threshold_usd = $5, enabled = $6, updated_at = NOW()
+		SET name = $2, description = $3, trigger_type = $4, threshold_usd = $5, enabled = $6, code = $7, updated_at = NOW()
 		WHERE id = $1
-	`, tier.ID, tier.Name, tier.Description, tier.TriggerType, tier.ThresholdUSD, tier.Enabled); err != nil {
+	`, tier.ID, tier.Name, tier.Description, tier.TriggerType, tier.ThresholdUSD, tier.Enabled, tier.Code); err != nil {
 		return err
 	}
 
@@ -459,6 +461,12 @@ func (r *userTierRepository) GroupName(ctx context.Context, groupID int64) (stri
 }
 
 // GetUserConsumedAmount 累计消费额：只算兑换额度消费（额度账本是终身账，不受日志保留影响）。
+//
+// 必须减去 expired_amount：额度到期作废时到期任务把 remaining_amount 置 0，若只算
+// amount - remaining_amount，未使用的部分会被整额算成「已消费」——用户凭一张过期作废的
+// 兑换码即可达标领钱（1500 档 = 赠 150 美元 + 0.9 倍率）。expired_amount 记的正是
+// 「到期那一刻仍未使用的余额」，减去它得到的才是真实消费额。
+// 非 expired 行该列恒为 NULL，行为与加列前逐位一致。
 func (r *userTierRepository) GetUserConsumedAmount(ctx context.Context, userID int64) (float64, error) {
 	if userID <= 0 {
 		return 0, nil
@@ -469,7 +477,7 @@ func (r *userTierRepository) GetUserConsumedAmount(ctx context.Context, userID i
 	}
 	var consumed float64
 	if err := scanSingleRow(ctx, exec, `
-		SELECT COALESCE(sum(amount - remaining_amount), 0)
+		SELECT COALESCE(sum(amount - remaining_amount - COALESCE(expired_amount, 0)), 0)
 		FROM user_balance_credits
 		WHERE user_id = $1 AND source_type = 'redeem'
 	`, []any{userID}, &consumed); err != nil {
@@ -746,18 +754,8 @@ func (r *userTierRepository) MarkEffectApplied(ctx context.Context, effectID int
 	return err
 }
 
-func (r *userTierRepository) MarkEffectFailed(ctx context.Context, effectID int64, failure string) error {
-	exec, err := r.execer(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = exec.ExecContext(ctx, `
-		UPDATE user_tier_effects
-		SET status = 'failed', attempts = attempts + 1, last_error = $2, updated_at = NOW()
-		WHERE id = $1
-	`, effectID, failure)
-	return err
-}
+// 刻意没有 MarkEffectFailed：任一权益失败即整事务回滚，回滚后 effect 行不存在，
+// 没有可标记为 failed 的对象。失败可见面是 service 层的结构化日志（见 claim）。
 
 func (r *userTierRepository) HasManualRateMultiplier(ctx context.Context, userID, groupID int64) (bool, error) {
 	exec, err := r.execer(ctx)

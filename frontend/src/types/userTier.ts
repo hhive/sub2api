@@ -83,8 +83,6 @@ export interface UserTierClaimResponse {
   name: string
   already_claimed: boolean
   applied: UserTierAppliedBenefit[]
-  /** 需要延迟生效的权益标识 */
-  pending?: string[]
 }
 
 /** GET/PUT /admin/tiers/switch 响应体：等级与权益总开关 */

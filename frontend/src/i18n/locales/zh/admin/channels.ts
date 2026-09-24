@@ -37,6 +37,7 @@ export default {
       selectGroup: '请选择分组',
       rateMultiplier: '倍率',
       removeBenefit: '删除该权益',
+      benefitDisabled: '已停用',
       nameRequired: '请填写等级称呼',
       codeRequired: '请填写等级标识',
       amountInvalid: '权益金额必须大于 0',
@@ -70,11 +71,13 @@ export default {
       lookupEffectStatus: '状态',
       lookupEffectAttempts: '尝试次数',
       lookupEffectLastError: '最近错误',
-      lookupEffectAppliedAt: '生效时间',
+      // 按后端错误码映射的文案（extractI18nErrorMessage 查 `命名空间.错误码`），缺键会回落到后端文案
+      USER_TIER_HAS_AWARDS: '该等级已产生授予记录，只能停用',
+      USER_TIER_FIRST_RECHARGE_CODE_LOCKED: '首充档必须使用固定标识 first_recharge，且不可更改',
       // 总开关：关闭后用户端入口/页面不可见、不再发放新权益（已发权益不回收）
       switchTitle: '等级与权益总开关',
       switchHint:
-        '关闭后用户端不再显示等级入口与等级页面，也不再发放新的等级权益；已发放的权益保留，不回收。首充赠送由等级配置里的首充档决定，关闭总开关即回到迁移前的系统设置取值（当前为关闭），因此不再自动赠送；需要恢复时先开启本开关，再确认首充档处于启用状态。',
+        '关闭后用户端不再显示等级入口与等级页面，也不再发放新的等级权益；已发放的权益保留，不回收。',
       switchEnabled: '已开启',
       switchDisabled: '已关闭',
       switchDisableTitle: '关闭等级与权益',
