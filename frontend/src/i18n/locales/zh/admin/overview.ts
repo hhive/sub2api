@@ -711,6 +711,7 @@ export default {
       ledgerSourcePromo: '活动赠送',
       ledgerSourceAffiliate: '返利提现',
       ledgerSourceFirstRechargeBonus: '首次充值赠送',
+      ledgerSourceTierReward: '等级奖励',
       ledgerSourceInitial: '初始余额',
       ledgerStatusActive: '有效',
       ledgerStatusConsumed: '已用完',

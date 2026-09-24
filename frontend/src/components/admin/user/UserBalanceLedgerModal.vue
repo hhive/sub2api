@@ -193,6 +193,8 @@ const sourceLabel = (source: string) => {
       return t('admin.users.ledgerSourceAffiliate')
     case 'first_recharge_bonus':
       return t('admin.users.ledgerSourceFirstRechargeBonus')
+    case 'tier_reward':
+      return t('admin.users.ledgerSourceTierReward')
     case 'initial':
       return t('admin.users.ledgerSourceInitial')
     default:

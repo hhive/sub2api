@@ -18,6 +18,8 @@ import type {
   AffiliateTransferResponse,
   PaginatedResponse,
   PlatformQuotasResponse,
+  MyTierResponse,
+  UserTierClaimResponse,
 } from '@/types'
 
 /**
@@ -222,6 +224,26 @@ export async function getMyPlatformQuotas(): Promise<PlatformQuotasResponse> {
   return data
 }
 
+/**
+ * 获取当前用户的等级状态（当前档、下一档、各档权益与领取状态）。
+ * 口径：consumed_amount 只含兑换额度消费，不含订阅消费。
+ */
+export async function getMyTier(): Promise<MyTierResponse> {
+  const { data } = await apiClient.get<MyTierResponse>('/user/tier')
+  return data
+}
+
+/**
+ * 领取指定档位的权益。
+ * 服务端负责达成校验与幂等；未达标/已停用/不支持手动领取会返回 4xx。
+ */
+export async function claimTier(tierId: number): Promise<UserTierClaimResponse> {
+  const { data } = await apiClient.post<UserTierClaimResponse>('/user/tier/claim', {
+    tier_id: tierId,
+  })
+  return data
+}
+
 export const userAPI = {
  getProfile,
  getBalanceCredits,
@@ -239,6 +261,8 @@ export const userAPI = {
   getAffiliateDetail,
   transferAffiliateQuota,
   getMyPlatformQuotas,
+  getMyTier,
+  claimTier,
 }
 
 export default userAPI

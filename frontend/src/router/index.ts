@@ -277,6 +277,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/membership',
+    name: 'Membership',
+    component: () => import('@/views/user/MembershipView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'My Tier',
+      titleKey: 'membership.title',
+      descriptionKey: 'membership.description'
+    }
+  },
+  {
     path: '/available-channels',
     name: 'UserAvailableChannels',
     component: () => import('@/views/user/AvailableChannelsView.vue'),
@@ -544,6 +556,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Default Model Pricing',
       titleKey: 'admin.defaultModelPricing.title',
       descriptionKey: 'admin.defaultModelPricing.description'
+    }
+  },
+  {
+    path: '/admin/tier-config',
+    name: 'AdminTierConfig',
+    component: () => import('@/views/admin/TierConfigView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Tiers & Benefits',
+      titleKey: 'admin.tierConfig.title',
+      descriptionKey: 'admin.tierConfig.description'
     }
   },
   {

@@ -3891,54 +3891,6 @@
                     {{ t("admin.settings.defaults.balanceCreditDailySettlementHourHint") }}
                   </p>
                 </div>
-                <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
-                  <div class="flex items-center justify-between gap-4">
-                    <div>
-                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.defaults.firstRechargeBonusEnabled") }}
-                      </label>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.defaults.firstRechargeBonusEnabledHint") }}
-                      </p>
-                    </div>
-                    <Toggle v-model="form.first_recharge_bonus_enabled" />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.defaults.firstRechargeBonusAmount") }}
-                  </label>
-                  <input
-                    v-model.number="form.first_recharge_bonus_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    class="input"
-                    placeholder="5.00"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.firstRechargeBonusAmountHint") }}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.defaults.firstRechargeBonusValidityDays") }}
-                  </label>
-                  <input
-                    v-model.number="form.first_recharge_bonus_validity_days"
-                    type="number"
-                    min="0"
-                    class="input"
-                    placeholder="3"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.firstRechargeBonusValidityDaysHint") }}
-                  </p>
-                </div>
                 <div>
                   <label
                     class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -10184,6 +10136,10 @@ type SettingsForm = Omit<
   | "wechat_connect_mp_enabled"
   | "wechat_connect_mobile_enabled"
   | "openai_oauth_scheduling_rate_multiplier"
+  // 首充赠送已迁移到「等级与权益」配置（等级 + balance_credit 权益），设置页不再托管这三键
+  | "first_recharge_bonus_enabled"
+  | "first_recharge_bonus_amount"
+  | "first_recharge_bonus_validity_days"
 > & {
   /** Form always binds a concrete boolean (SystemSettings marks this optional). */
   channel_monitor_hide_throughput: boolean;
@@ -10280,9 +10236,6 @@ const form = reactive<SettingsForm>({
   default_user_rpm_limit: 0,
   balance_credit_validity_days: 0,
   balance_credit_daily_settlement_hour: null,
-  first_recharge_bonus_enabled: false,
-  first_recharge_bonus_amount: 5,
-  first_recharge_bonus_validity_days: 3,
   site_name: "Sub2API",
   site_logo: "",
   site_subtitle: "Subscription to API Conversion Platform",
@@ -12029,9 +11982,6 @@ async function saveSettings() {
       compliance_notice_decline_text: form.compliance_notice_decline_text,
       default_balance: form.default_balance,
       balance_credit_validity_days: Math.max(0, Math.floor(Number(form.balance_credit_validity_days) || 0)),
-      first_recharge_bonus_enabled: form.first_recharge_bonus_enabled,
-      first_recharge_bonus_amount: Math.max(0, Number(form.first_recharge_bonus_amount) || 0),
-      first_recharge_bonus_validity_days: Math.max(0, Math.floor(Number(form.first_recharge_bonus_validity_days) || 0)),
       affiliate_rebate_rate: Math.min(
         100,
         Math.max(0, Number(form.affiliate_rebate_rate) || 0),

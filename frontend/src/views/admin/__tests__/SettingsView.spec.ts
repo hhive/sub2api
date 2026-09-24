@@ -608,6 +608,13 @@ async function openUsersTab(wrapper: ReturnType<typeof mountView>) {
   await flushPromises();
 }
 
+// 首充赠送三字段已迁移到「等级与权益」配置，设置页只保留断言其不存在的用例。
+const FIRST_RECHARGE_BONUS_KEYS = [
+  "admin.settings.defaults.firstRechargeBonusEnabled",
+  "admin.settings.defaults.firstRechargeBonusAmount",
+  "admin.settings.defaults.firstRechargeBonusValidityDays",
+];
+
 function findInputByLabel(
   wrapper: ReturnType<typeof mountView>,
   labelText: string,
@@ -1293,11 +1300,8 @@ describe("admin SettingsView payment visible method controls", () => {
     );
   });
 
-  it("loads and preserves the complete recharge bonus and affiliate tier contract", async () => {
+  it("preserves the affiliate tier contract and no longer sends the first recharge bonus fields", async () => {
     const contractSettings = {
-      first_recharge_bonus_enabled: true,
-      first_recharge_bonus_amount: 12.34,
-      first_recharge_bonus_validity_days: 14,
       affiliate_subscription_rebate_multiplier: 67.5,
       affiliate_tiered_rebate_enabled: true,
       affiliate_tier2_min_paid_invitees: 12,
@@ -1308,6 +1312,10 @@ describe("admin SettingsView payment visible method controls", () => {
     getSettings.mockResolvedValueOnce({
       ...baseSettingsResponse,
       affiliate_enabled: true,
+      // 后端仍可能返回历史的首充三键，前端必须忽略
+      first_recharge_bonus_enabled: true,
+      first_recharge_bonus_amount: 12.34,
+      first_recharge_bonus_validity_days: 14,
       ...contractSettings,
     });
 
@@ -1315,24 +1323,16 @@ describe("admin SettingsView payment visible method controls", () => {
 
     await flushPromises();
 
-    expect(
-      findInputByLabel(
-        wrapper,
-        "admin.settings.defaults.firstRechargeBonusEnabled",
-      ).checked,
-    ).toBe(true);
-    expect(
-      findInputByLabel(
-        wrapper,
-        "admin.settings.defaults.firstRechargeBonusAmount",
-      ).value,
-    ).toBe("12.34");
-    expect(
-      findInputByLabel(
-        wrapper,
-        "admin.settings.defaults.firstRechargeBonusValidityDays",
-      ).value,
-    ).toBe("14");
+    // 首充三字段已由「等级与权益」接管，设置页不再渲染对应 label / input
+    for (const key of FIRST_RECHARGE_BONUS_KEYS) {
+      expect(
+        wrapper.findAll("label").some((node) => node.text().trim() === key),
+        `unexpected label ${key}`,
+      ).toBe(false);
+      // 找不到对应 label 文本的 input，因此这里直接断言按 label 定位会失败
+      expect(() => findInputByLabel(wrapper, key)).toThrow();
+    }
+
     expect(
       findInputByLabel(
         wrapper,
@@ -1374,9 +1374,15 @@ describe("admin SettingsView payment visible method controls", () => {
     await flushPromises();
 
     expect(updateSettings).toHaveBeenCalledTimes(1);
-    expect(updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining(contractSettings),
-    );
+    const payload = updateSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).toEqual(expect.objectContaining(contractSettings));
+    for (const key of [
+      "first_recharge_bonus_enabled",
+      "first_recharge_bonus_amount",
+      "first_recharge_bonus_validity_days",
+    ]) {
+      expect(payload).not.toHaveProperty(key);
+    }
   });
 
   it("preserves cross JSON safe affiliate tier thresholds", async () => {

@@ -690,6 +690,7 @@ export default {
       ledgerSourcePromo: 'Promotion',
       ledgerSourceAffiliate: 'Affiliate Transfer',
       ledgerSourceFirstRechargeBonus: 'First Recharge Bonus',
+      ledgerSourceTierReward: 'Tier reward',
       ledgerSourceInitial: 'Initial Balance',
       ledgerStatusActive: 'Active',
       ledgerStatusConsumed: 'Consumed',

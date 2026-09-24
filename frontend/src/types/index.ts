@@ -2557,3 +2557,23 @@ export type {
   PlatformQuotaWindow,
   PlatformQuotasResponse,
 } from '@/api/admin/users'
+
+// User tier (membership) types
+export type {
+  UserTierTriggerType,
+  UserTierBenefitType,
+  UserTierBenefitStatus,
+  UserTierBenefitState,
+  UserTierState,
+  MyTierResponse,
+  UserTierAppliedBenefit,
+  UserTierClaimResponse,
+  AdminTierBenefit,
+  AdminTier,
+  AdminTierBenefitInput,
+  AdminTierSaveRequest,
+  AdminUserTierState,
+  AdminUserTierEffect,
+  AdminUserTierAward,
+  AdminUserTierResponse,
+} from './userTier'

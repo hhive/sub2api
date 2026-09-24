@@ -172,6 +172,8 @@ export default {
     mediaPlayground: 'Infinite Canvas',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
+    myTier: 'My Tier',
+    tierConfig: 'Tiers & Benefits',
     affiliateManagement: 'Affiliate Rebates',
     affiliateInviteRecords: 'Invite Records',
     affiliateRebateRecords: 'Rebate Records',

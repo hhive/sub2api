@@ -1014,6 +1014,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__purchase_external__', label: purchaseNavLabel.value, icon: RechargeSubscriptionIcon, externalUrl: purchaseSubscriptionUrl.value, hideInSimpleMode: true, featureFlag: flagRechargeSubscription },
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
+    { path: '/membership', label: t('nav.myTier'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
       path: `/custom/${item.id}`,
@@ -1154,6 +1155,7 @@ const adminNavItems = computed((): NavItem[] => {
     children: [
       { path: '/admin/channels/default-pricing', label: t('nav.defaultModelPricing'), icon: PriceTagIcon, hideInSimpleMode: true },
       { path: '/admin/balance-credits', label: t('nav.balanceQuery'), icon: CreditCardIcon, hideInSimpleMode: true },
+      { path: '/admin/tier-config', label: t('nav.tierConfig'), icon: CreditCardIcon, hideInSimpleMode: true },
       ...adminExternalAppNavItems.value,
     ]
   }

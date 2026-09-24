@@ -20,6 +20,7 @@ import antigravityAPI from './antigravity'
 import grokAPI from './grok'
 import cnProvidersAPI from './cnProviders'
 import userAttributesAPI from './userAttributes'
+import userTiersAPI from './userTiers'
 import opsAPI from './ops'
 import errorPassthroughAPI from './errorPassthrough'
 import dataManagementAPI from './dataManagement'
@@ -60,6 +61,7 @@ export const adminAPI = {
   grok: grokAPI,
   cnProviders: cnProvidersAPI,
   userAttributes: userAttributesAPI,
+  userTiers: userTiersAPI,
   ops: opsAPI,
   errorPassthrough: errorPassthroughAPI,
   dataManagement: dataManagementAPI,
@@ -98,6 +100,7 @@ export {
   grokAPI,
   cnProvidersAPI,
   userAttributesAPI,
+  userTiersAPI,
   opsAPI,
   errorPassthroughAPI,
   dataManagementAPI,
