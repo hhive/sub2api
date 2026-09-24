@@ -1275,3 +1275,48 @@ func TestCalculateCost_ClaudeSonnetCatalogLadderIsDataDriven(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, cost.LongContextBillingApplied, "恰好 200000 不进高档（严格大于）")
 }
+
+// TestParsePricingDataSetsBothCacheCreationExplicitFlags 锁定 LiteLLMModelPricing 上
+// 两个 "cache creation 显式设定" 标志必须由同一条件同时置位，且源数据省略该字段时
+// 两者同为 false。
+//
+// 两个标志的消费方不同：hasCacheCreationInputTokenCost 只被本包的 optionalFloat 读取，
+// 用于在 ModelPricingCatalogEntry 上区分「源数据省略」与「显式 0」；
+// CacheCreationInputTokenCostExplicit 只被 billing_service.go 读取，用于判定
+// GPT-6 Sol/Luna 的 cache creation 是否回退到 fallback 价。
+//
+// 因此只保留其中一个不会被任何既有测试发现——编译通过、计费测试也通过——却会在
+// GPT-6 Sol/Luna 上把口径在「显式价（可能为 0）」与「回退价」之间静默切换。
+// 本用例是该不变量的唯一守卫，回退其一即变红。
+func TestParsePricingDataSetsBothCacheCreationExplicitFlags(t *testing.T) {
+	data, err := (&PricingService{}).parsePricingData([]byte(`{
+		"explicit-zero": {
+			"litellm_provider": "openai",
+			"mode": "chat",
+			"input_cost_per_token": 2e-06,
+			"output_cost_per_token": 1e-05,
+			"cache_creation_input_token_cost": 0
+		},
+		"field-omitted": {
+			"litellm_provider": "openai",
+			"mode": "chat",
+			"input_cost_per_token": 2e-06,
+			"output_cost_per_token": 1e-05
+		}
+	}`))
+	require.NoError(t, err)
+
+	explicitZero := data["explicit-zero"]
+	require.NotNil(t, explicitZero)
+	require.True(t, explicitZero.hasCacheCreationInputTokenCost,
+		"源数据提供 cache_creation_input_token_cost（即使值为 0）时必须置 presence 标志")
+	require.True(t, explicitZero.CacheCreationInputTokenCostExplicit,
+		"同一条件必须同时置 billing 侧 Explicit 标志，否则 GPT-6 Sol/Luna 的 cache creation 会静默回退")
+
+	fieldOmitted := data["field-omitted"]
+	require.NotNil(t, fieldOmitted)
+	require.False(t, fieldOmitted.hasCacheCreationInputTokenCost,
+		"源数据省略该字段时 presence 标志必须为 false")
+	require.False(t, fieldOmitted.CacheCreationInputTokenCostExplicit,
+		"源数据省略该字段时 Explicit 标志必须为 false")
+}
