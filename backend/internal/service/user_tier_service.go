@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -326,6 +325,10 @@ func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier
 
 // tierLadderFloor 被指派档位在阶梯中的位置 (sort_order, id)。
 // id 只用于 sort_order 相同时的稳定比较（ReorderTiers 写入互不相同的序号，此处是兜底）。
+//
+// TierID <= 0 是哨兵值，表示该档位的实时行已不存在、只能靠顺序快照定位
+// （user_tiers.id 从 1 开始，不会与哨兵冲突）。此时比较退回严格小于：
+// 同序号档位一律不计入覆盖——缺少实时配置时**宁可少给，不可多给**。
 type tierLadderFloor struct {
 	SortOrder int
 	TierID    int64
@@ -336,6 +339,10 @@ type tierLadderFloor struct {
 func tierCoveredByFloor(tier UserTier, floor *tierLadderFloor) bool {
 	if floor == nil {
 		return false
+	}
+	if floor.TierID <= 0 {
+		// 档位行已不存在：只用顺序快照，且不含同序号档位（fail closed）
+		return tier.SortOrder < floor.SortOrder
 	}
 	if tier.SortOrder != floor.SortOrder {
 		return tier.SortOrder < floor.SortOrder
@@ -368,17 +375,22 @@ func (s *UserTierService) resolveAssignment(ctx context.Context, userID int64) (
 		case err == nil && tier != nil:
 			return assignment, tier, &tierLadderFloor{SortOrder: tier.SortOrder, TierID: tier.ID}, nil
 		case errors.Is(err, ErrUserTierNotFound):
-			// 档位配置被直接改库删除（服务层另有删除守卫，正常路径不可达）：退回顺序快照，
-			// 并留下可见记录，不静默
-			logger.LegacyPrintf("service.user_tier",
-				"assigned tier %d of user %d is missing, fall back to sort_order snapshot=%d",
-				*assignment.TierID, userID, assignment.SortOrderSnapshot)
+			// 档位行已被直接改库删除：落到下面的快照兜底（同一处日志）
 		default:
 			// 读取真失败时不假装有 floor：宁可让本次请求失败，也不把未知状态当成已达成
 			return nil, nil, nil, err
 		}
 	}
-	return assignment, nil, &tierLadderFloor{SortOrder: assignment.SortOrderSnapshot, TierID: math.MaxInt64}, nil
+	// 快照兜底：档位实时行不存在。两条路径都到这里——
+	//   ① 指派行的 tier_id 被外键置空（migration 244 的 ON DELETE SET NULL：直接改库删档位行时
+	//      先发生的就是这一条，所以它才是这条兜底在生产上的主要入口）；
+	//   ② 能读到 tier_id 但该行查不到。
+	// 这里**必须留下 error 级日志**：覆盖范围会因缺少实时顺序而收窄（同序号档位不再计入），
+	// 若没有人看见，用户就会静默少领。LegacyPrintf 按文案推断级别，故显式加 [error] 前缀。
+	logger.LegacyPrintf("service.user_tier",
+		"[error] assigned tier is missing, fall back to sort_order snapshot: user_id=%d tier_id=%v tier_code=%s snapshot_order=%d",
+		userID, assignment.TierID, assignment.TierCode, assignment.SortOrderSnapshot)
+	return assignment, nil, &tierLadderFloor{SortOrder: assignment.SortOrderSnapshot, TierID: 0}, nil
 }
 
 // assignedTierState 构造「当前指派档位」的展示状态：优先复用已构建的档位状态
@@ -432,12 +444,16 @@ func (s *UserTierService) resolveUserByEmail(ctx context.Context, email string) 
 	if errors.Is(err, ErrUserNotFound) {
 		return nil, ErrUserTierAssignUserNotFound
 	}
-	if err != nil {
-		// 既有的 GetByEmail 在「规范化后匹配到多行」时返回错误（本 schema 的规范化邮箱写入门禁
-		// 下不应出现）。这里不猜、不静默挑一个：按邮箱写错人比写不进去严重得多，统一交人工核对；
-		// 真实读失败也落这一分支，两者靠下面的日志区分。
-		logger.LegacyPrintf("service.user_tier", "resolve user by email failed: err=%v", err)
+	// 多行匹配（本 schema 的规范化邮箱写入门禁下不应出现）：不猜、不静默挑一个，
+	// 按邮箱写错人比写不进去严重得多，统一交人工核对。
+	if errors.Is(err, ErrUserEmailAmbiguous) {
+		logger.LegacyPrintf("service.user_tier", "resolve user by email is ambiguous: err=%v", err)
 		return nil, ErrUserTierAssignEmailAmbiguous
+	}
+	// 其余错误（连接失败、查询报错、超时等）原样上抛：把这些伪装成「邮箱匹配到多个用户」
+	// 会把处置方向引向「排查重复用户」，而真实原因是基础设施故障。
+	if err != nil {
+		return nil, err
 	}
 	return nil, ErrUserTierAssignUserNotFound
 }

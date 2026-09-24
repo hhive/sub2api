@@ -29,7 +29,11 @@ import (
 )
 
 var (
-	ErrUserNotFound             = infraerrors.NotFound("USER_NOT_FOUND", "user not found")
+	ErrUserNotFound = infraerrors.NotFound("USER_NOT_FOUND", "user not found")
+	// ErrUserEmailAmbiguous 邮箱规范化（LOWER(TRIM(email))）后匹配到多行。
+	// 作为哨兵错误导出：调用方（如按邮箱写入的等级指派）需要把「多行匹配」与
+	// 「数据库读取失败」区分开——前者要人工核对，后者必须原样上抛，不能伪装成前者。
+	ErrUserEmailAmbiguous       = infraerrors.Conflict("USER_EMAIL_AMBIGUOUS", "normalized email matched multiple users")
 	ErrPasswordIncorrect        = infraerrors.BadRequest("PASSWORD_INCORRECT", "current password is incorrect")
 	ErrBalanceNegative          = infraerrors.BadRequest("BALANCE_NEGATIVE", "balance cannot be negative")
 	ErrInsufficientPerms        = infraerrors.Forbidden("INSUFFICIENT_PERMISSIONS", "insufficient permissions")

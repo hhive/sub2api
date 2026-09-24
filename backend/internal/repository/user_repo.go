@@ -222,7 +222,9 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*service
 		return nil, service.ErrUserNotFound
 	}
 	if len(matches) > 1 {
-		return nil, fmt.Errorf("normalized email lookup matched multiple users for %q", strings.TrimSpace(email))
+		// 用可识别的哨兵错误：调用方需要把「多行匹配（需人工核对）」与「读取失败（原样上抛）」
+		// 分开处置，裸 fmt.Errorf 会让两者无法区分。
+		return nil, fmt.Errorf("%w for %q", service.ErrUserEmailAmbiguous, strings.TrimSpace(email))
 	}
 	m := matches[0]
 

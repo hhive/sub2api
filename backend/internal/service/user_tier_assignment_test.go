@@ -144,13 +144,59 @@ func TestAssignUserTierByEmail_RejectsUnknownAndAmbiguousEmail(t *testing.T) {
 	_, _, err := svc.AssignUserTierByEmail(context.Background(), "nobody@example.com", "consume_500", "", 0)
 	require.ErrorIs(t, err, ErrUserTierAssignUserNotFound)
 
-	// 解析失败（既有多行匹配）：不得静默挑一个
+	// 多行匹配（哨兵错误）：不得静默挑一个
 	svcAmbiguous, _ := newTierServiceWithLookup(repo, balanceUser(25, "known@example.com"))
-	svcAmbiguous.userLookup = &tierUserLookupStub{err: fmt.Errorf("normalized email lookup matched multiple users for %q", "dup@example.com")}
+	svcAmbiguous.userLookup = &tierUserLookupStub{
+		err: fmt.Errorf("%w for %q", ErrUserEmailAmbiguous, "dup@example.com"),
+	}
 	_, _, err = svcAmbiguous.AssignUserTierByEmail(context.Background(), "dup@example.com", "consume_500", "", 0)
 	require.ErrorIs(t, err, ErrUserTierAssignEmailAmbiguous)
 
+	// 基础设施故障（非哨兵错误）必须原样上抛：伪装成「匹配到多个用户」会把排查方向带偏
+	svcBroken, _ := newTierServiceWithLookup(repo, balanceUser(25, "known@example.com"))
+	dbErr := fmt.Errorf("dial tcp 127.0.0.1:5432: connect: connection refused")
+	svcBroken.userLookup = &tierUserLookupStub{err: dbErr}
+	_, _, err = svcBroken.AssignUserTierByEmail(context.Background(), "known@example.com", "consume_500", "", 0)
+	require.ErrorIs(t, err, dbErr)
+	require.NotErrorIs(t, err, ErrUserTierAssignEmailAmbiguous)
+
 	require.Empty(t, repo.assignments)
+}
+
+// 指派行的实时档位行已不存在（外键 ON DELETE SET NULL 把 tier_id 置空，或该行查不到）时，
+// 只能用顺序快照定位，且**同序号档位不再计入覆盖**——缺少实时配置时宁可少给不可多给。
+func TestUserTierAssignment_MissingTierRowFallsBackToSnapshotOrderOnly(t *testing.T) {
+	repo := newTierRepoStub()
+	lower := repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
+	equal := repo.addTier(balanceTier(0, "consume_1000", 1, 1000, 100))
+	repo.addTier(balanceTier(0, "consume_1500", 2, 1500, 150))
+	// 指派指向一个已不存在的档位行（tier_id 为空、只剩快照顺序 1）
+	repo.assignments[28] = UserTierAssignment{
+		UserID:            28,
+		TierCode:          "consume_1000_deleted",
+		TierNameSnapshot:  "远航",
+		SortOrderSnapshot: 1,
+		Source:            UserTierAssignmentSourceAdmin,
+	}
+
+	svc, _ := newTierServiceWithLookup(repo, balanceUser(28, "orphan@example.com"))
+	view, err := svc.GetUserTierView(context.Background(), 28)
+	require.NoError(t, err)
+
+	require.True(t, view.Tiers[0].Achieved, "顺序早于快照的档位仍在覆盖范围内")
+	require.False(t, view.Tiers[1].Achieved, "同序号档位不计入（fail closed，不确定就不给）")
+	require.False(t, view.Tiers[2].Achieved, "顺序晚于快照的档位不覆盖")
+
+	// 领取路径与视图同源：被覆盖的低档可领，同序号档被拒
+	_, err = svc.ClaimTier(context.Background(), 28, lower.ID)
+	require.NoError(t, err)
+	_, err = svc.ClaimTier(context.Background(), 28, equal.ID)
+	require.ErrorIs(t, err, ErrUserTierNotAchieved)
+
+	// 兜底仍要给出可用的展示状态（档位名走快照）
+	require.NotNil(t, view.AssignedTier)
+	require.Equal(t, "远航", view.AssignedTier.Name)
+	require.False(t, view.AssignedTier.Enabled, "实时档位行不存在时不得声称可领取")
 }
 
 // 总开关关闭时拒绝写入：否则会留下「配置成功但用户端完全不可见」的静默状态。
