@@ -32,6 +32,13 @@ const (
 	UserTierAwardSourceFirstRecharge = "first_recharge"
 )
 
+// user_tier_assignments.source：区分管理端人工配置与历史累计一次性批量指派，
+// 使一次性批量可被精确回滚（DELETE ... WHERE source='historical_20260924'）。
+const (
+	UserTierAssignmentSourceAdmin      = "admin"
+	UserTierAssignmentSourceHistorical = "historical_20260924"
+)
+
 // 等级权益发放的固定档位 code：首充档由既有首充链路自动发放，等级页显示为已领取。
 // 该 code 是「首充档」这一语义的稳定标识，不是具体称呼或阈值。
 const UserTierCodeFirstRecharge = "first_recharge"
@@ -53,6 +60,22 @@ var (
 	ErrUserTierFirstRechargeCodeLocked = infraerrors.BadRequest("USER_TIER_FIRST_RECHARGE_CODE_LOCKED", "首充档必须使用固定标识 first_recharge，且不可更改")
 	// ErrUserTierFeatureDisabled 总开关关闭（服务端强制，不只靠前端隐藏入口）
 	ErrUserTierFeatureDisabled = infraerrors.Forbidden("USER_TIER_FEATURE_DISABLED", "用户等级体系当前已关闭")
+
+	// 手工指派（按邮箱）相关错误。刻意都带明确错误码而不是笼统 400/500，
+	// 让管理端能把每一种拒绝讲清楚（尤其是「多行匹配」这类不得降级为 500 的情形）。
+	ErrUserTierAssignUserNotFound   = infraerrors.NotFound("USER_TIER_ASSIGN_USER_NOT_FOUND", "该邮箱未匹配到用户")
+	ErrUserTierAssignEmailAmbiguous = infraerrors.Conflict("USER_TIER_ASSIGN_EMAIL_AMBIGUOUS",
+		"该邮箱匹配到多个用户，请先人工核对")
+	// ErrUserTierAssignmentTargetNotConsumption 只能指派消费档：首充档的权益由额度账本驱动、
+	// 本身不可手动领取，指派它只会得到一个「看得见却领不到」的死状态。
+	ErrUserTierAssignmentTargetNotConsumption = infraerrors.BadRequest("USER_TIER_ASSIGNMENT_TARGET_NOT_CONSUMPTION",
+		"只能把用户指派到消费档等级")
+	// ErrUserTierAssignmentTargetDisabled 停用档不可指派：停用档的权益不可领取，指派它同样是死状态。
+	ErrUserTierAssignmentTargetDisabled = infraerrors.BadRequest("USER_TIER_ASSIGNMENT_TARGET_DISABLED",
+		"该等级已停用，不能指派")
+	// ErrUserTierHasAssignments 已有用户指派的等级只能停用，不能物理删除（与 ErrUserTierHasAwards 同构）
+	ErrUserTierHasAssignments = infraerrors.Conflict("USER_TIER_HAS_ASSIGNMENTS",
+		"该等级已有用户指派，只能停用，不能删除")
 )
 
 // UserTierBalanceCreditParams 额度赠送权益参数（user_tier_benefits.params）
@@ -112,6 +135,25 @@ type UserTierAward struct {
 	AchievedAt        time.Time
 	Source            string
 	Detail            map[string]any
+}
+
+// UserTierAssignment 管理员把用户指派到指定等级的记录（一人一条，重指派即覆盖）。
+// 它**只抬高「是否达成」的下限**：被指派档位及其之前的档位都视为已达成，权益仍由用户手动领取；
+// 指派本身不写 award/effect/余额/倍率，因此不存在「等级已获得但权益未发」的中间态。
+type UserTierAssignment struct {
+	UserID   int64
+	TierID   *int64
+	TierCode string
+	// TierNameSnapshot 指派时刻的称呼快照（供档位被改名/删除后仍能显示）
+	TierNameSnapshot string
+	// SortOrderSnapshot 指派时刻的档位顺序；仅在 TierID 不可用时作为阶梯位置兜底
+	SortOrderSnapshot int
+	Source            string
+	Note              string
+	// AssignedBy 指派的管理员用户 ID；脚本批量写入时为 nil
+	AssignedBy *int64
+	AssignedAt time.Time
+	UpdatedAt  time.Time
 }
 
 // UserTierEffect 权益发放状态（幂等与重试锚点，实发金额/倍率留快照）
@@ -205,6 +247,8 @@ type UserTierView struct {
 	RemainingToNext *float64
 	Tiers           []UserTierClaimState
 	ClaimableCount  int
+	// AssignedTier 管理端手工指派的目标档位（用户端接口不外露，仅管理端只读视图使用）
+	AssignedTier *UserTierClaimState
 }
 
 // UserTierClaimResult 领取回执（重复领取返回既有状态而不是错误）
@@ -284,4 +328,21 @@ type UserTierRepository interface {
 	// ApplyTierRewardBalance 只增加余额，不累加 users.total_recharged
 	//（UpdateBalance 会累加 total_recharged，与「奖励不计入充值额」的口径冲突）
 	ApplyTierRewardBalance(ctx context.Context, userID int64, amount float64) error
+
+	// GetAssignment 读取用户的当前指派（无指派返回 nil, nil）
+	GetAssignment(ctx context.Context, userID int64) (*UserTierAssignment, error)
+	// UpsertAssignment 幂等写入指派：同一用户只保留一条（user_id 主键），重指派覆盖全部字段，
+	// 返回写入后的行。
+	UpsertAssignment(ctx context.Context, assignment *UserTierAssignment) (*UserTierAssignment, error)
+	// DeleteAssignment 取消指派，返回是否确实删除了既有行（幂等：无指派时为 false, nil）
+	DeleteAssignment(ctx context.Context, userID int64) (bool, error)
+	// CountAssignmentsByTierID 被指派到该档位的用户数（> 0 时禁止物理删除该档位）
+	CountAssignmentsByTierID(ctx context.Context, tierID int64) (int64, error)
+}
+
+// UserTierUserLookup 按邮箱解析用户的能力（等级服务只用到这一个方法）。
+// 刻意复用既有 userRepository.GetByEmail 的实现：它的邮箱匹配口径（LOWER(TRIM(email))、
+// 命中多行报错）与登录/注册链路同源，另写一套会让两处口径分叉。
+type UserTierUserLookup interface {
+	GetByEmail(ctx context.Context, email string) (*User, error)
 }

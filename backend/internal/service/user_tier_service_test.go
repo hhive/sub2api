@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ type tierRepoStub struct {
 	firstRecharge map[int64]*UserTierFirstRechargeCredit
 	balances      map[int64]float64
 	groupNames    map[int64]string
+	assignments   map[int64]UserTierAssignment
 	applyCalls    int
 	failType      string
 }
@@ -42,6 +44,7 @@ func newTierRepoStub() *tierRepoStub {
 		firstRecharge: map[int64]*UserTierFirstRechargeCredit{},
 		balances:      map[int64]float64{},
 		groupNames:    map[int64]string{2: "企业专线"},
+		assignments:   map[int64]UserTierAssignment{},
 	}
 }
 
@@ -267,6 +270,57 @@ func (s *tierRepoStub) ApplyTierRewardBalance(_ context.Context, userID int64, a
 	return nil
 }
 
+func (s *tierRepoStub) GetAssignment(_ context.Context, userID int64) (*UserTierAssignment, error) {
+	assignment, ok := s.assignments[userID]
+	if !ok {
+		return nil, nil
+	}
+	return &assignment, nil
+}
+
+func (s *tierRepoStub) UpsertAssignment(_ context.Context, assignment *UserTierAssignment) (*UserTierAssignment, error) {
+	stored := *assignment
+	stored.AssignedAt = time.Now()
+	stored.UpdatedAt = stored.AssignedAt
+	s.assignments[assignment.UserID] = stored
+	return &stored, nil
+}
+
+func (s *tierRepoStub) DeleteAssignment(_ context.Context, userID int64) (bool, error) {
+	if _, ok := s.assignments[userID]; !ok {
+		return false, nil
+	}
+	delete(s.assignments, userID)
+	return true, nil
+}
+
+func (s *tierRepoStub) CountAssignmentsByTierID(_ context.Context, tierID int64) (int64, error) {
+	var count int64
+	for _, assignment := range s.assignments {
+		if assignment.TierID != nil && *assignment.TierID == tierID {
+			count++
+		}
+	}
+	return count, nil
+}
+
+// tierUserLookupStub 按邮箱解析用户的桩：只覆写 GetByEmail。
+type tierUserLookupStub struct {
+	users map[string]User
+	err   error
+}
+
+func (s *tierUserLookupStub) GetByEmail(_ context.Context, email string) (*User, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	user, ok := s.users[strings.ToLower(strings.TrimSpace(email))]
+	if !ok {
+		return nil, ErrUserNotFound
+	}
+	return &user, nil
+}
+
 // tierCreditRepoStub 只覆写 CreateCredit（等级奖励按 effect 唯一约束做幂等，不走 CreateCreditIfAbsent）
 type tierCreditRepoStub struct {
 	BalanceCreditRepository
@@ -286,7 +340,7 @@ func newTierServiceForTest(repo *tierRepoStub, credit *tierCreditRepoStub) *User
 	if credit == nil {
 		credit = &tierCreditRepoStub{}
 	}
-	return NewUserTierService(repo, credit, nil, nil, nil, nil)
+	return NewUserTierService(repo, credit, nil, nil, nil, nil, nil)
 }
 
 func balanceTier(id int64, code string, order int, threshold float64, amount float64) UserTier {
@@ -683,12 +737,13 @@ func TestCreateTier_RequiresValidCodeAndThreshold(t *testing.T) {
 	repo := newTierRepoStub()
 	svc := newTierServiceForTest(repo, nil)
 
-	badCode := "Consume 500"
+	// 标识不再限制字符集（2026-09-24 放开，见 TestValidateTierCode_*），空标识仍必须被拒
+	emptyCode := "   "
 	name := "常客"
 	trigger := UserTierTriggerConsumption
 	threshold := 500.0
 	_, err := svc.CreateTier(context.Background(), UserTierInput{
-		Code: &badCode, Name: &name, TriggerType: &trigger, ThresholdUSD: &threshold,
+		Code: &emptyCode, Name: &name, TriggerType: &trigger, ThresholdUSD: &threshold,
 	})
 	require.ErrorIs(t, err, ErrUserTierInvalidConfig)
 
@@ -710,21 +765,22 @@ func TestCreateTier_RequiresValidCodeAndThreshold(t *testing.T) {
 	require.Equal(t, 0, created.SortOrder)
 }
 
-func TestUpdateTier_ValidatesCodeFormatOnUpdatePath(t *testing.T) {
+func TestUpdateTier_ValidatesCodeOnUpdatePath(t *testing.T) {
 	repo := newTierRepoStub()
 	tier := repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
 	svc := newTierServiceForTest(repo, nil)
 
-	// 更新路径同样必须校验 code 格式：此前只在新增时校验（requireCode 开关），改名可绕过
-	for _, bad := range []string{"Consume 500", "Consume500", "consume-500", ""} {
+	// 更新路径同样必须校验 code（此前只在新增时校验，改名可绕过）。
+	// 校验规则与新增一致：空标识与超长标识被拒，字符集不再限制。
+	for _, bad := range []string{"", "   ", strings.Repeat("c", userTierCodeMaxRunes+1)} {
 		code := bad
 		_, err := svc.UpdateTier(context.Background(), tier.ID, UserTierInput{Code: &code})
 		require.ErrorIs(t, err, ErrUserTierInvalidConfig, "code=%q 必须被拒", bad)
 	}
 
-	// 合法改名在无授予记录时放行，且改后的 code 必须传给仓储
+	// 任意字符的改名在无授予记录时放行，且改后的 code 必须传给仓储
 	// （仓储 UPDATE 漏写 code 是本轮修复的缺陷，已由 repository 层测试守住）
-	good := "consume_500_v2"
+	good := "Consume 500 / 新"
 	updated, err := svc.UpdateTier(context.Background(), tier.ID, UserTierInput{Code: &good})
 	require.NoError(t, err)
 	require.Equal(t, good, updated.Code)
@@ -935,7 +991,7 @@ func newTierServiceWithSwitch(repo *tierRepoStub, values map[string]string) (*Us
 	store := &userTierSettingRepoStub{values: values}
 	// 同包测试，直接构造（生产装配走 wire）
 	settings := &SettingService{settingRepo: store}
-	return NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, settings), store
+	return NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, settings, nil), store
 }
 
 func TestUserTierSwitch_DefaultsToEnabled(t *testing.T) {
@@ -1015,7 +1071,7 @@ func TestUserTierSwitch_ReadErrorFailsOpen(t *testing.T) {
 	repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
 	repo.consumed[7] = 600
 	store := &userTierSettingRepoStub{getErr: fmt.Errorf("db down")}
-	svc := NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, &SettingService{settingRepo: store})
+	svc := NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, &SettingService{settingRepo: store}, nil)
 
 	require.True(t, svc.IsFeatureEnabled(context.Background()), "读抖动不得把入口打掉")
 	view, err := svc.GetUserTierView(context.Background(), 7)

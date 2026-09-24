@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -96,7 +97,7 @@ func newService(t *testing.T, db *sql.DB, client *dbent.Client) *service.UserTie
 	t.Helper()
 	repo := repository.NewUserTierRepository(client, db)
 	creditRepo := repository.NewBalanceCreditRepository(client, db)
-	return service.NewUserTierService(repo, creditRepo, client, nil, nil, nil)
+	return service.NewUserTierService(repo, creditRepo, client, nil, nil, nil, nil)
 }
 
 func seedTiers(t *testing.T, svc *service.UserTierService, groupID int64) {
@@ -460,14 +461,23 @@ func TestVerify_UpdateTierPersistsCodeInDatabase(t *testing.T) {
 	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, low.ID).Scan(&stored))
 	require.Equal(t, renamed, stored, "改名必须真的落到库里")
 
-	// 非法 code 在更新路径同样被拒（此前只在新增时校验）
-	for _, bad := range []string{"Consume 500", "", "consume-500"} {
+	// 更新路径同样校验 code（此前只在新增时校验）。字符集已放开，故只断言「空」与「超长」被拒；
+	// 任意字符的改名在下面单独验证确实能落库。
+	for _, bad := range []string{"   ", strings.Repeat("c", 65)} {
 		badCode := bad
 		_, err = svc.UpdateTier(ctx, low.ID, service.UserTierInput{Code: &badCode})
 		require.ErrorIs(t, err, service.ErrUserTierInvalidConfig, "code=%q 必须被拒", bad)
 	}
 	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, low.ID).Scan(&stored))
 	require.Equal(t, renamed, stored, "被拒的改名不得写库")
+
+	// 放开的字符集在真库上同样成立（VARCHAR(64) + 唯一索引）
+	arbitrary := "任意 标识/2026"
+	updated, err = svc.UpdateTier(ctx, low.ID, service.UserTierInput{Code: &arbitrary})
+	require.NoError(t, err)
+	require.Equal(t, arbitrary, updated.Code)
+	require.NoError(t, db.QueryRow(`SELECT code FROM user_tiers WHERE id = $1`, low.ID).Scan(&stored))
+	require.Equal(t, arbitrary, stored)
 }
 
 // TestVerify_ConsumedAmountExcludesExpiredCredit 真库守住消费口径：

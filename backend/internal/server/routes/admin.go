@@ -737,6 +737,10 @@ func registerUserTierRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		tiers.GET("/switch", h.Admin.UserTier.GetFeatureSwitch)
 		tiers.PUT("/switch", h.Admin.UserTier.UpdateFeatureSwitch)
 		tiers.PUT("/reorder", h.Admin.UserTier.ReorderTiers)
+		// 手工指派（按邮箱）：静态段与 /:id 同级，gin 优先匹配静态段
+		tiers.GET("/assignments", h.Admin.UserTier.GetUserTierAssignment)
+		tiers.PUT("/assignments", h.Admin.UserTier.AssignUserTier)
+		tiers.DELETE("/assignments", h.Admin.UserTier.UnassignUserTier)
 		tiers.PUT("/:id", h.Admin.UserTier.UpdateTier)
 		tiers.DELETE("/:id", h.Admin.UserTier.DeleteTier)
 	}

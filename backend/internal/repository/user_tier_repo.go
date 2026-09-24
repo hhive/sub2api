@@ -402,6 +402,15 @@ func (r *userTierRepository) DeleteTier(ctx context.Context, id int64) error {
 	if count > 0 {
 		return service.ErrUserTierHasAwards
 	}
+	// 指派同样以档位为锚：删掉配置会让已指派用户的阶梯位置失去依据（tier_id 被置空后
+	// 只能退回顺序快照），因此有指派的档位也只能停用。
+	assigned, err := r.CountAssignmentsByTierID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if assigned > 0 {
+		return service.ErrUserTierHasAssignments
+	}
 	_, err = exec.ExecContext(ctx, `DELETE FROM user_tiers WHERE id = $1`, id)
 	return err
 }
@@ -813,6 +822,135 @@ func (r *userTierRepository) ApplyTierRewardBalance(ctx context.Context, userID 
 		return service.ErrUserNotFound
 	}
 	return nil
+}
+
+// ---------- 等级手工指派（user_tier_assignments） ----------
+
+const userTierAssignmentColumns = `user_id, tier_id, tier_code, tier_name_snapshot, sort_order_snapshot,
+	source, note, assigned_by, assigned_at, updated_at`
+
+func scanUserTierAssignment(scan func(dest ...any) error) (*service.UserTierAssignment, error) {
+	var (
+		assignment service.UserTierAssignment
+		tierID     sql.NullInt64
+		assignedBy sql.NullInt64
+	)
+	if err := scan(&assignment.UserID, &tierID, &assignment.TierCode, &assignment.TierNameSnapshot,
+		&assignment.SortOrderSnapshot, &assignment.Source, &assignment.Note, &assignedBy,
+		&assignment.AssignedAt, &assignment.UpdatedAt); err != nil {
+		return nil, err
+	}
+	if tierID.Valid {
+		v := tierID.Int64
+		assignment.TierID = &v
+	}
+	if assignedBy.Valid {
+		v := assignedBy.Int64
+		assignment.AssignedBy = &v
+	}
+	return &assignment, nil
+}
+
+// GetAssignment 读取用户当前指派；无指派返回 (nil, nil)——「没有指派」是正常状态而不是错误。
+func (r *userTierRepository) GetAssignment(ctx context.Context, userID int64) (*service.UserTierAssignment, error) {
+	if userID <= 0 {
+		return nil, nil
+	}
+	exec, err := r.execer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	assignment, err := scanUserTierAssignment(func(dest ...any) error {
+		return scanSingleRow(ctx, exec, `
+			SELECT `+userTierAssignmentColumns+`
+			FROM user_tier_assignments
+			WHERE user_id = $1
+		`, []any{userID}, dest...)
+	})
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return assignment, nil
+}
+
+// UpsertAssignment 幂等写入指派：user_id 是主键即幂等锚点，重指派覆盖全部字段
+// （含 source/note 与新的阶梯位置），assigned_at 更新时间戳但 created_at 保留首次指派时刻。
+func (r *userTierRepository) UpsertAssignment(ctx context.Context, assignment *service.UserTierAssignment) (*service.UserTierAssignment, error) {
+	if assignment == nil || assignment.UserID <= 0 {
+		return nil, service.ErrUserNotFound
+	}
+	exec, err := r.execer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	source := assignment.Source
+	if source == "" {
+		source = service.UserTierAssignmentSourceAdmin
+	}
+	stored, err := scanUserTierAssignment(func(dest ...any) error {
+		return scanSingleRow(ctx, exec, `
+			INSERT INTO user_tier_assignments
+				(user_id, tier_id, tier_code, tier_name_snapshot, sort_order_snapshot, source, note,
+				 assigned_by, assigned_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), NOW())
+			ON CONFLICT (user_id) DO UPDATE SET
+				tier_id             = EXCLUDED.tier_id,
+				tier_code           = EXCLUDED.tier_code,
+				tier_name_snapshot  = EXCLUDED.tier_name_snapshot,
+				sort_order_snapshot = EXCLUDED.sort_order_snapshot,
+				source              = EXCLUDED.source,
+				note                = EXCLUDED.note,
+				assigned_by         = EXCLUDED.assigned_by,
+				assigned_at         = NOW(),
+				updated_at          = NOW()
+			RETURNING `+userTierAssignmentColumns+`
+		`, []any{assignment.UserID, assignment.TierID, assignment.TierCode, assignment.TierNameSnapshot,
+			assignment.SortOrderSnapshot, source, assignment.Note, assignment.AssignedBy},
+			dest...)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return stored, nil
+}
+
+// DeleteAssignment 取消指派（幂等：无既有行时返回 false, nil）。
+// 刻意不回收任何已发权益：取消指派只影响「还没领的档位」是否可领。
+func (r *userTierRepository) DeleteAssignment(ctx context.Context, userID int64) (bool, error) {
+	if userID <= 0 {
+		return false, nil
+	}
+	exec, err := r.execer(ctx)
+	if err != nil {
+		return false, err
+	}
+	result, err := exec.ExecContext(ctx, `DELETE FROM user_tier_assignments WHERE user_id = $1`, userID)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
+}
+
+func (r *userTierRepository) CountAssignmentsByTierID(ctx context.Context, tierID int64) (int64, error) {
+	if tierID <= 0 {
+		return 0, nil
+	}
+	exec, err := r.execer(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var count int64
+	if err := scanSingleRow(ctx, exec, `SELECT count(*) FROM user_tier_assignments WHERE tier_id = $1`, []any{tierID}, &count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func balanceAmountOf(b service.UserTierBenefit) float64 {

@@ -1,9 +1,11 @@
 package admin
 
 import (
+	"strings"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -107,13 +109,55 @@ type userTierAwardResponse struct {
 	Effects           []userTierEffectResponse `json:"effects"`
 }
 
-// adminUserTierResponse 只读查看某用户的等级与领取记录（供运营核对，不提供任何写入口）
+// adminUserTierResponse 只读查看某用户的等级与领取记录（供运营核对；写入口是 /admin/tiers/assignments）
 type adminUserTierResponse struct {
 	UserID         int64                    `json:"user_id"`
 	ConsumedAmount float64                  `json:"consumed_amount"`
+	Assignment     *tierAssignmentResponse  `json:"assignment"`
 	Tiers          []adminUserTierTierState `json:"tiers"`
 	Awards         []userTierAwardResponse  `json:"awards"`
 	Effects        []userTierEffectResponse `json:"effects"`
+}
+
+// tierAssignmentRequest 按邮箱指派等级。
+// email 只做「非空」校验，不用 binding 的 email 规则：邮箱规范化的口径由服务层复用既有
+// userRepository（LOWER(TRIM(email))），多加一道格式规则会把能命中的邮箱挡在外面。
+type tierAssignmentRequest struct {
+	Email    string `json:"email" binding:"required"`
+	TierCode string `json:"tier_code" binding:"required"`
+	Note     string `json:"note"`
+}
+
+type tierAssignmentResponse struct {
+	UserID            int64  `json:"user_id"`
+	TierID            *int64 `json:"tier_id"`
+	TierCode          string `json:"tier_code"`
+	TierNameSnapshot  string `json:"tier_name_snapshot"`
+	SortOrderSnapshot int    `json:"sort_order_snapshot"`
+	Source            string `json:"source"`
+	Note              string `json:"note"`
+	AssignedBy        *int64 `json:"assigned_by"`
+	AssignedAt        string `json:"assigned_at"`
+	UpdatedAt         string `json:"updated_at"`
+}
+
+type adminUserIdentityResponse struct {
+	ID       int64  `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
+// tierAssignmentEnvelope 指派查询/写入的统一回执：一次返回「用户是谁」与「当前指派」，
+// 避免前端拿到邮箱后还要再查一次用户。
+type tierAssignmentEnvelope struct {
+	User       adminUserIdentityResponse `json:"user"`
+	Assignment *tierAssignmentResponse   `json:"assignment"`
+}
+
+type tierUnassignmentEnvelope struct {
+	User       adminUserIdentityResponse `json:"user"`
+	Assignment *tierAssignmentResponse   `json:"assignment"`
+	Removed    bool                      `json:"removed"`
 }
 
 type adminUserTierTierState struct {
@@ -203,6 +247,40 @@ func effectToResponse(effect service.UserTierEffect) userTierEffectResponse {
 
 type tierSwitchRequest struct {
 	Enabled *bool `json:"enabled" binding:"required"`
+}
+
+func assignmentToResponse(assignment *service.UserTierAssignment) *tierAssignmentResponse {
+	if assignment == nil {
+		return nil
+	}
+	return &tierAssignmentResponse{
+		UserID:            assignment.UserID,
+		TierID:            assignment.TierID,
+		TierCode:          assignment.TierCode,
+		TierNameSnapshot:  assignment.TierNameSnapshot,
+		SortOrderSnapshot: assignment.SortOrderSnapshot,
+		Source:            assignment.Source,
+		Note:              assignment.Note,
+		AssignedBy:        assignment.AssignedBy,
+		AssignedAt:        assignment.AssignedAt.Format(time.RFC3339),
+		UpdatedAt:         assignment.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func userIdentityToResponse(user *service.User) adminUserIdentityResponse {
+	if user == nil {
+		return adminUserIdentityResponse{}
+	}
+	return adminUserIdentityResponse{ID: user.ID, Email: user.Email, Username: user.Username}
+}
+
+// currentActorUserID 取当前管理员 ID 写入 assigned_by（事后核对「谁指派的」）。
+// 取不到时返回 0（不写入），不因为拿不到 actor 而阻塞业务操作。
+func currentActorUserID(c *gin.Context) int64 {
+	if subject, ok := middleware.GetAuthSubjectFromContext(c); ok && subject.UserID > 0 {
+		return subject.UserID
+	}
+	return 0
 }
 
 // ---------- handlers ----------
@@ -336,7 +414,7 @@ func (h *UserTierHandler) GetUserTier(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, awards, effects, err := h.tierService.GetUserTierAdminView(c.Request.Context(), userID)
+	view, assignment, awards, effects, err := h.tierService.GetUserTierAdminView(c.Request.Context(), userID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -345,6 +423,7 @@ func (h *UserTierHandler) GetUserTier(c *gin.Context) {
 	out := adminUserTierResponse{
 		UserID:         userID,
 		ConsumedAmount: view.ConsumedAmount,
+		Assignment:     assignmentToResponse(assignment),
 		Tiers:          make([]adminUserTierTierState, 0, len(view.Tiers)),
 		Awards:         make([]userTierAwardResponse, 0, len(awards)),
 		Effects:        make([]userTierEffectResponse, 0, len(effects)),
@@ -377,4 +456,63 @@ func (h *UserTierHandler) GetUserTier(c *gin.Context) {
 		out.Awards = append(out.Awards, item)
 	}
 	response.Success(c, out)
+}
+
+// GetUserTierAssignment GET /admin/tiers/assignments?email=<邮箱>
+// 按邮箱解析用户并返回其当前指派（无指派时 assignment 为 null）。
+func (h *UserTierHandler) GetUserTierAssignment(c *gin.Context) {
+	email := strings.TrimSpace(c.Query("email"))
+	if email == "" {
+		response.BadRequest(c, "Invalid request: email is required")
+		return
+	}
+	user, assignment, err := h.tierService.GetUserAssignmentByEmail(c.Request.Context(), email)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, tierAssignmentEnvelope{
+		User:       userIdentityToResponse(user),
+		Assignment: assignmentToResponse(assignment),
+	})
+}
+
+// AssignUserTier PUT /admin/tiers/assignments
+// 把指定邮箱的用户指派到指定消费档（重指派即覆盖）。只写指派：权益仍需用户在「我的等级」页手动领取。
+func (h *UserTierHandler) AssignUserTier(c *gin.Context) {
+	var req tierAssignmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	user, assignment, err := h.tierService.AssignUserTierByEmail(
+		c.Request.Context(), req.Email, req.TierCode, req.Note, currentActorUserID(c))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, tierAssignmentEnvelope{
+		User:       userIdentityToResponse(user),
+		Assignment: assignmentToResponse(assignment),
+	})
+}
+
+// UnassignUserTier DELETE /admin/tiers/assignments?email=<邮箱>
+// 取消指派（幂等）。取消只影响尚未领取的档位是否可领取，已发权益不回收。
+func (h *UserTierHandler) UnassignUserTier(c *gin.Context) {
+	email := strings.TrimSpace(c.Query("email"))
+	if email == "" {
+		response.BadRequest(c, "Invalid request: email is required")
+		return
+	}
+	user, removed, err := h.tierService.UnassignUserTierByEmail(c.Request.Context(), email)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, tierUnassignmentEnvelope{
+		User:       userIdentityToResponse(user),
+		Assignment: nil,
+		Removed:    removed,
+	})
 }

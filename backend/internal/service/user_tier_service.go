@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"regexp"
+	"math"
 	"strings"
 	"time"
 
@@ -11,8 +12,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
 
-// tierCodePattern 等级标识：稳定、可读、可安全用作幂等键
-var tierCodePattern = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)
+// userTierCodeMaxRunes 等级标识的长度上限，与数据库列 VARCHAR(64) 一致
+// （Postgres 的 VARCHAR(n) 按字符计数，故此处也按 rune 计）。
+const userTierCodeMaxRunes = 64
 
 // UserTierService 用户等级与权益：配置读写、用户端视图、手动领取与首充单源读取。
 //
@@ -27,6 +29,8 @@ type UserTierService struct {
 	// settingService 提供总开关（settings.user_tier_enabled）；nil 时视为开启，
 	// 既保证未装配场景行为不变，也让单元测试无需构造设置服务。
 	settingService *SettingService
+	// userLookup 按邮箱解析用户（管理端手工指派的入口）；nil 时指派入口返回明确错误。
+	userLookup UserTierUserLookup
 }
 
 // NewUserTierService 创建用户等级服务
@@ -37,6 +41,7 @@ func NewUserTierService(
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
 	billingCacheService *BillingCacheService,
 	settingService *SettingService,
+	userLookup UserTierUserLookup,
 ) *UserTierService {
 	return &UserTierService{
 		repo:                 repo,
@@ -45,6 +50,7 @@ func NewUserTierService(
 		authCacheInvalidator: authCacheInvalidator,
 		billingCacheService:  billingCacheService,
 		settingService:       settingService,
+		userLookup:           userLookup,
 	}
 }
 
@@ -221,6 +227,18 @@ func benefitsFromInput(inputs []UserTierBenefitInput) []UserTierBenefit {
 	return out
 }
 
+// validateUserTierCode 等级标识只保留两条硬约束：去空白后非空、长度不超过列宽。
+//
+// 刻意**不再限制字符集**（2026-09-24 用户要求「code 去掉限制，可以设置为任意值」，
+// 原实现为 ^[a-z0-9_]{1,64}$）：标识不参与任何 URL 路由或文件路径，Go 侧查询全部参数化
+// （如 GetTierByCode 的 `WHERE t.code = $1`），唯一索引保证唯一性，因此放开字符集不带来注入面。
+func validateUserTierCode(code string) error {
+	if code == "" || len([]rune(code)) > userTierCodeMaxRunes {
+		return ErrUserTierInvalidConfig
+	}
+	return nil
+}
+
 // validateTierConfig 权益参数按类型显式校验（jsonb 不能靠数据库约束兜底）。
 // 新增与更新走同一套校验：code 是幂等键（award 唯一约束与首充查找都用它），
 // 更新路径同样不能写入非法 code（此前只在新增时校验，改名可绕过）。
@@ -228,8 +246,10 @@ func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier
 	if tier == nil {
 		return ErrUserTierInvalidConfig
 	}
-	if !tierCodePattern.MatchString(tier.Code) {
-		return ErrUserTierInvalidConfig
+	// code 与 name 一样就地去掉首尾空白后再校验，避免「合法但带空白」的标识落库
+	tier.Code = strings.TrimSpace(tier.Code)
+	if err := validateUserTierCode(tier.Code); err != nil {
+		return err
 	}
 	// 首充档是被写死查找的档位（见 UserTierCodeFirstRecharge）：语义上全系统只有一个，
 	// 且必须用固定 code。两种情况都在此拦下——
@@ -302,6 +322,205 @@ func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier
 	return nil
 }
 
+// ---------- 管理端手工指派（按邮箱） ----------
+
+// tierLadderFloor 被指派档位在阶梯中的位置 (sort_order, id)。
+// id 只用于 sort_order 相同时的稳定比较（ReorderTiers 写入互不相同的序号，此处是兜底）。
+type tierLadderFloor struct {
+	SortOrder int
+	TierID    int64
+}
+
+// tierCoveredByFloor 该档位是否落在指派的覆盖范围内（阶梯位置不晚于被指派档位）。
+// 「被指派档位及其之前的档位都视为已达成」这条语义只在这里实现一次。
+func tierCoveredByFloor(tier UserTier, floor *tierLadderFloor) bool {
+	if floor == nil {
+		return false
+	}
+	if tier.SortOrder != floor.SortOrder {
+		return tier.SortOrder < floor.SortOrder
+	}
+	return tier.ID <= floor.TierID
+}
+
+// consumptionTierAchieved 消费档是否达成：真实累计消费达标，或被管理员指派覆盖。
+// 用户端视图与领取校验共用这一个实现——两处判定分叉就会重现「页面显示可领、领取被拒」这类缺陷。
+func consumptionTierAchieved(tier UserTier, consumed float64, floor *tierLadderFloor) bool {
+	if tierCoveredByFloor(tier, floor) {
+		return true
+	}
+	return tier.ThresholdUSD != nil && consumed >= *tier.ThresholdUSD
+}
+
+// resolveAssignment 读取用户当前指派并解析其阶梯位置。
+// liveTier 为 nil 表示档位配置已不存在（只剩快照）；三者均为 nil 表示该用户没有指派。
+func (s *UserTierService) resolveAssignment(ctx context.Context, userID int64) (*UserTierAssignment, *UserTier, *tierLadderFloor, error) {
+	if s == nil || s.repo == nil || userID <= 0 {
+		return nil, nil, nil, nil
+	}
+	assignment, err := s.repo.GetAssignment(ctx, userID)
+	if err != nil || assignment == nil {
+		return nil, nil, nil, err
+	}
+	if assignment.TierID != nil && *assignment.TierID > 0 {
+		tier, err := s.repo.GetTierByID(ctx, *assignment.TierID)
+		switch {
+		case err == nil && tier != nil:
+			return assignment, tier, &tierLadderFloor{SortOrder: tier.SortOrder, TierID: tier.ID}, nil
+		case errors.Is(err, ErrUserTierNotFound):
+			// 档位配置被直接改库删除（服务层另有删除守卫，正常路径不可达）：退回顺序快照，
+			// 并留下可见记录，不静默
+			logger.LegacyPrintf("service.user_tier",
+				"assigned tier %d of user %d is missing, fall back to sort_order snapshot=%d",
+				*assignment.TierID, userID, assignment.SortOrderSnapshot)
+		default:
+			// 读取真失败时不假装有 floor：宁可让本次请求失败，也不把未知状态当成已达成
+			return nil, nil, nil, err
+		}
+	}
+	return assignment, nil, &tierLadderFloor{SortOrder: assignment.SortOrderSnapshot, TierID: math.MaxInt64}, nil
+}
+
+// assignedTierState 构造「当前指派档位」的展示状态：优先复用已构建的档位状态
+// （这样呈现的 Achieved/Claimable 就是真实判定），档位被停用或配置已删除时退回快照构造，
+// 此时 Enabled=false 表示该档位当前不可领取。
+func assignedTierState(states []UserTierClaimState, assignment *UserTierAssignment, liveTier *UserTier) *UserTierClaimState {
+	if assignment == nil {
+		return nil
+	}
+	for i := range states {
+		if liveTier != nil && states[i].TierID == liveTier.ID {
+			return &states[i]
+		}
+		if states[i].Code == assignment.TierCode {
+			return &states[i]
+		}
+	}
+	state := UserTierClaimState{
+		Code:        assignment.TierCode,
+		Name:        assignment.TierNameSnapshot,
+		SortOrder:   assignment.SortOrderSnapshot,
+		TriggerType: UserTierTriggerConsumption,
+		Benefits:    []UserTierBenefitState{},
+	}
+	if liveTier != nil {
+		state.TierID = liveTier.ID
+		state.Name = liveTier.Name
+		state.Description = liveTier.Description
+		state.SortOrder = liveTier.SortOrder
+		state.TriggerType = liveTier.TriggerType
+		state.ThresholdUSD = liveTier.ThresholdUSD
+		state.Enabled = liveTier.Enabled
+	}
+	return &state
+}
+
+// resolveUserByEmail 按邮箱解析用户：复用既有 userRepository.GetByEmail 的规范化口径
+// （LOWER(TRIM(email))），不另写一套匹配规则，避免与登录/注册链路的口径分叉。
+func (s *UserTierService) resolveUserByEmail(ctx context.Context, email string) (*User, error) {
+	if s == nil || s.userLookup == nil {
+		return nil, fmt.Errorf("user tier service user lookup is not configured")
+	}
+	trimmed := strings.TrimSpace(email)
+	if trimmed == "" {
+		return nil, ErrUserTierAssignUserNotFound
+	}
+	user, err := s.userLookup.GetByEmail(ctx, trimmed)
+	if err == nil && user != nil {
+		return user, nil
+	}
+	if errors.Is(err, ErrUserNotFound) {
+		return nil, ErrUserTierAssignUserNotFound
+	}
+	if err != nil {
+		// 既有的 GetByEmail 在「规范化后匹配到多行」时返回错误（本 schema 的规范化邮箱写入门禁
+		// 下不应出现）。这里不猜、不静默挑一个：按邮箱写错人比写不进去严重得多，统一交人工核对；
+		// 真实读失败也落这一分支，两者靠下面的日志区分。
+		logger.LegacyPrintf("service.user_tier", "resolve user by email failed: err=%v", err)
+		return nil, ErrUserTierAssignEmailAmbiguous
+	}
+	return nil, ErrUserTierAssignUserNotFound
+}
+
+// GetUserAssignmentByEmail 管理端按邮箱查询用户与其当前指派（无指派时 assignment 为 nil）。
+func (s *UserTierService) GetUserAssignmentByEmail(ctx context.Context, email string) (*User, *UserTierAssignment, error) {
+	if s == nil || s.repo == nil {
+		return nil, nil, fmt.Errorf("user tier service is not configured")
+	}
+	user, err := s.resolveUserByEmail(ctx, email)
+	if err != nil {
+		return nil, nil, err
+	}
+	assignment, err := s.repo.GetAssignment(ctx, user.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return user, assignment, nil
+}
+
+// AssignUserTierByEmail 按邮箱把用户指派到指定消费档（重指派即覆盖）。
+// 只写指派表：不发放任何权益，用户仍需在「我的等级」页手动领取。
+func (s *UserTierService) AssignUserTierByEmail(ctx context.Context, email, tierCode, note string, actorUserID int64) (*User, *UserTierAssignment, error) {
+	if s == nil || s.repo == nil {
+		return nil, nil, fmt.Errorf("user tier service is not configured")
+	}
+	// 总开关关闭时拒绝写入：否则会留下「配置成功但用户端完全不可见」的静默状态
+	if !s.IsFeatureEnabled(ctx) {
+		return nil, nil, ErrUserTierFeatureDisabled
+	}
+	user, err := s.resolveUserByEmail(ctx, email)
+	if err != nil {
+		return nil, nil, err
+	}
+	tier, err := s.repo.GetTierByCode(ctx, strings.TrimSpace(tierCode))
+	if err != nil {
+		return nil, nil, err
+	}
+	// 只允许指派消费档：首充档的权益由额度账本驱动、本身不可手动领取，指派它只会得到一个
+	// 「看得见却领不到」的死状态；停用档同理。
+	if tier.TriggerType != UserTierTriggerConsumption {
+		return nil, nil, ErrUserTierAssignmentTargetNotConsumption
+	}
+	if !tier.Enabled {
+		return nil, nil, ErrUserTierAssignmentTargetDisabled
+	}
+	assignment := &UserTierAssignment{
+		UserID:            user.ID,
+		TierID:            &tier.ID,
+		TierCode:          tier.Code,
+		TierNameSnapshot:  tier.Name,
+		SortOrderSnapshot: tier.SortOrder,
+		Source:            UserTierAssignmentSourceAdmin,
+		Note:              strings.TrimSpace(note),
+	}
+	if actorUserID > 0 {
+		actor := actorUserID
+		assignment.AssignedBy = &actor
+	}
+	stored, err := s.repo.UpsertAssignment(ctx, assignment)
+	if err != nil {
+		return nil, nil, err
+	}
+	return user, stored, nil
+}
+
+// UnassignUserTierByEmail 取消指派（幂等：本来就没有指派时 removed=false 且不报错）。
+// 取消只影响「尚未领取的档位是否可领取」，已发放的余额与倍率覆盖按既有「只升不降」规则不回收。
+func (s *UserTierService) UnassignUserTierByEmail(ctx context.Context, email string) (*User, bool, error) {
+	if s == nil || s.repo == nil {
+		return nil, false, fmt.Errorf("user tier service is not configured")
+	}
+	user, err := s.resolveUserByEmail(ctx, email)
+	if err != nil {
+		return nil, false, err
+	}
+	removed, err := s.repo.DeleteAssignment(ctx, user.ID)
+	if err != nil {
+		return nil, false, err
+	}
+	return user, removed, nil
+}
+
 // ---------- 用户端视图 ----------
 
 // GetUserTierView 汇总当前档、下一档、各档领取状态与累计消费（用户端页面唯一取数入口）
@@ -332,6 +551,11 @@ func (s *UserTierService) GetUserTierView(ctx context.Context, userID int64) (*U
 	if err != nil {
 		return nil, err
 	}
+	// 手工指派（若有）：只抬高「是否达成」的下限，不改变累计消费本身的数值
+	assignment, assignmentTier, floor, err := s.resolveAssignment(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	view.ConsumedAmount = consumed
 
 	awardByCode := make(map[string]UserTierAward, len(awards))
@@ -359,10 +583,11 @@ func (s *UserTierService) GetUserTierView(ctx context.Context, userID int64) (*U
 	groupNames := make(map[int64]string)
 	states := make([]UserTierClaimState, 0, len(tiers))
 	for _, tier := range tiers {
-		state := s.buildClaimState(ctx, tier, consumed, awardByCode[tier.Code], effectsByAward, firstRechargeCredit, groupNames)
+		state := s.buildClaimState(ctx, tier, consumed, floor, awardByCode[tier.Code], effectsByAward, firstRechargeCredit, groupNames)
 		states = append(states, state)
 	}
 	view.Tiers = states
+	view.AssignedTier = assignedTierState(states, assignment, assignmentTier)
 
 	// 当前等级：按配置顺序取已获得的最高档（首充档也可以成为当前等级）。
 	// 下一等级：尚未达成的第一个消费档 —— 已达成但未领取的档位由「可领取」入口承载，
@@ -403,6 +628,7 @@ func (s *UserTierService) buildClaimState(
 	ctx context.Context,
 	tier UserTier,
 	consumed float64,
+	floor *tierLadderFloor,
 	award UserTierAward,
 	effectsByAward map[int64][]UserTierEffect,
 	firstRechargeCredit *UserTierFirstRechargeCredit,
@@ -433,9 +659,8 @@ func (s *UserTierService) buildClaimState(
 			state.ClaimedAt = &t
 		}
 	case UserTierTriggerConsumption:
-		if tier.ThresholdUSD != nil {
-			state.Achieved = consumed >= *tier.ThresholdUSD
-		}
+		// 达成判定与领取校验同一实现：消费达标，或被管理员指派覆盖（指派档位及其之前的档位）
+		state.Achieved = consumptionTierAchieved(tier, consumed, floor)
 		state.Claimed = award.ID > 0
 		state.Source = award.Source
 		if !award.AchievedAt.IsZero() {
@@ -575,7 +800,12 @@ func (s *UserTierService) claim(ctx context.Context, userID, tierID int64) (*Use
 	if err != nil {
 		return nil, false, err
 	}
-	if tier.ThresholdUSD == nil || consumed < *tier.ThresholdUSD {
+	// 达成判定必须与用户端视图同源：被管理员指派的档位及其之前的档位同样可领取
+	_, _, floor, err := s.resolveAssignment(ctx, userID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !consumptionTierAchieved(*tier, consumed, floor) {
 		return nil, false, ErrUserTierNotAchieved
 	}
 
@@ -740,24 +970,28 @@ func (s *UserTierService) applyBenefit(
 
 // ---------- 管理端只读查看 ----------
 
-// GetUserTierAdminView 查看某用户的累计消费、授予与发放记录（只读，供运营核对）
-func (s *UserTierService) GetUserTierAdminView(ctx context.Context, userID int64) (*UserTierView, []UserTierAward, []UserTierEffect, error) {
+// GetUserTierAdminView 查看某用户的累计消费、等级状态、当前指派、授予与发放记录（只读，供运营核对）
+func (s *UserTierService) GetUserTierAdminView(ctx context.Context, userID int64) (*UserTierView, *UserTierAssignment, []UserTierAward, []UserTierEffect, error) {
 	if s == nil || s.repo == nil || userID <= 0 {
-		return &UserTierView{Tiers: []UserTierClaimState{}}, nil, nil, nil
+		return &UserTierView{Tiers: []UserTierClaimState{}}, nil, nil, nil, nil
 	}
 	view, err := s.GetUserTierView(ctx, userID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+	assignment, err := s.repo.GetAssignment(ctx, userID)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 	awards, err := s.repo.ListUserAwards(ctx, userID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	effects, err := s.repo.ListUserEffects(ctx, userID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return view, awards, effects, nil
+	return view, assignment, awards, effects, nil
 }
 
 // ---------- 首充单源读取（C5） ----------
