@@ -102,6 +102,9 @@ func RegisterAdminRoutes(
 		// 用户属性管理
 		registerUserAttributeRoutes(admin, h)
 
+		// 用户等级与权益
+		registerUserTierRoutes(admin, h)
+
 		// 错误透传规则管理
 		registerErrorPassthroughRoutes(admin, h)
 
@@ -332,6 +335,9 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		// User attribute values
 		users.GET("/:id/attributes", h.Admin.UserAttribute.GetUserAttributes)
 		users.PUT("/:id/attributes", h.Admin.UserAttribute.UpdateUserAttributes)
+
+		// 用户等级与领取记录（只读，供运营核对）
+		users.GET("/:id/tier", h.Admin.UserTier.GetUserTier)
 	}
 }
 
@@ -719,6 +725,18 @@ func registerUsageRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		usage.GET("/cleanup-tasks", h.Admin.Usage.ListCleanupTasks)
 		usage.POST("/cleanup-tasks", h.Admin.Usage.CreateCleanupTask)
 		usage.POST("/cleanup-tasks/:id/cancel", h.Admin.Usage.CancelCleanupTask)
+	}
+}
+
+// registerUserTierRoutes 用户等级与权益配置（等级与权益一起提交；有授予记录的等级只能停用）
+func registerUserTierRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	tiers := admin.Group("/tiers")
+	{
+		tiers.GET("", h.Admin.UserTier.ListTiers)
+		tiers.POST("", h.Admin.UserTier.CreateTier)
+		tiers.PUT("/reorder", h.Admin.UserTier.ReorderTiers)
+		tiers.PUT("/:id", h.Admin.UserTier.UpdateTier)
+		tiers.DELETE("/:id", h.Admin.UserTier.DeleteTier)
 	}
 }
 

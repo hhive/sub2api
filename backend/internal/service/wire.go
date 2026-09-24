@@ -674,6 +674,27 @@ func ProvideOpsScheduledReportService(
 	return svc
 }
 
+// ProvideRedeemService wires RedeemService and connects the user tier service so that
+// 首充发放读取等级配置（C5 单源化）。未接入等级体系时该依赖为 nil，行为退回 settings。
+func ProvideRedeemService(
+	redeemRepo RedeemCodeRepository,
+	userRepo UserRepository,
+	subscriptionService *SubscriptionService,
+	cache RedeemCache,
+	billingCacheService *BillingCacheService,
+	entClient *dbent.Client,
+	authCacheInvalidator APIKeyAuthCacheInvalidator,
+	affiliateService *AffiliateService,
+	balanceCreditRepo BalanceCreditRepository,
+	settingService *SettingService,
+	tierService *UserTierService,
+) *RedeemService {
+	svc := NewRedeemService(redeemRepo, userRepo, subscriptionService, cache, billingCacheService,
+		entClient, authCacheInvalidator, affiliateService, balanceCreditRepo, settingService)
+	svc.SetUserTierService(tierService)
+	return svc
+}
+
 // ProvideAPIKeyAuthCacheInvalidator 提供 API Key 认证缓存失效能力
 func ProvideAPIKeyAuthCacheInvalidator(apiKeyService *APIKeyService) APIKeyAuthCacheInvalidator {
 	// Start Pub/Sub subscriber for L1 cache invalidation across instances
@@ -872,13 +893,14 @@ var ProviderSet = wire.NewSet(
 	NewCompositeRouteResolver,
 	NewAccountService,
 	NewProxyService,
-	NewRedeemService,
+	ProvideRedeemService,
 	NewPromoService,
 	NewUsageService,
 	NewDashboardService,
 	ProvidePricingService,
 	NewBillingService,
 	ProvideBillingCacheService,
+	NewUserTierService,
 	NewAnnouncementService,
 	NewAdminService,
 	NewGatewayService,

@@ -133,9 +133,21 @@ func (r *userGroupRateRepository) GetByGroupID(ctx context.Context, groupID int6
 	return result, nil
 }
 
-// GetByUserAndGroup 获取用户在特定分组的专属 rate_multiplier（NULL 返回 nil）
+// GetByUserAndGroup 获取用户在特定分组的有效 rate_multiplier（手工倍率优先，其次等级倍率覆盖层）。
+//
+// 等级倍率的读取合并放在这里而不是新增一次查询：计费热路径（user_group_rate_resolver.go）
+// 只调用本方法一次，合并后仍是单次查询，不给每个请求增加额外往返。
+// 语义与既有行为兼容：两者都不存在时返回 nil，调用方回落分组默认倍率。
 func (r *userGroupRateRepository) GetByUserAndGroup(ctx context.Context, userID, groupID int64) (*float64, error) {
-	query := `SELECT rate_multiplier FROM user_group_rate_multipliers WHERE user_id = $1 AND group_id = $2`
+	query := `
+		SELECT COALESCE(
+			(SELECT m.rate_multiplier FROM user_group_rate_multipliers m
+			  WHERE m.user_id = $1 AND m.group_id = $2),
+			(SELECT o.rate_multiplier FROM user_tier_rate_overlays o
+			  WHERE o.user_id = $1 AND o.group_id = $2 AND o.status = 'active'
+			  ORDER BY o.rate_multiplier ASC LIMIT 1)
+		)
+	`
 	var rate sql.NullFloat64
 	err := scanSingleRow(ctx, r.sql, query, []any{userID, groupID}, &rate)
 	if err == sql.ErrNoRows {

@@ -17,6 +17,8 @@ const (
 	BalanceCreditSourcePromo              = "promo"
 	BalanceCreditSourceAffiliate          = "affiliate"
 	BalanceCreditSourceFirstRechargeBonus = "first_recharge_bonus"
+	// BalanceCreditSourceTierReward 用户等级权益赠送（幂等锚点是 user_tier_effects 的唯一约束）
+	BalanceCreditSourceTierReward = "tier_reward"
 )
 
 type BalanceCreditCreate struct {

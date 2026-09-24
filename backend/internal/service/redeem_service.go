@@ -153,6 +153,17 @@ type RedeemService struct {
 	affiliateService     *AffiliateService
 	balanceCreditRepo    BalanceCreditRepository
 	settingService       *SettingService
+	// userTierService 首充档配置的单源读取入口（装配后首充发放改读等级配置，见 C5）
+	userTierService *UserTierService
+}
+
+// SetUserTierService 注入等级服务（由 wire provider 在装配期调用）。
+// 未注入时首充发放沿用既有 settings 行为，保证未接入等级体系的部署不受影响。
+func (s *RedeemService) SetUserTierService(tierService *UserTierService) {
+	if s == nil {
+		return
+	}
+	s.userTierService = tierService
 }
 
 // NewRedeemService 创建兑换码服务实例
@@ -614,11 +625,11 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	if !isFirstRechargeBonusEligibleRedeem(redeemCode) {
 		return nil
 	}
-	settings, err := s.settingService.GetAllSettings(ctx)
+	enabled, amount, validityDays, err := s.resolveFirstRechargeBonusParams(ctx)
 	if err != nil {
 		return err
 	}
-	if !settings.FirstRechargeBonusEnabled || settings.FirstRechargeBonusAmount <= 0 {
+	if !enabled || amount <= 0 {
 		return nil
 	}
 	hasPrior, err := s.hasPriorFirstRechargeEligibleRedeem(ctx, userID, redeemCode.ID)
@@ -628,13 +639,13 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	if hasPrior {
 		return nil
 	}
-	expiresAt := balanceCreditExpiresAt(settings.FirstRechargeBonusValidityDays, time.Now())
+	expiresAt := balanceCreditExpiresAt(validityDays, time.Now())
 	created, err := s.balanceCreditRepo.CreateCreditIfAbsent(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourceFirstRechargeBonus,
 		SourceID:   fmt.Sprintf("%d", redeemCode.ID),
 		SourceCode: redeemCode.Code,
-		Amount:     settings.FirstRechargeBonusAmount,
+		Amount:     amount,
 		ExpiresAt:  expiresAt,
 	})
 	if err != nil {
@@ -643,7 +654,62 @@ func (s *RedeemService) applyFirstRechargeBonus(ctx context.Context, userID int6
 	if !created {
 		return nil
 	}
-	return s.userRepo.UpdateBalance(ctx, userID, settings.FirstRechargeBonusAmount)
+	return s.userRepo.UpdateBalance(ctx, userID, amount)
+}
+
+// resolveFirstRechargeBonusParams 首充发放参数的唯一真相来源是等级配置里的首充档。
+//
+// 迁移后的行为约束（见实施计划 C5）：
+//   - 等级配置存在且启用：按该档权益参数发放（金额与有效期来自 user_tier_benefits）。
+//   - 等级配置存在但停用：不发放（等价于迁移前 first_recharge_bonus_enabled=false）。
+//   - 等级配置缺失或非法：**保留既有行为**（回退 settings 的开关/金额/有效期）并记录可见错误，
+//     不得静默不发 —— 否则用户会莫名拿不到首充奖励。
+//   - 未装配等级服务：沿用既有 settings 行为。
+func (s *RedeemService) resolveFirstRechargeBonusParams(ctx context.Context) (bool, float64, int, error) {
+	settings, err := s.settingService.GetAllSettings(ctx)
+	if err != nil {
+		return false, 0, 0, err
+	}
+	fallbackEnabled := settings.FirstRechargeBonusEnabled && settings.FirstRechargeBonusAmount > 0
+	fallbackAmount := settings.FirstRechargeBonusAmount
+	fallbackDays := settings.FirstRechargeBonusValidityDays
+
+	if s.userTierService == nil {
+		return fallbackEnabled, fallbackAmount, fallbackDays, nil
+	}
+
+	grant, err := s.userTierService.ResolveFirstRechargeGrant(ctx)
+	if err != nil {
+		// 配置缺失或非法：保留既有行为 + 可见错误（logger 落到 service.redeem 组件日志）
+		logger.LegacyPrintf("service.redeem",
+			"first recharge tier config unavailable, falling back to settings: err=%v", err)
+		grant = nil
+	} else if grant != nil && grant.Enabled && grant.Amount <= 0 {
+		logger.LegacyPrintf("service.redeem",
+			"first recharge tier %s has invalid amount, falling back to settings: amount=%v", grant.TierCode, grant.Amount)
+	}
+	return selectFirstRechargeGrant(fallbackEnabled, fallbackAmount, fallbackDays, grant)
+}
+
+// selectFirstRechargeGrant 首充发放参数的纯决策函数（便于等价性测试）：
+//   - 等级配置不可用（nil）：沿用既有 settings 行为；
+//   - 等级配置停用：不发放（等价于迁移前 first_recharge_bonus_enabled=false）；
+//   - 等级配置启用且金额合法：以等级配置为准（单源化）；
+//   - 等级配置启用但金额非法：回退既有 settings 行为（调用方已记录可见错误）。
+func selectFirstRechargeGrant(
+	settingEnabled bool,
+	settingAmount float64,
+	settingDays int,
+	grant *FirstRechargeTierGrant,
+) (bool, float64, int, error) {
+	switch {
+	case grant == nil:
+	case !grant.Enabled:
+		return false, 0, 0, nil
+	case grant.Amount > 0:
+		return true, grant.Amount, grant.ValidityDays, nil
+	}
+	return settingEnabled && settingAmount > 0, settingAmount, settingDays, nil
 }
 
 func isFirstRechargeBonusEligibleRedeem(redeemCode *RedeemCode) bool {

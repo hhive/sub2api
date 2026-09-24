@@ -33,6 +33,7 @@ func ProvideAdminHandlers(
 	subscriptionHandler *admin.SubscriptionHandler,
 	usageHandler *admin.UsageHandler,
 	userAttributeHandler *admin.UserAttributeHandler,
+	userTierHandler *admin.UserTierHandler,
 	errorPassthroughHandler *admin.ErrorPassthroughHandler,
 	tlsFingerprintProfileHandler *admin.TLSFingerprintProfileHandler,
 	pluginHandler *admin.PluginHandler,
@@ -77,6 +78,7 @@ func ProvideAdminHandlers(
 		Subscription:           subscriptionHandler,
 		Usage:                  usageHandler,
 		UserAttribute:          userAttributeHandler,
+		UserTier:               userTierHandler,
 		ErrorPassthrough:       errorPassthroughHandler,
 		TLSFingerprintProfile:  tlsFingerprintProfileHandler,
 		Plugin:                 pluginHandler,
@@ -206,6 +208,7 @@ func ProvideHandlers(
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
 	menuLaunchHandler *MenuLaunchHandler,
+	myTierHandler *MyTierHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -237,6 +240,7 @@ func ProvideHandlers(
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
 		MenuLaunch:       menuLaunchHandler,
+		MyTier:           myTierHandler,
 	}
 }
 
@@ -295,6 +299,8 @@ var ProviderSet = wire.NewSet(
 	admin.NewSubscriptionHandler,
 	admin.NewUsageHandler,
 	admin.NewUserAttributeHandler,
+	admin.NewUserTierHandler,
+	NewMyTierHandler,
 	admin.NewErrorPassthroughHandler,
 	admin.NewTLSFingerprintProfileHandler,
 	admin.NewPluginHandler,
