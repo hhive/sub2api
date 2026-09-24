@@ -466,6 +466,9 @@ type PublicSettings struct {
 	// Affiliate (邀请返利) feature toggle
 	AffiliateEnabled bool `json:"affiliate_enabled"`
 
+	// 用户等级体系总开关（opt-out：缺省=开启）
+	UserTierEnabled bool `json:"user_tier_enabled"`
+
 	// 风控中心功能开关
 	RiskControlEnabled bool `json:"risk_control_enabled"`
 

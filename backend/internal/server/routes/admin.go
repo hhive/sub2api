@@ -734,6 +734,8 @@ func registerUserTierRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		tiers.GET("", h.Admin.UserTier.ListTiers)
 		tiers.POST("", h.Admin.UserTier.CreateTier)
+		tiers.GET("/switch", h.Admin.UserTier.GetFeatureSwitch)
+		tiers.PUT("/switch", h.Admin.UserTier.UpdateFeatureSwitch)
 		tiers.PUT("/reorder", h.Admin.UserTier.ReorderTiers)
 		tiers.PUT("/:id", h.Admin.UserTier.UpdateTier)
 		tiers.DELETE("/:id", h.Admin.UserTier.DeleteTier)

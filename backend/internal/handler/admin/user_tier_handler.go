@@ -201,7 +201,32 @@ func effectToResponse(effect service.UserTierEffect) userTierEffectResponse {
 	return out
 }
 
+type tierSwitchRequest struct {
+	Enabled *bool `json:"enabled" binding:"required"`
+}
+
 // ---------- handlers ----------
+
+// GetFeatureSwitch GET /admin/tiers/switch
+// 返回整个用户等级体系的总开关（缺省=开启）。
+func (h *UserTierHandler) GetFeatureSwitch(c *gin.Context) {
+	response.Success(c, gin.H{"enabled": h.tierService.IsFeatureEnabled(c.Request.Context())})
+}
+
+// UpdateFeatureSwitch PUT /admin/tiers/switch
+// 关闭后：用户端入口与页面不可见、不再触发新的等级权益；已发放的授予与权益不回收。
+func (h *UserTierHandler) UpdateFeatureSwitch(c *gin.Context) {
+	var req tierSwitchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.tierService.SetFeatureEnabled(c.Request.Context(), *req.Enabled); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"enabled": *req.Enabled})
+}
 
 // ListTiers GET /admin/tiers
 func (h *UserTierHandler) ListTiers(c *gin.Context) {

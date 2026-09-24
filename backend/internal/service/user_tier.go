@@ -48,6 +48,8 @@ var (
 	ErrUserTierCodeExists     = infraerrors.Conflict("USER_TIER_CODE_EXISTS", "等级标识已存在")
 	ErrUserTierInvalidBenefit = infraerrors.BadRequest("USER_TIER_INVALID_BENEFIT", "权益参数非法")
 	ErrUserTierInvalidConfig  = infraerrors.BadRequest("USER_TIER_INVALID_CONFIG", "等级配置非法")
+	// ErrUserTierFeatureDisabled 总开关关闭（服务端强制，不只靠前端隐藏入口）
+	ErrUserTierFeatureDisabled = infraerrors.Forbidden("USER_TIER_FEATURE_DISABLED", "用户等级体系当前已关闭")
 )
 
 // UserTierBalanceCreditParams 额度赠送权益参数（user_tier_benefits.params）
@@ -192,6 +194,8 @@ type UserTierClaimState struct {
 
 // UserTierView 用户端「我的等级」聚合视图
 type UserTierView struct {
+	// Enabled 总开关状态：false 时 Tiers 为空，前端据此隐藏入口与内容
+	Enabled         bool
 	ConsumedAmount  float64
 	CurrentTier     *UserTierClaimState
 	NextTier        *UserTierClaimState

@@ -297,7 +297,7 @@ func newTierServiceForTest(repo *tierRepoStub, credit *tierCreditRepoStub) *User
 	if credit == nil {
 		credit = &tierCreditRepoStub{}
 	}
-	return NewUserTierService(repo, credit, nil, nil, nil)
+	return NewUserTierService(repo, credit, nil, nil, nil, nil)
 }
 
 func balanceTier(id int64, code string, order int, threshold float64, amount float64) UserTier {
@@ -848,4 +848,131 @@ func TestSelectFirstRechargeGrant(t *testing.T) {
 		require.InDelta(t, 12.5, amount, 1e-9)
 		require.Equal(t, 30, days)
 	})
+}
+
+// ---------- 总开关（user_tier_enabled） ----------
+
+// userTierSettingRepoStub 只覆写被测路径用到的设置读写。
+type userTierSettingRepoStub struct {
+	SettingRepository
+	values map[string]string
+	getErr error
+}
+
+func (s *userTierSettingRepoStub) GetValue(_ context.Context, key string) (string, error) {
+	if s.getErr != nil {
+		return "", s.getErr
+	}
+	return s.values[key], nil
+}
+
+func (s *userTierSettingRepoStub) Set(_ context.Context, key, value string) error {
+	if s.values == nil {
+		s.values = map[string]string{}
+	}
+	s.values[key] = value
+	return nil
+}
+
+func newTierServiceWithSwitch(repo *tierRepoStub, values map[string]string) (*UserTierService, *userTierSettingRepoStub) {
+	store := &userTierSettingRepoStub{values: values}
+	// 同包测试，直接构造（生产装配走 wire）
+	settings := &SettingService{settingRepo: store}
+	return NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, settings), store
+}
+
+func TestUserTierSwitch_DefaultsToEnabled(t *testing.T) {
+	cases := map[string]map[string]string{
+		"未配置":     {},
+		"空值":      {"user_tier_enabled": ""},
+		"显式 true": {"user_tier_enabled": "true"},
+		"其它值":     {"user_tier_enabled": "yes"},
+	}
+	for label, values := range cases {
+		t.Run(label, func(t *testing.T) {
+			repo := newTierRepoStub()
+			repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
+			repo.consumed[7] = 600
+			svc, _ := newTierServiceWithSwitch(repo, values)
+
+			view, err := svc.GetUserTierView(context.Background(), 7)
+			require.NoError(t, err)
+			require.True(t, view.Enabled)
+			require.Equal(t, 1, view.ClaimableCount, "开启时照常可领取")
+		})
+	}
+}
+
+func TestUserTierSwitch_DisabledStopsVisibilityAndGrants(t *testing.T) {
+	for _, off := range []string{"false", "0", "off", "disabled", "FALSE"} {
+		t.Run(off, func(t *testing.T) {
+			repo := newTierRepoStub()
+			tier := repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
+			repo.addTier(UserTier{
+				ID: 2, Code: UserTierCodeFirstRecharge, Name: "新客",
+				TriggerType: UserTierTriggerFirstRecharge, Enabled: true,
+				Benefits: []UserTierBenefit{{ID: 1, BenefitType: UserTierBenefitBalanceCredit,
+					BalanceCredit: &UserTierBalanceCreditParams{Amount: 5, ValidityDays: 3}, Enabled: true}},
+			})
+			repo.consumed[7] = 600
+			svc, _ := newTierServiceWithSwitch(repo, map[string]string{"user_tier_enabled": off})
+
+			// 用户端看不到任何等级内容
+			view, err := svc.GetUserTierView(context.Background(), 7)
+			require.NoError(t, err)
+			require.False(t, view.Enabled)
+			require.Empty(t, view.Tiers)
+			require.Nil(t, view.CurrentTier)
+			require.Nil(t, view.NextTier)
+			require.Zero(t, view.ClaimableCount)
+
+			// 领取被服务端拒绝（即便已达标）
+			_, err = svc.ClaimTier(context.Background(), 7, tier.ID)
+			require.ErrorIs(t, err, ErrUserTierFeatureDisabled)
+			require.Empty(t, repo.awards, "拒绝时不得落任何授予记录")
+
+			// 首充不再由等级配置触发（发放入口回退既有 settings 行为）
+			grant, err := svc.ResolveFirstRechargeGrant(context.Background())
+			require.NoError(t, err)
+			require.Nil(t, grant)
+		})
+	}
+}
+
+func TestUserTierSwitch_SetAndRead(t *testing.T) {
+	repo := newTierRepoStub()
+	svc, store := newTierServiceWithSwitch(repo, map[string]string{})
+
+	require.True(t, svc.IsFeatureEnabled(context.Background()))
+	require.NoError(t, svc.SetFeatureEnabled(context.Background(), false))
+	require.Equal(t, "false", store.values["user_tier_enabled"])
+	require.False(t, svc.IsFeatureEnabled(context.Background()))
+
+	require.NoError(t, svc.SetFeatureEnabled(context.Background(), true))
+	require.Equal(t, "true", store.values["user_tier_enabled"])
+	require.True(t, svc.IsFeatureEnabled(context.Background()))
+}
+
+func TestUserTierSwitch_ReadErrorFailsOpen(t *testing.T) {
+	repo := newTierRepoStub()
+	repo.addTier(balanceTier(0, "consume_500", 0, 500, 50))
+	repo.consumed[7] = 600
+	store := &userTierSettingRepoStub{getErr: fmt.Errorf("db down")}
+	svc := NewUserTierService(repo, &tierCreditRepoStub{}, nil, nil, nil, &SettingService{settingRepo: store})
+
+	require.True(t, svc.IsFeatureEnabled(context.Background()), "读抖动不得把入口打掉")
+	view, err := svc.GetUserTierView(context.Background(), 7)
+	require.NoError(t, err)
+	require.True(t, view.Enabled)
+}
+
+func TestUserTierSwitch_MissingDependenciesAssumeEnabled(t *testing.T) {
+	var nilService *UserTierService
+	require.True(t, nilService.IsFeatureEnabled(context.Background()), "nil 服务视为开启")
+
+	repo := newTierRepoStub()
+	svc := newTierServiceForTest(repo, nil) // 未注入设置服务
+	require.True(t, svc.IsFeatureEnabled(context.Background()))
+
+	require.Error(t, svc.SetFeatureEnabled(context.Background(), false), "未装配时写入应报错而不是静默成功")
 }

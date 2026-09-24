@@ -496,6 +496,9 @@ type PublicSettings struct {
 
 	AffiliateEnabled bool `json:"affiliate_enabled"`
 
+	// 用户等级体系总开关（opt-out：缺省=开启）
+	UserTierEnabled bool `json:"user_tier_enabled"`
+
 	RiskControlEnabled bool `json:"risk_control_enabled"`
 
 	AllowUserViewErrorRequests bool `json:"allow_user_view_error_requests"`

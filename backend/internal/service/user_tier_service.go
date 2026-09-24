@@ -24,6 +24,9 @@ type UserTierService struct {
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	billingCacheService  *BillingCacheService
+	// settingService 提供总开关（settings.user_tier_enabled）；nil 时视为开启，
+	// 既保证未装配场景行为不变，也让单元测试无需构造设置服务。
+	settingService *SettingService
 }
 
 // NewUserTierService 创建用户等级服务
@@ -33,6 +36,7 @@ func NewUserTierService(
 	entClient *dbent.Client,
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
 	billingCacheService *BillingCacheService,
+	settingService *SettingService,
 ) *UserTierService {
 	return &UserTierService{
 		repo:                 repo,
@@ -40,7 +44,29 @@ func NewUserTierService(
 		entClient:            entClient,
 		authCacheInvalidator: authCacheInvalidator,
 		billingCacheService:  billingCacheService,
+		settingService:       settingService,
 	}
+}
+
+// IsFeatureEnabled 读取总开关。读失败时记日志并视为开启：一次读抖动不应把用户端入口打掉。
+func (s *UserTierService) IsFeatureEnabled(ctx context.Context) bool {
+	if s == nil || s.settingService == nil {
+		return true
+	}
+	enabled, err := s.settingService.IsUserTierEnabled(ctx)
+	if err != nil {
+		logger.LegacyPrintf("service.user_tier", "read user tier switch failed, treat as enabled: err=%v", err)
+		return true
+	}
+	return enabled
+}
+
+// SetFeatureEnabled 写总开关（管理端「等级与权益」页的唯一写入口）。
+func (s *UserTierService) SetFeatureEnabled(ctx context.Context, enabled bool) error {
+	if s == nil || s.settingService == nil {
+		return fmt.Errorf("user tier service setting dependency is not configured")
+	}
+	return s.settingService.SetUserTierEnabled(ctx, enabled)
 }
 
 // ---------- 管理端配置读写 ----------
@@ -269,8 +295,13 @@ func (s *UserTierService) validateTierConfig(ctx context.Context, tier *UserTier
 
 // GetUserTierView 汇总当前档、下一档、各档领取状态与累计消费（用户端页面唯一取数入口）
 func (s *UserTierService) GetUserTierView(ctx context.Context, userID int64) (*UserTierView, error) {
-	view := &UserTierView{Tiers: []UserTierClaimState{}}
+	enabled := s.IsFeatureEnabled(ctx)
+	view := &UserTierView{Enabled: enabled, Tiers: []UserTierClaimState{}}
 	if s == nil || s.repo == nil || userID <= 0 {
+		return view, nil
+	}
+	// 总开关关闭：不暴露任何等级内容（前端据 Enabled 隐藏入口与页面）
+	if !enabled {
 		return view, nil
 	}
 
@@ -514,6 +545,10 @@ func (s *UserTierService) ClaimTier(ctx context.Context, userID, tierID int64) (
 // 因此不会留下「等级已获得但权益永久缺失」的不可重试状态。
 func (s *UserTierService) claim(ctx context.Context, userID, tierID int64) (*UserTierClaimResult, bool, error) {
 	// ctx 在生产路径上已是事务上下文（见 ClaimTier），此处所有读写都在同一事务内
+	// 总开关关闭时，任何档位都不可领取（服务端强制，避免直接打接口绕过前端）
+	if !s.IsFeatureEnabled(ctx) {
+		return nil, false, ErrUserTierFeatureDisabled
+	}
 	tier, err := s.repo.GetTierByID(ctx, tierID)
 	if err != nil {
 		return nil, false, err
@@ -715,6 +750,11 @@ func (s *UserTierService) GetUserTierAdminView(ctx context.Context, userID int64
 // 返回错误表示等级配置缺失或非法，调用方必须回退到既有行为并记录可见错误，不得静默不发。
 func (s *UserTierService) ResolveFirstRechargeGrant(ctx context.Context) (*FirstRechargeTierGrant, error) {
 	if s == nil || s.repo == nil {
+		return nil, nil
+	}
+	// 总开关关闭 = 回到迁移前状态：首充发放沿用既有 settings 行为（C5 的回滚语义），
+	// 不再由等级配置触发。
+	if !s.IsFeatureEnabled(ctx) {
 		return nil, nil
 	}
 	tier, err := s.repo.GetTierByCode(ctx, UserTierCodeFirstRecharge)

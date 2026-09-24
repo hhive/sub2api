@@ -260,6 +260,7 @@ const (
 	SettingKeyFirstRechargeBonusAmount              = "first_recharge_bonus_amount"              // 首次充值/兑换赠送余额金额
 	SettingKeyFirstRechargeBonusValidityDays        = "first_recharge_bonus_validity_days"       // 首次充值/兑换赠送余额有效期（天，0=永不过期）
 	SettingKeyRiskControlEnabled                    = "risk_control_enabled"                     // 是否启用风控中心入口与审计链路
+	SettingKeyUserTierEnabled                       = "user_tier_enabled"                        // 用户等级体系总开关（缺省/空值=开启）
 	SettingKeyContentModerationConfig               = "content_moderation_config"                // 内容审计配置（JSON）
 	SettingKeyCyberSessionBlockEnabled              = "cyber_session_block_enabled"              // cyber 命中后会话级自动屏蔽总开关(默认关)
 	SettingKeyCyberSessionBlockTTLSeconds           = "cyber_session_block_ttl_seconds"          // 会话屏蔽 TTL 秒数(默认 3600)

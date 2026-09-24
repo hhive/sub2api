@@ -52,6 +52,8 @@ type userTierStateDTO struct {
 }
 
 type userTierViewDTO struct {
+	// Enabled 总开关：false 时 tiers 为空，前端据此隐藏入口与页面内容
+	Enabled         bool               `json:"enabled"`
 	ConsumedAmount  float64            `json:"consumed_amount"`
 	CurrentTier     *userTierStateDTO  `json:"current_tier"`
 	NextTier        *userTierStateDTO  `json:"next_tier"`
@@ -132,6 +134,7 @@ func tierStateToDTO(state service.UserTierClaimState) userTierStateDTO {
 
 func tierViewToDTO(view *service.UserTierView) userTierViewDTO {
 	dto := userTierViewDTO{
+		Enabled:        view.Enabled,
 		Tiers:          make([]userTierStateDTO, 0, len(view.Tiers)),
 		ConsumedAmount: view.ConsumedAmount,
 		ClaimableCount: view.ClaimableCount,

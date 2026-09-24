@@ -96,7 +96,7 @@ func newService(t *testing.T, db *sql.DB, client *dbent.Client) *service.UserTie
 	t.Helper()
 	repo := repository.NewUserTierRepository(client, db)
 	creditRepo := repository.NewBalanceCreditRepository(client, db)
-	return service.NewUserTierService(repo, creditRepo, client, nil, nil)
+	return service.NewUserTierService(repo, creditRepo, client, nil, nil, nil)
 }
 
 func seedTiers(t *testing.T, svc *service.UserTierService, groupID int64) {
