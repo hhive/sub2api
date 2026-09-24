@@ -245,3 +245,10 @@ describe('AppSidebar subscription feature flag', () => {
     expect(componentSource).toMatch(/path: '__purchase_external__'[^\n]*label: purchaseNavLabel\.value/)
   })
 })
+
+describe('AppSidebar user tier feature flag', () => {
+  it('gates the My Tier entry behind the user-tier public-settings flag', () => {
+    expect(componentSource).toContain('const flagUserTier = makeSidebarFlag(FeatureFlags.userTier)')
+    expect(componentSource).toMatch(/path: '\/membership'[^\n]*featureFlag: flagUserTier/)
+  })
+})

@@ -4,7 +4,12 @@
  */
 
 import { apiClient } from '../client'
-import type { AdminTier, AdminTierSaveRequest, AdminUserTierResponse } from '@/types'
+import type {
+  AdminTier,
+  AdminTierSaveRequest,
+  AdminUserTierResponse,
+  UserTierFeatureSwitch,
+} from '@/types'
 
 /**
  * Get all tier configurations.
@@ -57,6 +62,23 @@ export async function getUserTier(userId: number): Promise<AdminUserTierResponse
   return data
 }
 
+/**
+ * Read the user-tier feature master switch.
+ * 关闭后用户端隐藏等级入口与页面，且不再发放新的等级权益（已发放的权益不回收）。
+ */
+export async function getFeatureSwitch(): Promise<UserTierFeatureSwitch> {
+  const { data } = await apiClient.get<UserTierFeatureSwitch>('/admin/tiers/switch')
+  return data
+}
+
+/**
+ * Update the user-tier feature master switch. The response echoes the stored value.
+ */
+export async function updateFeatureSwitch(enabled: boolean): Promise<UserTierFeatureSwitch> {
+  const { data } = await apiClient.put<UserTierFeatureSwitch>('/admin/tiers/switch', { enabled })
+  return data
+}
+
 export const userTiersAPI = {
   listTiers,
   createTier,
@@ -64,6 +86,8 @@ export const userTiersAPI = {
   reorderTiers,
   deleteTier,
   getUserTier,
+  getFeatureSwitch,
+  updateFeatureSwitch,
 }
 
 export default userTiersAPI

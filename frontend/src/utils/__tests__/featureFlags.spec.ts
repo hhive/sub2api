@@ -40,6 +40,34 @@ describe('FeatureFlags.subscription', () => {
   })
 })
 
+describe('FeatureFlags.userTier', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    delete (window as any).__APP_CONFIG__
+  })
+
+  it('reads user_tier_enabled as an opt-out flag: entry stays visible before settings load', () => {
+    expect(FeatureFlags.userTier.key).toBe('user_tier_enabled')
+    expect(FeatureFlags.userTier.mode).toBe('opt-out')
+    expect(useAppStore().cachedPublicSettings).toBeNull()
+    expect(isFeatureFlagEnabled(FeatureFlags.userTier)).toBe(true)
+  })
+
+  it('hides the sidebar entry only when the backend explicitly sends false', () => {
+    const store = useAppStore()
+    const sidebarFlag = makeSidebarFlag(FeatureFlags.userTier)
+
+    store.cachedPublicSettings = { user_tier_enabled: false } as PublicSettings
+    expect(sidebarFlag()).toBe(false)
+
+    store.cachedPublicSettings = { user_tier_enabled: true } as PublicSettings
+    expect(sidebarFlag()).toBe(true)
+
+    store.cachedPublicSettings = {} as PublicSettings
+    expect(sidebarFlag()).toBe(true)
+  })
+})
+
 describe('resolveFeatureFlag', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

@@ -4,23 +4,47 @@ import { VueDraggable } from 'vue-draggable-plus'
 
 import TierConfigView from '../TierConfigView.vue'
 import Select from '@/components/common/Select.vue'
+import en from '@/i18n/locales/en'
+import zh from '@/i18n/locales/zh'
 import type { AdminTier } from '@/types'
 
-const { createTier, deleteTier, getGroups, getUserTier, listTiers, reorderTiers, showError, showSuccess, updateTier } =
-  vi.hoisted(() => ({
-    createTier: vi.fn(),
-    deleteTier: vi.fn(),
-    getGroups: vi.fn(),
-    getUserTier: vi.fn(),
-    listTiers: vi.fn(),
-    reorderTiers: vi.fn(),
-    showError: vi.fn(),
-    showSuccess: vi.fn(),
-    updateTier: vi.fn(),
-  }))
+const {
+  createTier,
+  deleteTier,
+  getFeatureSwitch,
+  getGroups,
+  getUserTier,
+  listTiers,
+  reorderTiers,
+  showError,
+  showSuccess,
+  updateFeatureSwitch,
+  updateTier,
+} = vi.hoisted(() => ({
+  createTier: vi.fn(),
+  deleteTier: vi.fn(),
+  getFeatureSwitch: vi.fn(),
+  getGroups: vi.fn(),
+  getUserTier: vi.fn(),
+  listTiers: vi.fn(),
+  reorderTiers: vi.fn(),
+  showError: vi.fn(),
+  showSuccess: vi.fn(),
+  updateFeatureSwitch: vi.fn(),
+  updateTier: vi.fn(),
+}))
 
 vi.mock('@/api/admin/userTiers', () => ({
-  default: { listTiers, createTier, updateTier, reorderTiers, deleteTier, getUserTier },
+  default: {
+    listTiers,
+    createTier,
+    updateTier,
+    reorderTiers,
+    deleteTier,
+    getUserTier,
+    getFeatureSwitch,
+    updateFeatureSwitch,
+  },
 }))
 
 vi.mock('@/api/admin', () => ({
@@ -44,6 +68,15 @@ const MESSAGES: Record<string, string> = {
   'admin.tierConfig.updateSuccess': '等级已更新',
   'admin.tierConfig.deleteSuccess': '等级已删除',
   'admin.tierConfig.USER_TIER_HAS_AWARDS': '有授予记录的等级只能停用',
+  'admin.tierConfig.switchEnabled': '已开启',
+  'admin.tierConfig.switchDisabled': '已关闭',
+  'admin.tierConfig.switchDisableConfirm': '关闭后对用户立即生效',
+  'admin.tierConfig.switchEnableSuccess': '等级与权益已开启',
+  'admin.tierConfig.switchDisableSuccess': '等级与权益已关闭',
+  'admin.tierConfig.switchLoadFailed': '加载等级与权益总开关失败',
+  'admin.tierConfig.switchSaveFailed': '保存等级与权益总开关失败',
+  // 说明文案内容另由下方的多语言用例校验真实词条，这里只验证卡片接线
+  'admin.tierConfig.switchHint': '关闭后用户端不再显示等级入口与等级页面',
 }
 
 function translate(key: string, params?: Record<string, unknown>): string {
@@ -93,7 +126,8 @@ function mountView() {
         ConfirmDialog: {
           name: 'ConfirmDialog',
           props: ['show', 'title', 'message', 'confirmText', 'danger'],
-          template: '<div v-if="show"><button class="confirm-ok" @click="$emit(\'confirm\')">ok</button></div>',
+          template:
+            '<div v-if="show"><button class="confirm-ok" @click="$emit(\'confirm\')">ok</button><button class="confirm-cancel" @click="$emit(\'cancel\')">cancel</button></div>',
         },
       },
     },
@@ -131,6 +165,8 @@ describe('TierConfigView', () => {
     updateTier.mockResolvedValue(tier())
     createTier.mockResolvedValue(tier())
     deleteTier.mockResolvedValue({ message: 'ok' })
+    getFeatureSwitch.mockResolvedValue({ enabled: true })
+    updateFeatureSwitch.mockResolvedValue({ enabled: false })
   })
 
   it('renders the tier list with its benefit summary', async () => {
@@ -480,5 +516,126 @@ describe('TierConfigView', () => {
       { value: 'consumption', label: 'admin.tierConfig.triggerConsumption' },
       { value: 'first_recharge', label: 'admin.tierConfig.triggerFirstRecharge' },
     ])
+  })
+
+  describe('feature master switch', () => {
+    function switchButton(wrapper: ReturnType<typeof mountView>) {
+      return wrapper.find('[role="switch"]')
+    }
+
+    it('loads the current switch state on mount', async () => {
+      getFeatureSwitch.mockResolvedValue({ enabled: false })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(getFeatureSwitch).toHaveBeenCalledTimes(1)
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('false')
+      expect(wrapper.text()).toContain('已关闭')
+    })
+
+    it('reflects an enabled switch and renders the explanatory copy', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('true')
+      expect(wrapper.text()).toContain('已开启')
+      expect(wrapper.text()).toContain('关闭后用户端不再显示等级入口与等级页面')
+    })
+
+    // 文案是唯一向管理员解释关闭后果的地方，因此直接校验真实词条而不经过 mock
+    it('documents all four consequences of switching off in Chinese', () => {
+      const hint = zh.admin.tierConfig.switchHint
+      expect(hint).toContain('用户端不再显示等级入口')
+      expect(hint).toContain('不再发放新的等级权益')
+      expect(hint).toContain('已发放的权益保留，不回收')
+      expect(hint).toContain('首充赠送由等级配置里的首充档决定')
+      expect(hint).toContain('回到迁移前的系统设置取值')
+    })
+
+    it('documents all four consequences of switching off in English', () => {
+      const hint = en.admin.tierConfig.switchHint
+      expect(hint).toContain('no longer see the tier entry')
+      expect(hint).toContain('no new tier benefits are granted')
+      expect(hint).toContain('already granted are kept and never clawed back')
+      expect(hint).toContain('First-recharge gifting is driven by the first-recharge tier')
+      expect(hint).toContain('pre-migration system-settings value')
+    })
+
+    it('asks for confirmation when switching off and does not submit on cancel', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+
+      // 关闭前先确认，此时不应发起请求
+      expect(updateFeatureSwitch).not.toHaveBeenCalled()
+      expect(wrapper.find('.confirm-ok').exists()).toBe(true)
+
+      await wrapper.find('.confirm-cancel').trigger('click')
+      await flushPromises()
+
+      expect(updateFeatureSwitch).not.toHaveBeenCalled()
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('true')
+    })
+
+    it('submits enabled=false once the operator confirms the switch-off dialog', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+      await wrapper.find('.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(updateFeatureSwitch).toHaveBeenCalledTimes(1)
+      expect(updateFeatureSwitch).toHaveBeenCalledWith(false)
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('false')
+      expect(showSuccess).toHaveBeenCalledWith('等级与权益已关闭')
+    })
+
+    it('enables the feature without a confirmation dialog', async () => {
+      getFeatureSwitch.mockResolvedValue({ enabled: false })
+      updateFeatureSwitch.mockResolvedValue({ enabled: true })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(updateFeatureSwitch).toHaveBeenCalledTimes(1)
+      expect(updateFeatureSwitch).toHaveBeenCalledWith(true)
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('true')
+      expect(showSuccess).toHaveBeenCalledWith('等级与权益已开启')
+    })
+
+    it('surfaces the save error and keeps the previous switch state', async () => {
+      updateFeatureSwitch.mockRejectedValueOnce({ status: 500, reason: 'USER_TIER_SWITCH_SAVE_FAILED' })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      await switchButton(wrapper).trigger('click')
+      await flushPromises()
+      await wrapper.find('.confirm-ok').trigger('click')
+      await flushPromises()
+
+      expect(showError).toHaveBeenCalledWith('保存等级与权益总开关失败')
+      expect(showSuccess).not.toHaveBeenCalled()
+      // 后端未确认成功，开关不翻转
+      expect(switchButton(wrapper).attributes('aria-checked')).toBe('true')
+    })
+
+    it('surfaces a load failure for the switch without breaking the tier list', async () => {
+      getFeatureSwitch.mockRejectedValueOnce({ status: 500, reason: 'USER_TIER_SWITCH_LOAD_FAILED' })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(showError).toHaveBeenCalledWith('加载等级与权益总开关失败')
+      expect(wrapper.findAll('tbody tr')).toHaveLength(3)
+    })
   })
 })

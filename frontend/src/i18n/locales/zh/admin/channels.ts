@@ -70,7 +70,21 @@ export default {
       lookupEffectStatus: '状态',
       lookupEffectAttempts: '尝试次数',
       lookupEffectLastError: '最近错误',
-      lookupEffectAppliedAt: '生效时间'
+      lookupEffectAppliedAt: '生效时间',
+      // 总开关：关闭后用户端入口/页面不可见、不再发放新权益（已发权益不回收）
+      switchTitle: '等级与权益总开关',
+      switchHint:
+        '关闭后用户端不再显示等级入口与等级页面，也不再发放新的等级权益；已发放的权益保留，不回收。首充赠送由等级配置里的首充档决定，关闭总开关即回到迁移前的系统设置取值（当前为关闭），因此不再自动赠送；需要恢复时先开启本开关，再确认首充档处于启用状态。',
+      switchEnabled: '已开启',
+      switchDisabled: '已关闭',
+      switchDisableTitle: '关闭等级与权益',
+      switchDisableConfirm:
+        '确定关闭等级与权益功能吗？关闭后对用户立即生效：用户端不再显示等级入口与等级页面，也不再发放新的等级权益（已发放的权益保留，不回收）。',
+      switchDisableOk: '关闭功能',
+      switchEnableSuccess: '等级与权益已开启',
+      switchDisableSuccess: '等级与权益已关闭',
+      switchLoadFailed: '加载等级与权益总开关失败',
+      switchSaveFailed: '保存等级与权益总开关失败'
     },
 
     defaultModelPricing: {

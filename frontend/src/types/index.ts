@@ -319,6 +319,11 @@ export interface PublicSettings {
   plugin_management_enabled: boolean
   service_quota_enabled: boolean
   affiliate_enabled: boolean
+  /**
+   * 用户等级与权益总开关（opt-out）：未配置或空值 = 开启，只有显式 false 才关闭。
+   * 关闭后用户端隐藏等级入口与页面，不再发放新的等级权益。
+   */
+  user_tier_enabled?: boolean
   lobehub_enabled: boolean
   lobehub_menu_label: string
   lobehub_launch_path: string
@@ -2566,6 +2571,7 @@ export type {
   UserTierBenefitState,
   UserTierState,
   MyTierResponse,
+  UserTierFeatureSwitch,
   UserTierAppliedBenefit,
   UserTierClaimResponse,
   AdminTierBenefit,

@@ -967,6 +967,7 @@ const purchaseNavLabel = computed(() => {
   }
 })
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
+const flagUserTier = makeSidebarFlag(FeatureFlags.userTier)
 const flagLobeHub = makeSidebarFlag(FeatureFlags.lobehub)
 const flagMediaPlayground = makeSidebarFlag(FeatureFlags.mediaPlayground)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
@@ -1014,7 +1015,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '__purchase_external__', label: purchaseNavLabel.value, icon: RechargeSubscriptionIcon, externalUrl: purchaseSubscriptionUrl.value, hideInSimpleMode: true, featureFlag: flagRechargeSubscription },
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
-    { path: '/membership', label: t('nav.myTier'), icon: CreditCardIcon, hideInSimpleMode: true },
+    { path: '/membership', label: t('nav.myTier'), icon: CreditCardIcon, hideInSimpleMode: true, featureFlag: flagUserTier },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
       path: `/custom/${item.id}`,

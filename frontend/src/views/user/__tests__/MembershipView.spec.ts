@@ -44,6 +44,11 @@ const MESSAGES: Record<string, string> = {
   'membership.notAchieved': '未达标',
   'membership.claimed': '已领取',
   'membership.claim': '领取',
+  'membership.summaryTitle': '当前等级',
+  'membership.consumedAmount': '累计消费',
+  'membership.allTiersTitle': '各档权益',
+  'membership.featureDisabledTitle': '该功能未开放',
+  'membership.featureDisabledDesc': '等级与权益功能当前未开放，如有疑问请联系客服。',
 }
 
 function translate(key: string, params?: Record<string, unknown>): string {
@@ -80,6 +85,7 @@ function tierState(overrides: Partial<UserTierState> = {}): UserTierState {
 
 function tierResponse(overrides: Partial<MyTierResponse> = {}): MyTierResponse {
   return {
+    enabled: true,
     consumed_amount: CONSUMED,
     current_tier: tierState(),
     next_tier: tierState({ tier_id: 2, code: 'tier_2', name: '白银', threshold_usd: 500, achieved: false, claimed: false }),
@@ -322,6 +328,85 @@ describe('MembershipView', () => {
 
     // 领取后刷新视图
     expect(getMyTier).toHaveBeenCalledTimes(2)
+  })
+
+  it('renders only the not-available state when the backend reports enabled=false', async () => {
+    getMyTier.mockResolvedValue(
+      tierResponse({
+        enabled: false,
+        current_tier: null,
+        next_tier: null,
+        remaining_to_next: null,
+        tiers: [],
+        claimable_count: 0,
+      }),
+    )
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('该功能未开放')
+    expect(text).toContain('等级与权益功能当前未开放，如有疑问请联系客服。')
+
+    // 等级内容整体不渲染：概览、累计消费、各档权益、口径说明与领取入口都不出现
+    expect(text).not.toContain('当前等级')
+    expect(text).not.toContain('累计消费')
+    expect(text).not.toContain('各档权益')
+    expect(text).not.toContain('口径不含订阅消费')
+    expect(text).not.toContain('青铜')
+    expect(text).not.toContain('尚未达成任何等级')
+    expect(wrapper.findAll('button').filter((button) => button.text() === '领取')).toHaveLength(0)
+    // 关闭不是错误，不弹错误提示
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('falls into the not-available state when the tier endpoint replies 403 USER_TIER_FEATURE_DISABLED', async () => {
+    getMyTier.mockRejectedValue({ status: 403, reason: 'USER_TIER_FEATURE_DISABLED' })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('该功能未开放')
+    expect(text).not.toContain('各档权益')
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('falls into the not-available state when a claim is rejected with USER_TIER_FEATURE_DISABLED', async () => {
+    getMyTier.mockResolvedValue(
+      tierResponse({
+        tiers: [tierState({ tier_id: 3, name: '黄金', threshold_usd: 200, achieved: true, claimed: false, claimable: true })],
+        claimable_count: 1,
+      }),
+    )
+    claimTier.mockRejectedValueOnce({ status: 403, reason: 'USER_TIER_FEATURE_DISABLED' })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const claimButton = wrapper.findAll('button').find((button) => button.text() === '领取')!
+    await claimButton.trigger('click')
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('该功能未开放')
+    expect(text).not.toContain('黄金')
+    expect(wrapper.findAll('button').filter((button) => button.text() === '领取')).toHaveLength(0)
+    expect(showSuccess).not.toHaveBeenCalled()
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('keeps the tier content when enabled is missing from the payload', async () => {
+    const response = tierResponse()
+    delete (response as Partial<MyTierResponse>).enabled
+    getMyTier.mockResolvedValue(response)
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('当前等级')
+    expect(wrapper.text()).not.toContain('该功能未开放')
   })
 
   it('surfaces the claim error and keeps the view loaded when the serial claim fails', async () => {

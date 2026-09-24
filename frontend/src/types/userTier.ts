@@ -51,6 +51,11 @@ export interface UserTierState {
 
 /** GET /user/tier 响应体 */
 export interface MyTierResponse {
+  /**
+   * 等级功能是否对当前用户开放。后端总开关关闭时为 false，
+   * 同时 tiers 为空、claimable_count 为 0、current_tier/next_tier 为 null。
+   */
+  enabled: boolean
   consumed_amount: number
   current_tier: UserTierState | null
   next_tier: UserTierState | null
@@ -80,6 +85,11 @@ export interface UserTierClaimResponse {
   applied: UserTierAppliedBenefit[]
   /** 需要延迟生效的权益标识 */
   pending?: string[]
+}
+
+/** GET/PUT /admin/tiers/switch 响应体：等级与权益总开关 */
+export interface UserTierFeatureSwitch {
+  enabled: boolean
 }
 
 /** 管理端权益配置行 */

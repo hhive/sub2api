@@ -70,7 +70,21 @@ export default {
       lookupEffectStatus: 'Status',
       lookupEffectAttempts: 'Attempts',
       lookupEffectLastError: 'Last Error',
-      lookupEffectAppliedAt: 'Applied At'
+      lookupEffectAppliedAt: 'Applied At',
+      // Master switch: when off, the user surface is hidden and no new benefits are granted
+      switchTitle: 'Tiers & Benefits Master Switch',
+      switchHint:
+        'When off, users no longer see the tier entry or the tier page, and no new tier benefits are granted. Benefits already granted are kept and never clawed back. First-recharge gifting is driven by the first-recharge tier; turning the master switch off falls back to the pre-migration system-settings value (currently off), so no first-recharge gift is granted automatically. To restore it, turn this switch back on and make sure the first-recharge tier is enabled.',
+      switchEnabled: 'On',
+      switchDisabled: 'Off',
+      switchDisableTitle: 'Turn Off Tiers & Benefits',
+      switchDisableConfirm:
+        'Turn off tiers and benefits? This takes effect for users immediately: the tier entry and tier page are hidden and no new tier benefits are granted (benefits already granted are kept and never clawed back).',
+      switchDisableOk: 'Turn Off',
+      switchEnableSuccess: 'Tiers and benefits enabled',
+      switchDisableSuccess: 'Tiers and benefits disabled',
+      switchLoadFailed: 'Failed to load the tiers and benefits master switch',
+      switchSaveFailed: 'Failed to save the tiers and benefits master switch'
     },
 
     defaultModelPricing: {

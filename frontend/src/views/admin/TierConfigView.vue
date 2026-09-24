@@ -1,6 +1,41 @@
 <template>
   <AppLayout>
     <div class="space-y-4">
+      <!-- 总开关：关闭后用户端入口与页面不可见，且不再发放新的等级权益（已发权益不回收） -->
+      <div class="card p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ t('admin.tierConfig.switchTitle') }}
+            </h3>
+            <p class="mt-0.5 max-w-3xl text-xs text-gray-500 dark:text-dark-400">
+              {{ t('admin.tierConfig.switchHint') }}
+            </p>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="text-xs text-gray-500 dark:text-dark-400">
+              {{ featureEnabled ? t('admin.tierConfig.switchEnabled') : t('admin.tierConfig.switchDisabled') }}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="featureEnabled"
+              :disabled="switchLoading || switchSaving"
+              :class="[
+                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                featureEnabled ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
+              ]"
+              @click="requestToggleFeatureSwitch"
+            >
+              <span :class="[
+                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                featureEnabled ? 'translate-x-4' : 'translate-x-0'
+              ]" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 只读查询：管理端用户详情没有合适的挂载位置，收敛在配置页顶部 -->
       <div class="card p-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -380,6 +415,17 @@
       @confirm="handleDeleteTier"
       @cancel="showDeleteDialog = false"
     />
+
+    <!-- 关闭总开关对用户立即生效，因此先确认；取消则不改动 -->
+    <ConfirmDialog
+      :show="showDisableSwitchDialog"
+      :title="t('admin.tierConfig.switchDisableTitle')"
+      :message="t('admin.tierConfig.switchDisableConfirm')"
+      :confirm-text="t('admin.tierConfig.switchDisableOk')"
+      danger
+      @confirm="confirmDisableFeatureSwitch"
+      @cancel="showDisableSwitchDialog = false"
+    />
   </AppLayout>
 </template>
 
@@ -411,6 +457,57 @@ import Toggle from '@/components/common/Toggle.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+
+// ==================== Feature master switch ====================
+
+/** 总开关状态；未加载完成时按开启展示（与 opt-out 语义一致） */
+const featureEnabled = ref(true)
+const switchLoading = ref(false)
+const switchSaving = ref(false)
+const showDisableSwitchDialog = ref(false)
+
+async function loadFeatureSwitch() {
+  switchLoading.value = true
+  try {
+    const result = await userTiersAPI.getFeatureSwitch()
+    featureEnabled.value = result.enabled
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.switchLoadFailed')))
+  } finally {
+    switchLoading.value = false
+  }
+}
+
+/** 关闭对用户立即生效，先弹确认框；开启无破坏性，直接生效。 */
+function requestToggleFeatureSwitch() {
+  if (switchLoading.value || switchSaving.value) return
+  if (featureEnabled.value) {
+    showDisableSwitchDialog.value = true
+    return
+  }
+  void applyFeatureSwitch(true)
+}
+
+function confirmDisableFeatureSwitch() {
+  showDisableSwitchDialog.value = false
+  void applyFeatureSwitch(false)
+}
+
+async function applyFeatureSwitch(enabled: boolean) {
+  switchSaving.value = true
+  try {
+    const result = await userTiersAPI.updateFeatureSwitch(enabled)
+    featureEnabled.value = result.enabled
+    appStore.showSuccess(
+      t(enabled ? 'admin.tierConfig.switchEnableSuccess' : 'admin.tierConfig.switchDisableSuccess'),
+    )
+  } catch (err: unknown) {
+    // 失败时保持原状态，只有后端确认成功才翻转开关
+    appStore.showError(extractI18nErrorMessage(err, t, 'admin.tierConfig', t('admin.tierConfig.switchSaveFailed')))
+  } finally {
+    switchSaving.value = false
+  }
+}
 
 // ==================== Tiers ====================
 
@@ -700,5 +797,6 @@ async function lookupUserTier() {
 onMounted(() => {
   loadGroups()
   loadTiers()
+  loadFeatureSwitch()
 })
 </script>

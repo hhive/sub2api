@@ -139,6 +139,11 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'Affiliate',
   }),
+  userTier: defineFlag({
+    key: 'user_tier_enabled',
+    mode: 'opt-out',
+    label: 'User Tiers',
+  }),
   lobehub: defineFlag({
     key: 'lobehub_enabled',
     mode: 'opt-in',

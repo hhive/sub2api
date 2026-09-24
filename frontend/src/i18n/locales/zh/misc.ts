@@ -351,6 +351,9 @@ export default {
     claimFailed: '领取失败',
     historicalGrantNote: '该权益为 2026-09-24 活动期授予，现行等级口径已不含订阅消费',
     subscriptionDisclaimer: '等级口径只统计兑换额度消费，不含订阅消费。重度订阅用户可能显示消费很少。',
+    // 管理员关闭「等级与权益」总开关后，用户端只显示这个中性状态
+    featureDisabledTitle: '该功能未开放',
+    featureDisabledDesc: '等级与权益功能当前未开放，如有疑问请联系客服。',
   },
 
   // Payment System

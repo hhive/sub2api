@@ -328,6 +328,9 @@ export default {
     claimFailed: 'Claim failed',
     historicalGrantNote: 'This benefit was granted during the 2026-09-24 campaign; the current tier metric no longer counts subscription spend',
     subscriptionDisclaimer: 'The tier metric counts redeemed-balance spend only, excluding subscription spend. Heavy subscribers may therefore show very little spend.',
+    // Shown when an admin turned the "Tiers & Benefits" master switch off
+    featureDisabledTitle: 'This feature is not available',
+    featureDisabledDesc: 'Tiers and benefits are currently unavailable. Please contact support if you have any questions.',
   },
 
   payment: {

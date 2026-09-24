@@ -7,6 +7,16 @@
         ></div>
       </div>
 
+      <!-- 总开关关闭：入口已从导航隐藏，这里兜住直接访问 URL 的情况 -->
+      <div v-else-if="featureDisabled" class="card p-6 text-center">
+        <p class="text-base font-semibold text-gray-900 dark:text-white">
+          {{ t('membership.featureDisabledTitle') }}
+        </p>
+        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+          {{ t('membership.featureDisabledDesc') }}
+        </p>
+      </div>
+
       <template v-else-if="tier">
         <!-- 口径说明：等级只统计兑换额度消费，不含订阅消费 -->
         <div
@@ -180,7 +190,7 @@ import { useI18n } from 'vue-i18n'
 import userAPI from '@/api/user'
 import type { MyTierResponse, UserTierBenefitState, UserTierClaimResponse, UserTierState } from '@/types'
 import { useAppStore } from '@/stores/app'
-import { extractI18nErrorMessage } from '@/utils/apiError'
+import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
@@ -191,11 +201,22 @@ const appStore = useAppStore()
 const HISTORICAL_GRANT_SOURCE = 'manual_20260924'
 /** 已有专属倍率时后端跳过倍率权益的原因 */
 const SKIPPED_MANUAL_RATE_MULTIPLIER = 'manual_rate_multiplier_present'
+/** 管理员关闭等级总开关后，领取接口返回的 403 原因 */
+const USER_TIER_FEATURE_DISABLED = 'USER_TIER_FEATURE_DISABLED'
 
 const loading = ref(false)
 const tier = ref<MyTierResponse | null>(null)
 const claimingTierId = ref<number | null>(null)
 const claimingAll = ref(false)
+/**
+ * 等级功能未开放：接口返回 enabled === false，或领取接口返回
+ * USER_TIER_FEATURE_DISABLED（403）。两种途径都只渲染中性提示，不展示等级内容。
+ */
+const featureDisabled = ref(false)
+
+function isFeatureDisabledError(err: unknown): boolean {
+  return extractApiErrorCode(err) === USER_TIER_FEATURE_DISABLED
+}
 
 /**
  * 可领取的档位。
@@ -274,9 +295,18 @@ function describeClaim(result: UserTierClaimResponse): string[] {
 async function load() {
   loading.value = true
   try {
-    tier.value = await userAPI.getMyTier()
+    const result = await userAPI.getMyTier()
+    tier.value = result
+    // 未配置/缺省视为开启，只有显式 false 才算关闭
+    featureDisabled.value = result.enabled === false
   } catch (err: unknown) {
-    appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.loadFailed')))
+    // 总开关关闭时后端返回 403 USER_TIER_FEATURE_DISABLED，落到与 enabled=false 相同的状态
+    if (isFeatureDisabledError(err)) {
+      tier.value = null
+      featureDisabled.value = true
+    } else {
+      appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.loadFailed')))
+    }
   } finally {
     loading.value = false
   }
@@ -292,7 +322,12 @@ async function claimOne(item: UserTierState) {
     }
     await load()
   } catch (err: unknown) {
-    appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.claimFailed')))
+    // 关闭总开关后后端拒绝领取，页面切到未开放状态而不是报错
+    if (isFeatureDisabledError(err)) {
+      featureDisabled.value = true
+    } else {
+      appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.claimFailed')))
+    }
   } finally {
     claimingTierId.value = null
   }
@@ -324,7 +359,11 @@ async function claimAll() {
     )
     await load()
   } catch (err: unknown) {
-    appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.claimFailed')))
+    if (isFeatureDisabledError(err)) {
+      featureDisabled.value = true
+    } else {
+      appStore.showError(extractI18nErrorMessage(err, t, 'membership', t('membership.claimFailed')))
+    }
   } finally {
     claimingAll.value = false
   }
