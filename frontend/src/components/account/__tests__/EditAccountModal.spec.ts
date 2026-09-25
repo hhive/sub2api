@@ -372,6 +372,33 @@ describe('EditAccountModal', () => {
     wrapper.unmount()
   })
 
+  it('omits priority from the update payload when the operator never edited it', async () => {
+    const account = buildAccount()
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    const wrapper = mountModal(account)
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    const payload = updateAccountMock.mock.calls[0]?.[1] as Record<string, unknown>
+    expect(payload).toBeTruthy()
+    expect('priority' in payload).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('sends priority when the operator edits it', async () => {
+    const account = buildAccount()
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    const wrapper = mountModal(account)
+
+    await wrapper.get('[data-tour="account-form-priority"]').setValue('37')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock.mock.calls[0]?.[1]?.priority).toBe(37)
+    wrapper.unmount()
+  })
+
   it('allows removing assigned inactive groups and undoing the selection before saving', async () => {
     authIsSimpleMode.value = false
     const account = buildAccount()

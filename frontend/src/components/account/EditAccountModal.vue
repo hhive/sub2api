@@ -4106,6 +4106,10 @@ const applyOpenAIModelMappingCredentials = (credentials: Record<string, unknown>
   }
 }
 
+// 优先级是 Relay Monitor 会按告警层数实时改写的运行态字段（乘以告警因子、恢复时除回）。
+// 弹窗打开时快照的值与提交时的当前值无关，故仅在运营真的改过它时才回写，避免用陈旧快照覆盖运行态。
+const openedPriority = ref<number | null>(null)
+
 const syncFormFromAccount = (newAccount: Account | null) => {
   if (!newAccount) {
     return
@@ -4126,6 +4130,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   form.concurrency = newAccount.concurrency
   form.load_factor = newAccount.load_factor ?? null
   form.priority = newAccount.priority
+  openedPriority.value = newAccount.priority
   form.rate_multiplier = newAccount.rate_multiplier ?? 1
   form.status = (newAccount.status === 'active' || newAccount.status === 'inactive' || newAccount.status === 'error')
     ? newAccount.status
@@ -5141,6 +5146,10 @@ const handleSubmit = async () => {
 	}
 
   const updatePayload: Record<string, unknown> = { ...form }
+  // 未改动优先级时不提交该字段，避免把弹窗打开时的快照写回，覆盖 Relay Monitor 的运行态调整。
+  if (form.priority === openedPriority.value) {
+    delete updatePayload.priority
+  }
   try {
     // 后端期望 proxy_id: 0 表示清除代理，而不是 null
     if (updatePayload.proxy_id === null) {
