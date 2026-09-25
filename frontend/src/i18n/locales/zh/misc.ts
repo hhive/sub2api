@@ -309,9 +309,9 @@ export default {
     }
   },
 
-  // My Tier (membership)
+  // Tier Benefits (membership)
   membership: {
-    title: '我的等级',
+    title: '等级权益',
     description: '查看当前等级称呼、累计消费与各档权益，达标后可自助领取',
     loadFailed: '加载等级信息失败',
     empty: '暂无等级配置',

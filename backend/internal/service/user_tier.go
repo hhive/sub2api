@@ -237,7 +237,7 @@ type UserTierClaimState struct {
 	Benefits     []UserTierBenefitState
 }
 
-// UserTierView 用户端「我的等级」聚合视图
+// UserTierView 用户端「等级权益」聚合视图
 type UserTierView struct {
 	// Enabled 总开关状态：false 时 Tiers 为空，前端据此隐藏入口与内容
 	Enabled         bool

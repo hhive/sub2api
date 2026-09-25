@@ -10,13 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MyTierHandler 用户端「我的等级」接口。
+// MyTierHandler 用户端「等级权益」接口。
 // DTO 只暴露称呼/进度/权益/领取状态，不暴露内部字段（tier_id 之外的配置细节、effect 内部状态）。
 type MyTierHandler struct {
 	tierService *service.UserTierService
 }
 
-// NewMyTierHandler 创建用户端「我的等级」处理器
+// NewMyTierHandler 创建用户端「等级权益」处理器
 func NewMyTierHandler(tierService *service.UserTierService) *MyTierHandler {
 	return &MyTierHandler{tierService: tierService}
 }

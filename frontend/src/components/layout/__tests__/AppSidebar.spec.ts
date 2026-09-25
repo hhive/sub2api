@@ -247,7 +247,7 @@ describe('AppSidebar subscription feature flag', () => {
 })
 
 describe('AppSidebar user tier feature flag', () => {
-  it('gates the My Tier entry behind the user-tier public-settings flag', () => {
+  it('gates the Tier Benefits entry behind the user-tier public-settings flag', () => {
     expect(componentSource).toContain('const flagUserTier = makeSidebarFlag(FeatureFlags.userTier)')
     expect(componentSource).toMatch(/path: '\/membership'[^\n]*featureFlag: flagUserTier/)
   })

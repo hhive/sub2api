@@ -652,7 +652,7 @@ async function applyFeatureSwitch(enabled: boolean) {
   try {
     const result = await userTiersAPI.updateFeatureSwitch(enabled)
     featureEnabled.value = result.enabled
-    // 刷新缓存的公开设置，否则侧边栏「我的等级」入口仍按旧值渲染：
+    // 刷新缓存的公开设置，否则侧边栏「等级权益」入口仍按旧值渲染：
     // 关掉开关后操作者本会话里入口不消失，「关闭后用户看不到」这条无法被观察到。
     // 与设置页保存后的收尾一致（SettingsView 中的 fetchPublicSettings(true)）。
     await appStore.fetchPublicSettings(true)

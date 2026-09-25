@@ -475,7 +475,7 @@ func (s *UserTierService) GetUserAssignmentByEmail(ctx context.Context, email st
 }
 
 // AssignUserTierByEmail 按邮箱把用户指派到指定消费档（重指派即覆盖）。
-// 只写指派表：不发放任何权益，用户仍需在「我的等级」页手动领取。
+// 只写指派表：不发放任何权益，用户仍需在「等级权益」页手动领取。
 func (s *UserTierService) AssignUserTierByEmail(ctx context.Context, email, tierCode, note string, actorUserID int64) (*User, *UserTierAssignment, error) {
 	if s == nil || s.repo == nil {
 		return nil, nil, fmt.Errorf("user tier service is not configured")

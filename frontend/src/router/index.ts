@@ -283,7 +283,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
-      title: 'My Tier',
+      title: 'Tier Benefits',
       titleKey: 'membership.title',
       descriptionKey: 'membership.description'
     }

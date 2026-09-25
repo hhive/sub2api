@@ -805,7 +805,7 @@ describe('TierConfigView', () => {
       expect(wrapper.findAll('tbody tr')).toHaveLength(3)
     })
 
-    // 不刷新缓存的公开设置，侧边栏「我的等级」入口会按旧值继续渲染：
+    // 不刷新缓存的公开设置，侧边栏「等级权益」入口会按旧值继续渲染：
     // 操作者自己关掉开关后入口不消失，「关闭后用户看不到」这条无法被观察到。
     it('refreshes the cached public settings after a successful switch write', async () => {
       const wrapper = mountView()

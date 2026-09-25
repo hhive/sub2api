@@ -54,7 +54,7 @@ func RegisterUserRoutes(
 			user.GET("/api-keys/:id/usage/daily", panelRateLimiter.Heavy(), h.Usage.GetMyAPIKeyDailyUsage)
 			user.GET("/platform-quotas", h.User.GetMyPlatformQuotas)
 
-			// 我的等级：只读视图 + 手动领取（消费档）。首充档保持既有自动发放，不支持手动领取。
+			// 等级权益：只读视图 + 手动领取（消费档）。首充档保持既有自动发放，不支持手动领取。
 			user.GET("/tier", h.MyTier.GetMyTier)
 			user.POST("/tier/claim", h.MyTier.ClaimTier)
 

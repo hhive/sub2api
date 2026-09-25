@@ -286,9 +286,9 @@ export default {
   },
 
   // Payment System
-  // My Tier (membership)
+  // Tier Benefits (membership)
   membership: {
-    title: 'My Tier',
+    title: 'Tier Benefits',
     description: 'Review your current tier, accumulated spend and per-tier benefits, then claim what you have earned',
     loadFailed: 'Failed to load tier information',
     empty: 'No tiers configured',

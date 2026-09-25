@@ -172,7 +172,7 @@ export default {
     mediaPlayground: '图片与视频',
     redeem: '兑换',
     affiliate: '邀请返利',
-    myTier: '我的等级',
+    myTier: '等级权益',
     tierConfig: '等级与权益',
     affiliateManagement: '邀请返利',
     affiliateInviteRecords: '邀请记录',

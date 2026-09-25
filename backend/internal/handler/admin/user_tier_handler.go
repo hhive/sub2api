@@ -478,7 +478,7 @@ func (h *UserTierHandler) GetUserTierAssignment(c *gin.Context) {
 }
 
 // AssignUserTier PUT /admin/tiers/assignments
-// 把指定邮箱的用户指派到指定消费档（重指派即覆盖）。只写指派：权益仍需用户在「我的等级」页手动领取。
+// 把指定邮箱的用户指派到指定消费档（重指派即覆盖）。只写指派：权益仍需用户在「等级权益」页手动领取。
 func (h *UserTierHandler) AssignUserTier(c *gin.Context) {
 	var req tierAssignmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
