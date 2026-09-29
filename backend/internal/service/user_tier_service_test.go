@@ -25,7 +25,7 @@ type tierRepoStub struct {
 	effects       map[string]UserTierEffect
 	effectSeq     int64
 	overlays      []UserTierRateOverlay
-	manualRates   map[string]bool
+	rates         map[string]float64
 	consumed      map[int64]float64
 	firstRecharge map[int64]*UserTierFirstRechargeCredit
 	balances      map[int64]float64
@@ -39,7 +39,7 @@ func newTierRepoStub() *tierRepoStub {
 	return &tierRepoStub{
 		awards:        map[string]UserTierAward{},
 		effects:       map[string]UserTierEffect{},
-		manualRates:   map[string]bool{},
+		rates:         map[string]float64{},
 		consumed:      map[int64]float64{},
 		firstRecharge: map[int64]*UserTierFirstRechargeCredit{},
 		balances:      map[int64]float64{},
@@ -255,8 +255,17 @@ func (s *tierRepoStub) MarkEffectApplied(_ context.Context, effectID int64, deta
 
 // 刻意没有 MarkEffectFailed：失败整体回滚，回滚后没有可标记的 effect 行（见 UserTierRepository 注释）。
 
-func (s *tierRepoStub) HasManualRateMultiplier(_ context.Context, userID, groupID int64) (bool, error) {
-	return s.manualRates[fmt.Sprintf("%d:%d", userID, groupID)], nil
+func (s *tierRepoStub) GetUserGroupRateMultiplier(_ context.Context, userID, groupID int64) (*float64, error) {
+	rate, ok := s.rates[fmt.Sprintf("%d:%d", userID, groupID)]
+	if !ok {
+		return nil, nil
+	}
+	return &rate, nil
+}
+
+func (s *tierRepoStub) SetUserGroupRateMultiplier(_ context.Context, userID, groupID int64, rate float64) error {
+	s.rates[fmt.Sprintf("%d:%d", userID, groupID)] = rate
+	return nil
 }
 
 func (s *tierRepoStub) UpsertRateOverlay(_ context.Context, overlay UserTierRateOverlay) error {
@@ -527,8 +536,9 @@ func TestUserTierClaim_RetriesPendingEffectsOnly(t *testing.T) {
 	require.Len(t, firstResult.Applied, 2)
 	creditsAfterFirst := len(credit.credits)
 
-	// 模拟倍率权益未落盘：删除 overlay 并把 effect 打回 pending
+	// 模拟倍率权益未落盘：倍率表与来源登记同事务写入，故两者一起清除，并把 effect 打回 pending
 	repo.overlays = nil
+	delete(repo.rates, "17:2")
 	for key, effect := range repo.effects {
 		if effect.BenefitType == UserTierBenefitGroupRate {
 			effect.Status = UserTierEffectPending
@@ -543,6 +553,7 @@ func TestUserTierClaim_RetriesPendingEffectsOnly(t *testing.T) {
 	require.Equal(t, creditsAfterFirst, len(credit.credits))
 	require.InDelta(t, 50, repo.balances[17], 1e-9)
 	require.Len(t, repo.overlays, 1)
+	require.InDelta(t, 0.9, repo.rates["17:2"], 1e-9)
 }
 
 // ---------- 冲突规则：等级不覆盖手工倍率 ----------
@@ -560,13 +571,14 @@ func TestUserTierClaim_SkipsGroupRateWhenManualRateExists(t *testing.T) {
 	})
 	repo.tiers = append(repo.tiers, tier)
 	repo.consumed[451] = 2000
-	repo.manualRates["451:2"] = true // 该用户已有手工倍率 0.16
+	repo.rates["451:2"] = 0.16 // 该用户已有手工倍率 0.16（无等级登记 → 视为运营手工设置）
 
 	svc := newTierServiceForTest(repo, credit)
 	result, err := svc.ClaimTier(context.Background(), 451, tier.ID)
 	require.NoError(t, err)
 
-	// 倍率不被覆盖：不写 overlay
+	// 倍率不被覆盖：既不写倍率表，也不写来源登记
+	require.InDelta(t, 0.16, repo.rates["451:2"], 1e-9)
 	require.Empty(t, repo.overlays)
 	// 只发额度：10 元照发
 	require.InDelta(t, 150, repo.balances[451], 1e-9)
@@ -588,6 +600,89 @@ func TestUserTierClaim_SkipsGroupRateWhenManualRateExists(t *testing.T) {
 			require.Equal(t, UserTierSkipManualRateMultiplier, applied.SkippedReason)
 		}
 	}
+}
+
+// ---------- 倍率单一来源：等级倍率写入用户专属倍率表 ----------
+
+// 倍率只有 user_group_rate_multipliers 一个来源（计费、用户端、管理端都读它），
+// 等级领取必须写进这张表，否则会出现「计费 1.08、页面 1.2」的多套口径。
+func TestUserTierClaim_WritesGroupRateIntoUserGroupRates(t *testing.T) {
+	repo := newTierRepoStub()
+	credit := &tierCreditRepoStub{}
+	tier := repo.addTier(UserTier{
+		ID: 1, Code: "tier4", Name: "领航", SortOrder: 0,
+		TriggerType: UserTierTriggerConsumption, ThresholdUSD: tierFloatPtr(1500), Enabled: true,
+		Benefits: []UserTierBenefit{
+			{ID: 1, BenefitType: UserTierBenefitGroupRate, GroupRate: &UserTierGroupRateParams{GroupID: 2, RateMultiplier: 1.08}, Enabled: true},
+		},
+	})
+	repo.tiers = append(repo.tiers, tier)
+	repo.consumed[612] = 1600
+
+	svc := newTierServiceForTest(repo, credit)
+	result, err := svc.ClaimTier(context.Background(), 612, tier.ID)
+	require.NoError(t, err)
+
+	require.InDelta(t, 1.08, repo.rates["612:2"], 1e-9)
+	require.Len(t, repo.overlays, 1)
+	require.Equal(t, "active", repo.overlays[0].Status)
+	require.InDelta(t, 1.08, repo.overlays[0].RateMultiplier, 1e-9)
+	require.Len(t, result.Applied, 1)
+	require.InDelta(t, 1.08, result.Applied[0].RateMultiplier, 1e-9)
+}
+
+// 等级之间再领取：取更小者，不涨价（沿用旧覆盖层「同组多条取最低」的语义）。
+func TestUserTierClaim_KeepsSmallerRateOnTierOwnedUpdate(t *testing.T) {
+	repo := newTierRepoStub()
+	credit := &tierCreditRepoStub{}
+	tier := repo.addTier(UserTier{
+		ID: 1, Code: "tier4", Name: "领航", SortOrder: 0,
+		TriggerType: UserTierTriggerConsumption, ThresholdUSD: tierFloatPtr(1500), Enabled: true,
+		Benefits: []UserTierBenefit{
+			{ID: 1, BenefitType: UserTierBenefitGroupRate, GroupRate: &UserTierGroupRateParams{GroupID: 2, RateMultiplier: 1.08}, Enabled: true},
+		},
+	})
+	repo.tiers = append(repo.tiers, tier)
+	repo.consumed[31] = 1600
+	// 该组倍率已由等级权益写入（有 active 登记），现值为 0.8
+	repo.rates["31:2"] = 0.8
+	repo.overlays = append(repo.overlays, UserTierRateOverlay{
+		ID: 1, UserID: 31, GroupID: 2, EffectID: 1, RateMultiplier: 0.8, Status: "active",
+	})
+
+	svc := newTierServiceForTest(repo, credit)
+	result, err := svc.ClaimTier(context.Background(), 31, tier.ID)
+	require.NoError(t, err)
+
+	require.InDelta(t, 0.8, repo.rates["31:2"], 1e-9)
+	require.Len(t, result.Applied, 1)
+	require.InDelta(t, 0.8, result.Applied[0].RateMultiplier, 1e-9)
+}
+
+// 等级之间再领取且新值更小：更新为更小值。
+func TestUserTierClaim_ReplacesTierOwnedRateWithSmallerValue(t *testing.T) {
+	repo := newTierRepoStub()
+	credit := &tierCreditRepoStub{}
+	tier := repo.addTier(UserTier{
+		ID: 1, Code: "tier3", Name: "远航", SortOrder: 0,
+		TriggerType: UserTierTriggerConsumption, ThresholdUSD: tierFloatPtr(1000), Enabled: true,
+		Benefits: []UserTierBenefit{
+			{ID: 1, BenefitType: UserTierBenefitGroupRate, GroupRate: &UserTierGroupRateParams{GroupID: 2, RateMultiplier: 0.9}, Enabled: true},
+		},
+	})
+	repo.tiers = append(repo.tiers, tier)
+	repo.consumed[32] = 1200
+	repo.rates["32:2"] = 1.08
+	repo.overlays = append(repo.overlays, UserTierRateOverlay{
+		ID: 1, UserID: 32, GroupID: 2, EffectID: 1, RateMultiplier: 1.08, Status: "active",
+	})
+
+	svc := newTierServiceForTest(repo, credit)
+	result, err := svc.ClaimTier(context.Background(), 32, tier.ID)
+	require.NoError(t, err)
+
+	require.InDelta(t, 0.9, repo.rates["32:2"], 1e-9)
+	require.InDelta(t, 0.9, result.Applied[0].RateMultiplier, 1e-9)
 }
 
 // ---------- 余额可用性（奖励不计 total_recharged） ----------

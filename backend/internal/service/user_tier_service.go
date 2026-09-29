@@ -933,12 +933,19 @@ func (s *UserTierService) applyBenefit(
 		if params == nil || params.GroupID <= 0 || params.RateMultiplier <= 0 {
 			return false, ErrUserTierInvalidBenefit
 		}
-		// 冲突规则：手工倍率优先，等级倍率不覆盖手工值（仅在 detail 记录跳过原因）
-		hasManual, err := s.repo.HasManualRateMultiplier(ctx, userID, params.GroupID)
+		// 倍率只有 user_group_rate_multipliers 一个来源（计费、用户端与管理端都读它），
+		// 领取时必须写进这张表，否则会出现「计费 1.08、页面 1.2」的多套口径。
+		// overlay 表退化为来源登记：用来区分该行的值来自运营手工设置还是等级权益。
+		current, err := s.repo.GetUserGroupRateMultiplier(ctx, userID, params.GroupID)
 		if err != nil {
 			return false, err
 		}
-		if hasManual {
+		tierOwned, err := s.hasTierRateRegistration(ctx, userID, params.GroupID)
+		if err != nil {
+			return false, err
+		}
+		// 冲突规则：该组已有倍率且不是等级权益写的 → 视为运营手工设置，不覆盖（仅在 detail 记录跳过原因）
+		if current != nil && !tierOwned {
 			if err := s.repo.MarkEffectApplied(ctx, effectID, map[string]any{
 				"outcome":  "skipped",
 				"reason":   UserTierSkipManualRateMultiplier,
@@ -954,11 +961,19 @@ func (s *UserTierService) applyBenefit(
 			})
 			return false, nil
 		}
+		// 等级之间再领取：取更小者，不涨价（沿用旧覆盖层「同组多条取最低」的语义）
+		effective := params.RateMultiplier
+		if current != nil && *current < effective {
+			effective = *current
+		}
+		if err := s.repo.SetUserGroupRateMultiplier(ctx, userID, params.GroupID, effective); err != nil {
+			return false, err
+		}
 		if err := s.repo.UpsertRateOverlay(ctx, UserTierRateOverlay{
 			UserID:         userID,
 			GroupID:        params.GroupID,
 			EffectID:       effectID,
-			RateMultiplier: params.RateMultiplier,
+			RateMultiplier: effective,
 			Status:         "active",
 		}); err != nil {
 			return false, err
@@ -966,7 +981,7 @@ func (s *UserTierService) applyBenefit(
 		if err := s.repo.MarkEffectApplied(ctx, effectID, map[string]any{
 			"outcome":  "granted",
 			"group_id": params.GroupID,
-			"rate":     params.RateMultiplier,
+			"rate":     effective,
 		}); err != nil {
 			return false, err
 		}
@@ -975,13 +990,29 @@ func (s *UserTierService) applyBenefit(
 			BenefitType:    UserTierBenefitGroupRate,
 			GroupID:        params.GroupID,
 			GroupName:      groupName,
-			RateMultiplier: params.RateMultiplier,
+			RateMultiplier: effective,
 		})
 		return true, nil
 
 	default:
 		return false, ErrUserTierInvalidBenefit
 	}
+}
+
+// hasTierRateRegistration 判断该用户在指定分组的倍率是否由等级权益写入。
+// 依据是 user_tier_rate_overlays 里留存的 active 登记：有登记 = 该行是等级权益写的（可被后续等级更新覆盖，
+// 取更小值）；无登记而倍率非空 = 运营手工设置（等级不覆盖）。
+func (s *UserTierService) hasTierRateRegistration(ctx context.Context, userID, groupID int64) (bool, error) {
+	overlays, err := s.repo.ListUserRateOverlays(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	for i := range overlays {
+		if overlays[i].GroupID == groupID && overlays[i].Status == "active" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // ---------- 管理端只读查看 ----------

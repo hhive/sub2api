@@ -1,0 +1,11 @@
+-- 245_update_user_tier_rate_overlay_comment.sql
+-- 等级倍率的存储位置变了，241 留下的表注释与现行实现相反，必须更正，避免后人按错注释理解数据。
+--
+-- 变更前（241）：'等级倍率覆盖层（不写入、不覆盖 user_group_rate_multipliers）'
+-- 变更后：领取等级倍率时直接写入 user_group_rate_multipliers —— 这是全站唯一被读写的倍率来源
+--         （计费 GetByUserAndGroup、用户端 GetByUserID、管理端 GroupRates/GetByGroupID 都读它）；
+--         user_tier_rate_overlays 退化为「来源登记」，只用于区分该行倍率来自运营手工设置还是等级权益，
+--         并供冲突判定（手工值不被覆盖、等级之间取更小值）与追溯使用，不再参与计费取值。
+--
+-- 只改注释：不改结构、不改数据、不新增约束。
+COMMENT ON TABLE user_tier_rate_overlays IS '等级倍率的来源登记（倍率本体写在 user_group_rate_multipliers；本表标记来源与追溯，不再参与计费取值）';

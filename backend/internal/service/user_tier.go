@@ -322,7 +322,13 @@ type UserTierRepository interface {
 	// 没有可标记为 failed 的对象；重试语义 = 用户重新发起领取（见 ClaimTier 注释）。
 	MarkEffectApplied(ctx context.Context, effectID int64, detail map[string]any) error
 
-	HasManualRateMultiplier(ctx context.Context, userID, groupID int64) (bool, error)
+	// GetUserGroupRateMultiplier 读取用户在指定分组当前的用户专属倍率（无行或 rate 为 NULL 返回 nil）。
+	// 等级倍率与手工倍率共用 user_group_rate_multipliers（唯一来源，见 UserTierService 的倍率发放注释），
+	// 因此这里读到的值既可能是运营手工设置，也可能是等级权益写入的；来源区分由 ListUserRateOverlays 的登记承担。
+	GetUserGroupRateMultiplier(ctx context.Context, userID, groupID int64) (*float64, error)
+	// SetUserGroupRateMultiplier 写入用户在指定分组的用户专属倍率（只改 rate，保留既有 rpm_override）。
+	SetUserGroupRateMultiplier(ctx context.Context, userID, groupID int64, rate float64) error
+	// UpsertRateOverlay 写等级倍率的来源登记（不再参与计费取值，仅供来源判定与追溯）
 	UpsertRateOverlay(ctx context.Context, overlay UserTierRateOverlay) error
 
 	// ApplyTierRewardBalance 只增加余额，不累加 users.total_recharged

@@ -85,3 +85,60 @@ func TestBalanceCreditExpiryPersistsExpiredAmount(t *testing.T) {
 	require.InDelta(t, 300.0, expired[0].Amount, 1e-9)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// TestUserTierRepoSetUserGroupRateMultiplierUpsertShape 守住倍率单一来源：等级倍率必须写进
+// user_group_rate_multipliers（计费/用户端/管理端共用的唯一来源），且 SQL 形状与 main 的
+// SyncUserGroupRates 单值 upsert 一致 —— SET 列表里只有 rate_multiplier 与 updated_at，
+// 不得出现 rpm_override（写了就会把运营设的 RPM 上限抹掉）。
+func TestUserTierRepoSetUserGroupRateMultiplierUpsertShape(t *testing.T) {
+	repo, mock := newUserTierRepoForTest(t)
+
+	mock.ExpectExec(`(?s)INSERT INTO user_group_rate_multipliers \(user_id, group_id, rate_multiplier, created_at, updated_at\)\s+VALUES \(\$1, \$2, \$3, NOW\(\), NOW\(\)\)\s+ON CONFLICT \(user_id, group_id\)\s+DO UPDATE SET rate_multiplier = EXCLUDED\.rate_multiplier, updated_at = EXCLUDED\.updated_at`).
+		WithArgs(int64(612), int64(2), 1.08).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, repo.SetUserGroupRateMultiplier(context.Background(), 612, 2, 1.08))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 非正倍率直接拒绝且不写库（fail closed）：倍率表有 CHECK (rate_multiplier > 0) 的话
+// 让它在 SQL 层报错会污染事务，不如在入口拦下。
+func TestUserTierRepoSetUserGroupRateMultiplierRejectsNonPositive(t *testing.T) {
+	repo, mock := newUserTierRepoForTest(t)
+
+	require.Error(t, repo.SetUserGroupRateMultiplier(context.Background(), 612, 2, 0))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUserTierRepoGetUserGroupRateMultiplier(t *testing.T) {
+	repo, mock := newUserTierRepoForTest(t)
+
+	mock.ExpectQuery(`(?s)SELECT rate_multiplier FROM user_group_rate_multipliers\s+WHERE user_id = \$1 AND group_id = \$2`).
+		WithArgs(int64(612), int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"rate_multiplier"}).AddRow(1.08))
+
+	rate, err := repo.GetUserGroupRateMultiplier(context.Background(), 612, 2)
+	require.NoError(t, err)
+	require.NotNil(t, rate)
+	require.InDelta(t, 1.08, *rate, 1e-9)
+
+	// 无行 → nil, nil（调用方据此判定「该组尚无倍率」）
+	mock.ExpectQuery(`(?s)SELECT rate_multiplier FROM user_group_rate_multipliers`).
+		WithArgs(int64(808), int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"rate_multiplier"}))
+
+	rate, err = repo.GetUserGroupRateMultiplier(context.Background(), 808, 2)
+	require.NoError(t, err)
+	require.Nil(t, rate)
+
+	// 有行但 rate 为 NULL（仅设了 rpm_override）→ nil, nil
+	mock.ExpectQuery(`(?s)SELECT rate_multiplier FROM user_group_rate_multipliers`).
+		WithArgs(int64(809), int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"rate_multiplier"}).AddRow(nil))
+
+	rate, err = repo.GetUserGroupRateMultiplier(context.Background(), 809, 2)
+	require.NoError(t, err)
+	require.Nil(t, rate)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}

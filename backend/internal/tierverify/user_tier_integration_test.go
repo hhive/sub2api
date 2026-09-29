@@ -219,20 +219,31 @@ func TestVerify_ClaimFlowOnRealDB(t *testing.T) {
 	require.NoError(t, db.QueryRow(`SELECT count(*) FROM user_balance_credits WHERE user_id = $1 AND source_type = 'tier_reward'`, userID).Scan(&tierRewardRows))
 	require.Equal(t, 2, tierRewardRows)
 
-	// 倍率写进覆盖层，且不触碰手工倍率表
+	// 倍率写进用户专属倍率表 —— 全站唯一来源（计费、用户端 GetByUserID、管理端 GroupRates/GetByGroupID 都读它），
+	// 否则会出现「计费 1.08、页面 1.2」的多套口径；overlay 行退化为来源登记。
+	var userRate float64
+	require.NoError(t, db.QueryRow(`SELECT rate_multiplier FROM user_group_rate_multipliers WHERE user_id = $1 AND group_id = $2`, userID, groupID).Scan(&userRate))
+	require.InDelta(t, 0.9, userRate, 1e-9)
 	var overlayRate float64
 	require.NoError(t, db.QueryRow(`SELECT rate_multiplier FROM user_tier_rate_overlays WHERE user_id = $1 AND group_id = $2 AND status = 'active'`, userID, groupID).Scan(&overlayRate))
 	require.InDelta(t, 0.9, overlayRate, 1e-9)
-	var manualRows int
-	require.NoError(t, db.QueryRow(`SELECT count(*) FROM user_group_rate_multipliers WHERE user_id = $1`, userID).Scan(&manualRows))
-	require.Zero(t, manualRows)
 
-	// 计费热路径的读取合并：等级倍率生效
+	// 计费热路径读到同一个值
 	rateRepo := repository.NewUserGroupRateRepository(db)
 	effective, err := rateRepo.GetByUserAndGroup(ctx, userID, groupID)
 	require.NoError(t, err)
 	require.NotNil(t, effective)
 	require.InDelta(t, 0.9, *effective, 1e-9)
+
+	// 用户端读取路径（GetByUserID）与管理端分组列表（GetByGroupID）也必须是同一个值
+	userRates, err := rateRepo.GetByUserID(ctx, userID)
+	require.NoError(t, err)
+	require.InDelta(t, 0.9, userRates[groupID], 1e-9)
+	groupRates, err := rateRepo.GetByGroupID(ctx, groupID)
+	require.NoError(t, err)
+	require.Len(t, groupRates, 1)
+	require.NotNil(t, groupRates[0].RateMultiplier)
+	require.InDelta(t, 0.9, *groupRates[0].RateMultiplier, 1e-9)
 
 	// 幂等：重复领取返回已领取，且账本/overlay/effect 均不新增
 	result, err := svc.ClaimTier(ctx, userID, high.ID)
@@ -249,6 +260,83 @@ func TestVerify_ClaimFlowOnRealDB(t *testing.T) {
 	require.Equal(t, 2, credits)
 	require.NoError(t, db.QueryRow(`SELECT balance FROM users WHERE id = $1`, userID).Scan(&balance))
 	require.InDelta(t, 200, balance, 1e-9)
+
+	// 计费不再依赖 overlay：登记置为 revoked 后倍率仍在（单一来源的语义守卫）
+	_, err = db.Exec(`UPDATE user_tier_rate_overlays SET status = 'revoked' WHERE user_id = $1 AND group_id = $2`, userID, groupID)
+	require.NoError(t, err)
+	effective, err = rateRepo.GetByUserAndGroup(ctx, userID, groupID)
+	require.NoError(t, err)
+	require.NotNil(t, effective)
+	require.InDelta(t, 0.9, *effective, 1e-9)
+}
+
+// 等级倍率写入用户专属倍率表时：
+//  1. 必须保留既有 rpm_override（运营设的 RPM 上限不能被抹掉）；
+//  2. 该组已有倍率且来源是等级（有 active 登记）时取更小值，不涨价。
+func TestVerify_TierRateKeepsRPMAndTakesSmallerRate(t *testing.T) {
+	db, client := openHarness(t)
+	svc := newService(t, db, client)
+	userID, groupID := seedUserAndGroup(t, db)
+	seedTiers(t, svc, groupID)
+	tiers := tierList(t, svc)
+	high := findTier(t, tiers, "consume_1400")
+	ctx := context.Background()
+
+	// 该用户在该组已有 rpm_override（rate 为 NULL）——等级写入不得动它
+	_, err := db.Exec(`
+		INSERT INTO user_group_rate_multipliers (user_id, group_id, rpm_override, created_at, updated_at)
+		VALUES ($1, $2, 321, NOW(), NOW())
+	`, userID, groupID)
+	require.NoError(t, err)
+
+	_, err = svc.ClaimTier(ctx, userID, high.ID)
+	require.NoError(t, err)
+
+	var rate sql.NullFloat64
+	var rpm sql.NullInt32
+	require.NoError(t, db.QueryRow(`SELECT rate_multiplier, rpm_override FROM user_group_rate_multipliers WHERE user_id = $1 AND group_id = $2`, userID, groupID).Scan(&rate, &rpm))
+	require.True(t, rate.Valid)
+	require.InDelta(t, 0.9, rate.Float64, 1e-9)
+	require.True(t, rpm.Valid)
+	require.Equal(t, int32(321), rpm.Int32, "等级倍率写入不得触碰 rpm_override")
+
+	// 已有等级倍率时的两个方向：更小值覆盖、更大值不覆盖（同组取更小，不涨价）
+	trigger := service.UserTierTriggerConsumption
+	createRateTier := func(code, name string, threshold, rate float64) service.UserTier {
+		t.Helper()
+		benefits := []service.UserTierBenefitInput{
+			{BenefitType: service.UserTierBenefitGroupRate, GroupID: groupID, RateMultiplier: rate, Enabled: true},
+		}
+		_, err := svc.CreateTier(ctx, service.UserTierInput{
+			Code: &code, Name: &name, TriggerType: &trigger, ThresholdUSD: &threshold, Benefits: &benefits,
+		})
+		require.NoError(t, err)
+		return findTier(t, tierList(t, svc), code)
+	}
+	_, err = db.Exec(`
+		INSERT INTO user_balance_credits (user_id, email, source_type, source_id, source_code, amount, remaining_amount, status, created_at, updated_at)
+		VALUES ($1, 'tier-verify-rpm@example.test', 'redeem', '2', 'CODE2', 2000, 0, 'active', NOW(), NOW())
+	`, userID)
+	require.NoError(t, err)
+
+	smaller := createRateTier("consume_1600_smaller", "更小倍率", 1600, 0.5)
+	larger := createRateTier("consume_1700_larger", "更大倍率", 1700, 1.5)
+
+	// 现值 0.9 → 领 0.5：覆盖为更小值
+	_, err = svc.ClaimTier(ctx, userID, smaller.ID)
+	require.NoError(t, err)
+	var afterSmaller float64
+	require.NoError(t, db.QueryRow(`SELECT rate_multiplier FROM user_group_rate_multipliers WHERE user_id = $1 AND group_id = $2`, userID, groupID).Scan(&afterSmaller))
+	require.InDelta(t, 0.5, afterSmaller, 1e-9)
+
+	// 现值 0.5 → 领 1.5：保持 0.5，不涨价
+	_, err = svc.ClaimTier(ctx, userID, larger.ID)
+	require.NoError(t, err)
+	rateRepo := repository.NewUserGroupRateRepository(db)
+	effective, err := rateRepo.GetByUserAndGroup(ctx, userID, groupID)
+	require.NoError(t, err)
+	require.NotNil(t, effective)
+	require.InDelta(t, 0.5, *effective, 1e-9)
 }
 
 // ---------- 3. 并发领取：唯一约束兜底 ----------

@@ -766,21 +766,51 @@ func (r *userTierRepository) MarkEffectApplied(ctx context.Context, effectID int
 // 刻意没有 MarkEffectFailed：任一权益失败即整事务回滚，回滚后 effect 行不存在，
 // 没有可标记为 failed 的对象。失败可见面是 service 层的结构化日志（见 claim）。
 
-func (r *userTierRepository) HasManualRateMultiplier(ctx context.Context, userID, groupID int64) (bool, error) {
+// GetUserGroupRateMultiplier 读取用户在指定分组当前的用户专属倍率（无行或 rate 为 NULL 返回 nil）。
+// 等级倍率与手工倍率共用 user_group_rate_multipliers —— 这是全站唯一被读写的倍率来源
+// （计费 GetByUserAndGroup、用户端 GetByUserID、管理端 GroupRates/GetByGroupID 都读它），
+// 所以此处读到的值可能来自运营手工设置，也可能来自等级权益；来源区分由 user_tier_rate_overlays 的登记承担。
+func (r *userTierRepository) GetUserGroupRateMultiplier(ctx context.Context, userID, groupID int64) (*float64, error) {
 	exec, err := r.execer(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	var exists bool
-	if err := scanSingleRow(ctx, exec, `
-		SELECT EXISTS(
-			SELECT 1 FROM user_group_rate_multipliers
-			WHERE user_id = $1 AND group_id = $2 AND rate_multiplier IS NOT NULL
-		)
-	`, []any{userID, groupID}, &exists); err != nil {
-		return false, err
+	var rate sql.NullFloat64
+	err = scanSingleRow(ctx, exec, `
+		SELECT rate_multiplier FROM user_group_rate_multipliers
+		WHERE user_id = $1 AND group_id = $2
+	`, []any{userID, groupID}, &rate)
+	if err == sql.ErrNoRows {
+		return nil, nil
 	}
-	return exists, nil
+	if err != nil {
+		return nil, err
+	}
+	if !rate.Valid {
+		return nil, nil
+	}
+	v := rate.Float64
+	return &v, nil
+}
+
+// SetUserGroupRateMultiplier 写入用户在指定分组的用户专属倍率。
+// SQL 形状与 main 的 SyncUserGroupRates 的单值 upsert 一致：只改 rate_multiplier 与 updated_at，
+// 保留既有 rpm_override（由 sqlmock 用例钉住，避免日后与 main 漂移而无人察觉）。
+func (r *userTierRepository) SetUserGroupRateMultiplier(ctx context.Context, userID, groupID int64, rate float64) error {
+	if rate <= 0 {
+		return fmt.Errorf("user group rate multiplier must be positive: %v", rate)
+	}
+	exec, err := r.execer(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = exec.ExecContext(ctx, `
+		INSERT INTO user_group_rate_multipliers (user_id, group_id, rate_multiplier, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
+		ON CONFLICT (user_id, group_id)
+		DO UPDATE SET rate_multiplier = EXCLUDED.rate_multiplier, updated_at = EXCLUDED.updated_at
+	`, userID, groupID, rate)
+	return err
 }
 
 func (r *userTierRepository) UpsertRateOverlay(ctx context.Context, overlay service.UserTierRateOverlay) error {
