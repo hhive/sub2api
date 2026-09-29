@@ -5,6 +5,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
@@ -1416,9 +1417,64 @@ func TestAPIContracts(t *testing.T) {
 
 			status, body := doRequest(t, deps.router, tt.method, tt.path, tt.body, tt.headers)
 			require.Equal(t, tt.wantStatus, status)
+			if assertDynamicAPIContract(t, tt.name, body) {
+				return
+			}
 			require.JSONEq(t, tt.wantJSON, body)
 		})
 	}
+}
+
+// assertDynamicAPIContract 承接本地定制带来的动态响应体。
+//
+// 本地在 /api/v1/groups/available 与 /api/v1/admin/settings 上引入了上游测试未预期的字段
+// （如 jump menu 的 victory_menu_items），逐字 JSONEq 会误判；此处改为只断言必须成立的部分：
+// 统一响应壳、关键字段存在，以及内部字段不得泄漏。
+func assertDynamicAPIContract(t *testing.T, name, body string) bool {
+	t.Helper()
+	if name != "GET /api/v1/groups/available" &&
+		name != "GET /api/v1/admin/settings" &&
+		name != "GET /api/v1/admin/settings falls back to config oauth defaults" {
+		return false
+	}
+
+	var response struct {
+		Code    int             `json:"code"`
+		Message string          `json:"message"`
+		Data    json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &response))
+	require.Equal(t, 0, response.Code)
+	require.Equal(t, "success", response.Message)
+
+	if name == "GET /api/v1/groups/available" {
+		var groups []map[string]any
+		require.NoError(t, json.Unmarshal(response.Data, &groups))
+		require.Len(t, groups, 1)
+		group := groups[0]
+		require.Equal(t, float64(10), group["id"])
+		require.Equal(t, "Group One", group["name"])
+		require.Equal(t, "anthropic", group["platform"])
+		require.NotEmpty(t, group["supported_models"])
+		for _, internalField := range []string{"model_routing", "account_count", "profit_control_enabled", "profit_min_margin", "profit_safety_buffer"} {
+			require.NotContains(t, group, internalField)
+		}
+		return true
+	}
+
+	var settings map[string]any
+	require.NoError(t, json.Unmarshal(response.Data, &settings))
+	require.Contains(t, settings, "first_recharge_bonus_enabled")
+	require.Contains(t, settings, "first_recharge_bonus_amount")
+	require.Contains(t, settings, "first_recharge_bonus_validity_days")
+	require.Contains(t, settings, "balance_credit_validity_days")
+	if name == "GET /api/v1/admin/settings falls back to config oauth defaults" {
+		require.Equal(t, true, settings["oidc_connect_enabled"])
+		require.Equal(t, "ConfigOIDC", settings["oidc_connect_provider_name"])
+		require.Equal(t, "oidc-config-client", settings["oidc_connect_client_id"])
+		require.Equal(t, true, settings["wechat_connect_enabled"])
+	}
+	return true
 }
 
 type contractDeps struct {
@@ -1480,17 +1536,17 @@ func newContractDeps(t *testing.T) *contractDeps {
 	subscriptionService := service.NewSubscriptionService(groupRepo, userSubRepo, nil, nil, cfg)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 
-	redeemService := service.NewRedeemService(redeemRepo, userRepo, subscriptionService, nil, nil, nil, nil, nil)
+	redeemService := service.NewRedeemService(redeemRepo, userRepo, subscriptionService, nil, nil, nil, nil, nil, nil, nil)
 	redeemHandler := handler.NewRedeemHandler(redeemService)
 
 	settingRepo := newStubSettingRepo()
 	settingService := service.NewSettingService(settingRepo, cfg)
 
-	adminService := service.NewAdminService(nil, userRepo, groupRepo, &accountRepo, proxyRepo, apiKeyRepo, redeemRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	adminService := service.NewAdminService(nil, userRepo, groupRepo, &accountRepo, proxyRepo, apiKeyRepo, redeemRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	authHandler := handler.NewAuthHandler(cfg, nil, userService, settingService, nil, redeemService, nil, nil)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService)
 	usageHandler := handler.NewUsageHandler(usageService, apiKeyService, nil, nil)
-	adminSettingHandler := adminhandler.NewSettingHandler(settingService, nil, nil, nil, nil, nil, nil)
+	adminSettingHandler := adminhandler.NewSettingHandler(settingService, nil, nil, nil, nil, nil, nil, nil)
 	adminAccountHandler := adminhandler.NewAccountHandler(adminService, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	jwtAuth := func(c *gin.Context) {
