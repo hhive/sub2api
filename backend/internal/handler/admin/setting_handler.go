@@ -305,6 +305,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		BalanceCreditDailySettlementHour:                       settings.BalanceCreditDailySettlementHour,
 		RiskControlEnabled:                                     settings.RiskControlEnabled,
 		CyberSessionBlockEnabled:                               settings.CyberSessionBlockEnabled,
+		CyberPolicyUserAllowlist:                               settings.CyberPolicyUserAllowlist,
 		CyberSessionBlockTTLSeconds:                            settings.CyberSessionBlockTTLSeconds,
 		AffiliateRebateRate:                                    settings.AffiliateRebateRate,
 		AffiliateSubscriptionRebateMultiplier:                  settings.AffiliateSubscriptionRebateMultiplier,

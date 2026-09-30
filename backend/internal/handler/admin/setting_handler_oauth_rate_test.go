@@ -35,7 +35,7 @@ func TestSettingHandler_OAuthSchedulingRateRoundTrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &settingHandlerRepoStub{values: tt.initial}
 			svc := service.NewSettingService(repo, &config.Config{})
-			handler := NewSettingHandler(svc, nil, nil, nil, nil, nil, nil)
+			handler := NewSettingHandler(svc, nil, nil, nil, nil, nil, nil, nil)
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPut, "/api/v1/admin/settings", bytes.NewBufferString(tt.body))

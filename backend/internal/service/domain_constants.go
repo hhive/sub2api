@@ -236,10 +236,13 @@ const DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
 // Setting keys
 const (
 	// 注册设置
-	SettingKeyRegistrationEnabled                   = "registration_enabled"                     // 是否开放注册
-	SettingKeyEmailVerifyEnabled                    = "email_verify_enabled"                     // 是否开启邮件验证
-	SettingKeyRegistrationEmailSuffixWhitelist      = "registration_email_suffix_whitelist"      // 注册邮箱后缀白名单（JSON 数组）
-	SettingKeyRegistrationEmailDomainQuotaEnabled   = "registration_email_domain_quota_enabled"  // 是否放行非白名单域名按主域名限量注册
+	SettingKeyRegistrationEnabled              = "registration_enabled"                // 是否开放注册
+	SettingKeyEmailVerifyEnabled               = "email_verify_enabled"                // 是否开启邮件验证
+	SettingKeyRegistrationEmailSuffixWhitelist = "registration_email_suffix_whitelist" // 注册邮箱后缀白名单（JSON 数组）
+	// 白名单非空时，是否放行非白名单域名按主域名限量注册（每域名 1 个账户）。
+	// 默认 false：非白名单域名直接拒绝（白名单严格模式）。
+	SettingKeyRegistrationEmailDomainQuotaEnabled = "registration_email_domain_quota_enabled"
+
 	SettingKeyPromoCodeEnabled                      = "promo_code_enabled"                       // 是否启用优惠码功能
 	SettingKeyPasswordResetEnabled                  = "password_reset_enabled"                   // 是否启用忘记密码功能（需要先开启邮件验证）
 	SettingKeyFrontendURL                           = "frontend_url"                             // 前端基础URL，用于生成邮件中的重置密码链接
@@ -263,6 +266,7 @@ const (
 	SettingKeyUserTierEnabled                       = "user_tier_enabled"                        // 用户等级体系总开关（缺省/空值=开启）
 	SettingKeyContentModerationConfig               = "content_moderation_config"                // 内容审计配置（JSON）
 	SettingKeyCyberSessionBlockEnabled              = "cyber_session_block_enabled"              // cyber 命中后会话级自动屏蔽总开关(默认关)
+	SettingKeyCyberPolicyUserAllowlist              = "cyber_policy_user_allowlist"              // Platform user IDs with log-only cyber handling
 	SettingKeyCyberSessionBlockTTLSeconds           = "cyber_session_block_ttl_seconds"          // 会话屏蔽 TTL 秒数(默认 3600)
 	SettingKeyLoginAgreementEnabled                 = "login_agreement_enabled"                  // 登录前是否要求同意条款
 	SettingKeyLoginAgreementMode                    = "login_agreement_mode"                     // 条款确认展示模式：modal / checkbox
