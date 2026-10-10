@@ -14,7 +14,7 @@ describe('AppHeader user dropdown', () => {
     expect(componentSource).not.toContain('handleLobeHubLaunch')
     expect(componentSource).not.toContain('launchLobeHub()')
 
-    const dropdownBlock = componentSource.match(/<div class="py-1">[\s\S]*?<\/div>\n\n              <!-- Contact Support/)?.[0] ?? ''
+    const dropdownBlock = componentSource.match(/<div class="py-1">[\s\S]*?<\/div>\n\n {14}<!-- Contact Support/)?.[0] ?? ''
     expect(dropdownBlock).not.toContain("t('nav.lobehub')")
     expect(dropdownBlock).not.toContain("t('nav.chat')")
   })
