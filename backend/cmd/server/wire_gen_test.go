@@ -4,9 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
+	"github.com/Wei-Shaw/sub2api/internal/securityaudit"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,23 +55,23 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 	opsSystemLogSinkSvc := service.NewOpsSystemLogSink(nil)
 
 	cleanup := provideCleanup(
-		nil, // entClient
-		nil, // redis
+		(*ent.Client)(nil),   // entClient
+		(*redis.Client)(nil), // redis
 		&service.OpsMetricsCollector{},
 		&service.OpsAggregationService{},
 		&service.OpsAlertEvaluatorService{},
 		&service.OpsCleanupService{},
 		&service.OpsScheduledReportService{},
 		opsSystemLogSinkSvc,
-		nil, // opsService
-		nil, // opsIngressRejectAggregator
-		nil, // apiKeyService
-		nil, // authCacheInvalidationWorker
+		(*service.OpsService)(nil),                  // opsService
+		(*service.OpsIngressRejectAggregator)(nil),  // opsIngressRejectAggregator
+		(*service.APIKeyService)(nil),               // apiKeyService
+		(*service.AuthCacheInvalidationWorker)(nil), // authCacheInvalidationWorker
 		schedulerSnapshotSvc,
 		tokenRefreshSvc,
 		accountExpirySvc,
-		nil, // balanceExpiry
-		nil, // cnProviderBalanceCheck
+		(*service.BalanceExpiryService)(nil),          // balanceExpiry
+		(*service.CNProviderBalanceCheckService)(nil), // cnProviderBalanceCheck
 		codexVersionSyncSvc,
 		claudeCodeVersionSyncSvc,
 		proxyExpirySvc,
@@ -77,32 +80,32 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		idempotencyCleanupSvc,
 		service.NewGeminiCachedContentService(nil, nil, cfg),
 		&service.BatchImageCleanupService{},
-		nil, // batchImageWorker
+		(*service.BatchImageWorkerRuntime)(nil), // batchImageWorker
 		pricingSvc,
 		emailQueueSvc,
 		billingCacheSvc,
 		&service.UsageRecordWorkerPool{},
-		nil, // imagePlaygroundTaskWorkerPool
+		(*service.ImagePlaygroundTaskWorkerPool)(nil), // imagePlaygroundTaskWorkerPool
 		&service.SubscriptionService{},
 		oauthSvc,
 		openAIOAuthSvc,
 		geminiOAuthSvc,
 		antigravityOAuthSvc,
-		nil, // grokOAuth
-		nil, // openAIGateway
-		nil, // scheduledTestRunner
-		nil, // backupSvc
-		nil, // paymentOrderExpiry
-		nil, // channelMonitorRunner
-		nil, // channelMonitorV2Aggregator
-		nil, // quotaFlusher
-		nil, // upstreamBillingProbe
-		nil, // ollamaCloudUsage
-		nil, // opencodeGoUsage
-		nil, // auditLog
-		nil, // openAIAutoReset
-		nil, // promptAudit
-		nil, // pluginManager
+		(*service.GrokOAuthService)(nil),              // grokOAuth
+		(*service.OpenAIGatewayService)(nil),          // openAIGateway
+		(*service.ScheduledTestRunnerService)(nil),    // scheduledTestRunner
+		(*service.BackupService)(nil),                 // backupSvc
+		(*service.PaymentOrderExpiryService)(nil),     // paymentOrderExpiry
+		(*service.ChannelMonitorRunner)(nil),          // channelMonitorRunner
+		(*service.ChannelMonitorV2Aggregator)(nil),    // channelMonitorV2Aggregator
+		(*service.UserPlatformQuotaUsageFlusher)(nil), // quotaFlusher
+		(*service.UpstreamBillingProbeService)(nil),   // upstreamBillingProbe
+		(*service.OllamaCloudUsageService)(nil),       // ollamaCloudUsage
+		(*service.OpenCodeGoUsageService)(nil),        // opencodeGoUsage
+		(*service.AuditLogService)(nil),               // auditLog
+		(*service.OpenAIQuotaAutoResetService)(nil),   // openAIAutoReset
+		(*securityaudit.PromptService)(nil),           // promptAudit
+		(*service.PluginManager)(nil),                 // pluginManager
 	)
 
 	require.NotPanics(t, func() {
