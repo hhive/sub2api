@@ -7130,6 +7130,280 @@
 	        </div>
 	        <!-- /Tab: General -->
 
+        <!-- Tab: Use Key Modal Config -->
+        <div v-show="activeTab === 'useKey'" class="space-y-6">
+          <div class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <div
+                class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+              >
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ t("admin.settings.useKeyConfig.title") }}
+                  </h2>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.useKeyConfig.description") }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm flex-shrink-0"
+                  @click="resetUseKeyConfig"
+                >
+                  {{ t("admin.settings.useKeyConfig.reset") }}
+                </button>
+              </div>
+            </div>
+            <div class="space-y-6 p-6">
+              <!-- 存量配置无效：显式告警，不静默当空值处理 -->
+              <div
+                v-if="useKeyConfigInvalid"
+                class="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
+              >
+                <Icon
+                  name="exclamationTriangle"
+                  size="md"
+                  class="mt-0.5 flex-shrink-0 text-red-500"
+                />
+                <div>
+                  <p class="text-sm font-medium text-red-700 dark:text-red-300">
+                    {{ t("admin.settings.useKeyConfig.invalidTitle") }}
+                  </p>
+                  <p class="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {{ t("admin.settings.useKeyConfig.invalidHint") }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- 总开关 -->
+              <div
+                class="flex items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+              >
+                <div>
+                  <h3 class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ t("admin.settings.useKeyConfig.enabled") }}
+                  </h3>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.useKeyConfig.enabledHint") }}
+                  </p>
+                </div>
+                <Toggle v-model="useKeyConfigForm.enabled" />
+              </div>
+
+              <p
+                v-if="!useKeyConfigForm.enabled"
+                class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+              >
+                {{ t("admin.settings.useKeyConfig.disabledNotice") }}
+              </p>
+
+              <!-- 客户端 tab 白名单 -->
+              <div>
+                <label
+                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {{ t("admin.settings.useKeyConfig.tabs") }}
+                </label>
+                <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.useKeyConfig.tabsHint") }}
+                </p>
+                <div class="flex flex-wrap gap-x-6 gap-y-3">
+                  <label
+                    v-for="tab in useKeyTabChoices"
+                    :key="tab"
+                    class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <input
+                      v-model="useKeyConfigForm.tabs"
+                      type="checkbox"
+                      :value="tab"
+                      :disabled="!useKeyConfigForm.enabled"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-600"
+                    />
+                    <span class="font-mono text-xs">{{ tab }}</span>
+                  </label>
+                </div>
+                <p
+                  v-if="useKeyFieldErrors.tabs"
+                  class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                >
+                  {{ useKeyFieldErrors.tabs }}
+                </p>
+              </div>
+
+              <!-- Codex 分支 -->
+              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
+                <h3 class="text-sm font-medium text-gray-900 dark:text-white">
+                  {{ t("admin.settings.useKeyConfig.codexTitle") }}
+                </h3>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.useKeyConfig.codexDescription") }}
+                </p>
+
+                <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.useKeyConfig.providerId") }}
+                    </label>
+                    <input
+                      v-model="useKeyConfigForm.provider_id"
+                      type="text"
+                      class="input font-mono text-sm"
+                      :disabled="!useKeyConfigForm.enabled"
+                      :placeholder="
+                        t('admin.settings.useKeyConfig.providerIdPlaceholder')
+                      "
+                    />
+                    <p
+                      v-if="useKeyFieldErrors.provider_id"
+                      class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {{ useKeyFieldErrors.provider_id }}
+                    </p>
+                    <p
+                      v-else
+                      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{
+                        t("admin.settings.useKeyConfig.providerIdHint", {
+                          max: USE_KEY_PROVIDER_ID_MAX,
+                        })
+                      }}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.useKeyConfig.providerName") }}
+                    </label>
+                    <input
+                      v-model="useKeyConfigForm.provider_name"
+                      type="text"
+                      class="input font-mono text-sm"
+                      :disabled="!useKeyConfigForm.enabled"
+                      :placeholder="
+                        t('admin.settings.useKeyConfig.providerNamePlaceholder')
+                      "
+                    />
+                    <p
+                      v-if="useKeyFieldErrors.provider_name"
+                      class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {{ useKeyFieldErrors.provider_name }}
+                    </p>
+                    <p
+                      v-else
+                      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{
+                        t("admin.settings.useKeyConfig.providerNameHint", {
+                          max: USE_KEY_PROVIDER_NAME_MAX,
+                        })
+                      }}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.useKeyConfig.model") }}
+                    </label>
+                    <input
+                      v-model="useKeyConfigForm.model"
+                      type="text"
+                      class="input font-mono text-sm"
+                      :disabled="!useKeyConfigForm.enabled"
+                      :placeholder="t('admin.settings.useKeyConfig.modelPlaceholder')"
+                    />
+                    <p
+                      v-if="useKeyFieldErrors.model"
+                      class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {{ useKeyFieldErrors.model }}
+                    </p>
+                    <p
+                      v-else
+                      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{
+                        t("admin.settings.useKeyConfig.modelHint", {
+                          max: USE_KEY_MODEL_MAX,
+                        })
+                      }}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.useKeyConfig.reviewModel") }}
+                    </label>
+                    <input
+                      v-model="useKeyConfigForm.review_model"
+                      type="text"
+                      class="input font-mono text-sm"
+                      :disabled="!useKeyConfigForm.enabled"
+                      :placeholder="
+                        t('admin.settings.useKeyConfig.reviewModelPlaceholder')
+                      "
+                    />
+                    <p
+                      v-if="useKeyFieldErrors.review_model"
+                      class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {{ useKeyFieldErrors.review_model }}
+                    </p>
+                    <p
+                      v-else
+                      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{
+                        t("admin.settings.useKeyConfig.reviewModelHint", {
+                          max: USE_KEY_MODEL_MAX,
+                        })
+                      }}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.useKeyConfig.reasoningEffort") }}
+                    </label>
+                    <select
+                      v-model="useKeyConfigForm.reasoning_effort"
+                      class="input text-sm"
+                      :disabled="!useKeyConfigForm.enabled"
+                    >
+                      <option value="">
+                        {{
+                          t(
+                            "admin.settings.useKeyConfig.reasoningEffortDefault",
+                          )
+                        }}
+                      </option>
+                      <option
+                        v-for="effort in useKeyReasoningEffortOptions"
+                        :key="effort"
+                        :value="effort"
+                      >
+                        {{ effort }}
+                      </option>
+                    </select>
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.useKeyConfig.reasoningEffortHint") }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /Tab: Use Key Modal Config -->
+
 	        <!-- Tab: Login Agreement -->
 	        <div v-show="activeTab === 'agreement'" class="space-y-6">
 	          <div class="card">
@@ -9459,6 +9733,7 @@ import type {
   LoginAgreementDocument,
   NotifyEmailEntry,
   Proxy,
+  UseKeyConfig,
 } from "@/types";
 import type { ProviderInstance } from "@/types/payment";
 import AppLayout from "@/components/layout/AppLayout.vue";
@@ -9541,6 +9816,7 @@ const paymentMethodsHref = computed(() =>
 
 type SettingsTab =
   | "general"
+  | "useKey"
   | "agreement"
   | "features"
   | "security"
@@ -9552,6 +9828,7 @@ type SettingsTab =
 const activeTab = ref<SettingsTab>("general");
 const settingsTabs = [
   { key: "general" as SettingsTab, icon: "home" as const },
+  { key: "useKey" as SettingsTab, icon: "key" as const },
   { key: "agreement" as SettingsTab, icon: "document" as const },
   { key: "features" as SettingsTab, icon: "bolt" as const },
   { key: "security" as SettingsTab, icon: "shield" as const },
@@ -10165,6 +10442,9 @@ type SettingsForm = Omit<
   | "wechat_connect_mp_enabled"
   | "wechat_connect_mobile_enabled"
   | "openai_oauth_scheduling_rate_multiplier"
+  // 该设置以 useKeyConfigForm 的结构化字段为编辑态，不在 form 里保留原始对象
+  | "use_key_config"
+  | "use_key_config_invalid"
   // 首充赠送已迁移到「等级与权益」配置（等级 + balance_credit 权益），设置页不再托管这三键
   | "first_recharge_bonus_enabled"
   | "first_recharge_bonus_amount"
@@ -10721,6 +11001,232 @@ const openAIAdvancedSchedulerWeightFields = computed<
     },
   ];
 });
+
+// ── 「使用密钥」弹窗配置（use_key_config）──────────────────────────────────
+// 管理端 API 双向都是结构化对象（与 login_agreement_documents / custom_endpoints
+// 一致）：GET 返回对象或 null，PUT 收对象（整体覆盖）或 null（清空）。v1 只编辑
+// platform=openai 的 Codex 分支。字段值会被拼进客户端 config.toml 的双引号内，
+// 长度与字符限制是注入面防护，因此本地校验与后端保持一致，错误必须显式提示，
+// 不得静默截断或丢弃。
+type UseKeyTabOption = "codex" | "codex-ws" | "claude" | "opencode";
+
+const USE_KEY_TAB_OPTIONS: UseKeyTabOption[] = [
+  "codex",
+  "codex-ws",
+  "claude",
+  "opencode",
+];
+const USE_KEY_TABS_MAX = 4;
+const USE_KEY_PROVIDER_ID_MAX = 64;
+const USE_KEY_PROVIDER_NAME_MAX = 64;
+const USE_KEY_MODEL_MAX = 128;
+const useKeyReasoningEffortOptions = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+// 双引号内的非法字符：换行会截断 TOML 字符串，双引号与反斜杠可逃逸出字符串边界。
+const USE_KEY_FORBIDDEN_CHARS = /[\n\r"\\]/;
+// provider_id 会以 TOML 裸表键 [model_providers.<id>] 拼进 config.toml，带空格的裸键非法，
+// 会让整个 config.toml 解析失败；因此只允许裸键字符集，与 provider_name 的规则分开。
+const USE_KEY_PROVIDER_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+interface UseKeyConfigForm {
+  enabled: boolean;
+  tabs: string[];
+  provider_id: string;
+  provider_name: string;
+  model: string;
+  review_model: string;
+  reasoning_effort: string;
+}
+
+function defaultUseKeyConfigForm(): UseKeyConfigForm {
+  return {
+    enabled: false,
+    tabs: [],
+    provider_id: "",
+    provider_name: "",
+    model: "",
+    review_model: "",
+    reasoning_effort: "",
+  };
+}
+
+const useKeyConfigForm = reactive<UseKeyConfigForm>(defaultUseKeyConfigForm());
+// 无效告警的唯一来源是后端 use_key_config_invalid：库中内容不可解析时后端同样把
+// use_key_config 返回为 null，前端无法与「未配置」区分，自行推导会永远为 false。
+const useKeyConfigInvalid = ref(false);
+
+function isUseKeyPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readUseKeyString(
+  source: Record<string, unknown>,
+  key: string,
+): string {
+  const value = source[key];
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * 把 GET 返回的 use_key_config 对象填入表单。
+ * null / 缺省 = 未配置（或后端判定不可解析）→ 表单置默认；不在此处推导「无效」，
+ * 该判定由后端 use_key_config_invalid 给出。
+ */
+function applyUseKeyConfig(raw: UseKeyConfig | null | undefined): void {
+  if (!isUseKeyPlainObject(raw) || raw.version !== 1) {
+    Object.assign(useKeyConfigForm, defaultUseKeyConfigForm());
+    return;
+  }
+
+  const platforms = isUseKeyPlainObject(raw.platforms) ? raw.platforms : {};
+  const openai = isUseKeyPlainObject(platforms.openai) ? platforms.openai : {};
+  const codex = isUseKeyPlainObject(openai.codex) ? openai.codex : {};
+  // 保留未知 tab 值：直接丢弃会让管理员看不到存量非法配置，属于静默降级。
+  const tabs = Array.isArray(openai.tabs)
+    ? openai.tabs.filter((tab): tab is string => typeof tab === "string")
+    : [];
+
+  Object.assign(useKeyConfigForm, {
+    enabled: raw.enabled === true,
+    tabs,
+    provider_id: readUseKeyString(codex, "provider_id"),
+    provider_name: readUseKeyString(codex, "provider_name"),
+    model: readUseKeyString(codex, "model"),
+    review_model: readUseKeyString(codex, "review_model"),
+    reasoning_effort: readUseKeyString(codex, "reasoning_effort"),
+  });
+}
+
+/**
+ * 表单全为默认值时返回 null（后端语义 = 清空该设置），否则返回整体覆盖用的对象。
+ * 必须返回对象/null，不能返回 JSON 字符串：后端 PUT 该字段是 json.RawMessage，
+ * 传字符串会被判为非法并 400。
+ */
+function serializeUseKeyConfig(): UseKeyConfig | null {
+  const state = useKeyConfigForm;
+  const isDefault =
+    !state.enabled &&
+    state.tabs.length === 0 &&
+    !state.provider_id.trim() &&
+    !state.provider_name.trim() &&
+    !state.model.trim() &&
+    !state.review_model.trim() &&
+    !state.reasoning_effort;
+  if (isDefault) return null;
+
+  return {
+    version: 1,
+    enabled: state.enabled,
+    platforms: {
+      openai: {
+        tabs: state.tabs,
+        codex: {
+          provider_id: state.provider_id.trim(),
+          provider_name: state.provider_name.trim(),
+          model: state.model.trim(),
+          review_model: state.review_model.trim(),
+          reasoning_effort: state.reasoning_effort,
+        },
+      },
+    },
+  };
+}
+
+/** tab 勾选项：合法枚举 + 存量配置里的未知值（后者可取消勾选，避免无法保存）。 */
+const useKeyTabChoices = computed<string[]>(() => {
+  const unknownTabs = useKeyConfigForm.tabs.filter(
+    (tab) => !USE_KEY_TAB_OPTIONS.includes(tab as UseKeyTabOption),
+  );
+  return [...USE_KEY_TAB_OPTIONS, ...unknownTabs];
+});
+
+interface UseKeyFieldErrors {
+  tabs: string;
+  provider_id: string;
+  provider_name: string;
+  model: string;
+  review_model: string;
+}
+
+/** 与后端一致的字段级校验；任一字段非空即拒绝保存并显式报错。 */
+const useKeyFieldErrors = computed<UseKeyFieldErrors>(() => {
+  const errors: UseKeyFieldErrors = {
+    tabs: "",
+    provider_id: "",
+    provider_name: "",
+    model: "",
+    review_model: "",
+  };
+
+  const checkString = (
+    field: "provider_name" | "model" | "review_model",
+    maxLength: number,
+  ): void => {
+    const value = useKeyConfigForm[field];
+    if (!value) return;
+    if (value.length > maxLength) {
+      errors[field] = t("admin.settings.useKeyConfig.errors.tooLong", {
+        max: maxLength,
+      });
+      return;
+    }
+    if (USE_KEY_FORBIDDEN_CHARS.test(value)) {
+      errors[field] = t("admin.settings.useKeyConfig.errors.forbiddenChars");
+    }
+  };
+  checkString("provider_name", USE_KEY_PROVIDER_NAME_MAX);
+  checkString("model", USE_KEY_MODEL_MAX);
+  checkString("review_model", USE_KEY_MODEL_MAX);
+
+  // provider_id 单独一条规则：裸键字符集，报错与「禁引号」可区分
+  const providerId = useKeyConfigForm.provider_id;
+  if (providerId) {
+    if (providerId.length > USE_KEY_PROVIDER_ID_MAX) {
+      errors.provider_id = t("admin.settings.useKeyConfig.errors.tooLong", {
+        max: USE_KEY_PROVIDER_ID_MAX,
+      });
+    } else if (!USE_KEY_PROVIDER_ID_PATTERN.test(providerId)) {
+      errors.provider_id = t(
+        "admin.settings.useKeyConfig.errors.invalidProviderId",
+      );
+    }
+  }
+
+  const invalidTabs = useKeyConfigForm.tabs.filter(
+    (tab) => !USE_KEY_TAB_OPTIONS.includes(tab as UseKeyTabOption),
+  );
+  if (invalidTabs.length > 0) {
+    errors.tabs = t("admin.settings.useKeyConfig.errors.invalidTabs", {
+      tabs: invalidTabs.join(", "),
+    });
+  } else if (useKeyConfigForm.tabs.length > USE_KEY_TABS_MAX) {
+    errors.tabs = t("admin.settings.useKeyConfig.errors.tooManyTabs", {
+      max: USE_KEY_TABS_MAX,
+    });
+  }
+  return errors;
+});
+
+function hasUseKeyFieldErrors(errors: UseKeyFieldErrors): boolean {
+  return Boolean(
+    errors.tabs ||
+      errors.provider_id ||
+      errors.provider_name ||
+      errors.model ||
+      errors.review_model,
+  );
+}
+
+/** 重置为默认：清空表单并让保存发 null（后端语义 = 删除该设置项）。 */
+function resetUseKeyConfig(): void {
+  Object.assign(useKeyConfigForm, defaultUseKeyConfigForm());
+}
 
 const authSourceDefaults = reactive<AuthSourceDefaultsState>(
   buildAuthSourceDefaultsState({}),
@@ -11571,6 +12077,9 @@ async function loadSettings() {
     if (settings.openai_oauth_scheduling_rate_multiplier === null) {
       form.openai_oauth_scheduling_rate_multiplier = null;
     }
+    // 无效判定由后端给出（库中不可解析时 use_key_config 同样是 null，前端无法区分）
+    applyUseKeyConfig(settings.use_key_config);
+    useKeyConfigInvalid.value = settings.use_key_config_invalid === true;
     syncCaptchaProviderSelection();
     if (!form.claude_oauth_system_prompt_blocks?.trim()) {
       form.claude_oauth_system_prompt_blocks =
@@ -11864,6 +12373,19 @@ async function saveSettings() {
     form.table_default_page_size = normalizedTableDefaultPageSize;
     form.table_page_size_options = normalizedTablePageSizeOptions;
 
+    // 与后端一致的本地校验：非法值显式拒绝保存，不做静默截断或丢弃。
+    // 该检查是全局前置：无论管理员当前在哪个 tab 都会拦下保存，因此必须把他送到
+    // 「使用密钥」tab，否则提示指向的「标记字段」在当前 tab 里根本不存在，他会卡住。
+    if (hasUseKeyFieldErrors(useKeyFieldErrors.value)) {
+      selectSettingsTab("useKey");
+      appStore.showError(
+        t("admin.settings.useKeyConfig.saveBlocked", {
+          tab: t("admin.settings.tabs.useKey"),
+        }),
+      );
+      return;
+    }
+
     const normalizedLoginAgreementDocuments =
       normalizeLoginAgreementDocumentsForSave();
     if (form.login_agreement_enabled && normalizedLoginAgreementDocuments.length === 0) {
@@ -12076,6 +12598,7 @@ async function saveSettings() {
       site_logo: form.site_logo,
       site_subtitle: form.site_subtitle,
       api_base_url: form.api_base_url,
+      use_key_config: serializeUseKeyConfig(),
       contact_info: form.contact_info,
       doc_url: form.doc_url,
       media_playground_doc_url: form.media_playground_doc_url,
@@ -12436,6 +12959,8 @@ async function saveSettings() {
     if (updated.openai_oauth_scheduling_rate_multiplier === null) {
       form.openai_oauth_scheduling_rate_multiplier = null;
     }
+    // 告警同样以后端返回为准：保存成功后落库配置必为合法值
+    useKeyConfigInvalid.value = updated.use_key_config_invalid === true;
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(updated));
     form.default_platform_quotas = normalizePlatformQuotasMap(updated.default_platform_quotas);
     form.account_scheduling_thresholds = normalizeAccountSchedulingThresholdsMap(

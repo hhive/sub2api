@@ -205,6 +205,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyCustomMenuItems,
 		SettingKeyVictoryMenuItems,
 		SettingKeyCustomEndpoints,
+		SettingKeyUseKeyConfig,
 		SettingKeyLobeHubEnabled,
 		SettingKeyLobeHubMenuLabel,
 		SettingKeyLinuxDoConnectEnabled,
@@ -367,6 +368,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		CustomMenuItems:                     settings[SettingKeyCustomMenuItems],
 		VictoryMenuItems:                    string(filterEnabledVictoryMenuItems(victoryMenuItemsRaw)),
 		CustomEndpoints:                     settings[SettingKeyCustomEndpoints],
+		UseKeyConfig:                        parseUseKeyConfigJSON(settings[SettingKeyUseKeyConfig]),
 		LobeHubEnabled:                      settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubMenuLabel:                    s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                   "/api/v1/lobehub/launch",
@@ -646,6 +648,7 @@ type PublicSettingsInjectionPayload struct {
 	CustomMenuItems                     json.RawMessage          `json:"custom_menu_items"`
 	VictoryMenuItems                    json.RawMessage          `json:"victory_menu_items"`
 	CustomEndpoints                     json.RawMessage          `json:"custom_endpoints"`
+	UseKeyConfig                        json.RawMessage          `json:"use_key_config"`
 	LobeHubEnabled                      bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                    string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                   string                   `json:"lobehub_launch_path"`
@@ -761,6 +764,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		CustomMenuItems:                     filterUserVisibleMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                    filterEnabledVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                     safeRawJSONArray(settings.CustomEndpoints),
+		UseKeyConfig:                        settings.UseKeyConfig,
 		LobeHubEnabled:                      settings.LobeHubEnabled,
 		LobeHubMenuLabel:                    settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                   settings.LobeHubLaunchPath,
@@ -905,6 +909,52 @@ func safeRawJSONArray(raw string) json.RawMessage {
 		return json.RawMessage(raw)
 	}
 	return json.RawMessage("[]")
+}
+
+// UseKeyConfigVersion is the only use_key_config schema version this build can
+// apply. It is declared here rather than in handler/dto because that package
+// imports this one, so the service layer cannot reference dto.UseKeyConfigVersion
+// without an import cycle; dto.UseKeyConfigVersion aliases this constant.
+const UseKeyConfigVersion = 1
+
+// parseUseKeyConfigJSON returns the stored use_key_config value as raw JSON, or
+// JSON null when the key is unset or the stored value cannot be applied.
+//
+// The frontend parses this field directly, so the fallback must be the literal
+// null rather than an empty string. Both rejection reasons — unparsable JSON and
+// an unsupported version — are configuration errors the operator has to be able
+// to locate, hence the warn logs. The version check mirrors
+// dto.ParseUseKeyConfigWithValidity so the admin view and the public endpoint
+// never disagree about the same stored value.
+func parseUseKeyConfigJSON(raw string) json.RawMessage {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || trimmed == "null" {
+		return json.RawMessage("null")
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(trimmed), &object); err != nil {
+		slog.Warn("use_key_config is not a JSON object; exposing null instead",
+			"setting_key", SettingKeyUseKeyConfig,
+			"reason", err.Error())
+		return json.RawMessage("null")
+	}
+	version := 0
+	if rawVersion, ok := object["version"]; ok {
+		if err := json.Unmarshal(rawVersion, &version); err != nil {
+			slog.Warn("use_key_config has an unreadable version; exposing null instead",
+				"setting_key", SettingKeyUseKeyConfig,
+				"reason", err.Error())
+			return json.RawMessage("null")
+		}
+	}
+	if version != UseKeyConfigVersion {
+		slog.Warn("use_key_config has an unsupported version; exposing null instead",
+			"setting_key", SettingKeyUseKeyConfig,
+			"version", version,
+			"supported_version", UseKeyConfigVersion)
+		return json.RawMessage("null")
+	}
+	return json.RawMessage(trimmed)
 }
 
 // GetFrameSrcOrigins returns deduplicated http(s) origins from home_content URL,

@@ -181,6 +181,10 @@ export default {
       noGroupTitle: '请先分配分组',
       noGroupDescription:
         '此 API 密钥尚未分配分组，请先在密钥列表中点击分组列进行分配，然后才能查看使用配置。',
+      useKeyConfigInvalid:
+        '管理员配置的使用密钥内容无效，已回退到默认配置。请联系管理员检查设置中的「使用密钥」配置。',
+      useKeyConfigNoClient:
+        '管理员配置的客户端白名单未授权当前分组可用的客户端，因此没有可展示的配置方式。请联系管理员调整设置中的「使用密钥」配置。',
       openai: {
         description: '将以下配置文件添加到 Codex CLI 配置目录中。',
         authModeTitle: 'Codex 认证模式',

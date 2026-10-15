@@ -28,6 +28,32 @@
           {{ platformDescription }}
         </p>
 
+        <!-- 管理员配置无效提示：配置已被忽略，但回退必须可见，不能静默 -->
+        <div
+          v-if="showUseKeyConfigInvalidNotice"
+          data-testid="use-key-config-invalid-notice"
+          class="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+        >
+          <Icon name="exclamationCircle" size="md" class="text-amber-500 flex-shrink-0 mt-0.5" />
+          <p class="text-sm text-amber-800 dark:text-amber-200">
+            {{ t('keys.useKeyModal.useKeyConfigInvalid') }}
+          </p>
+        </div>
+
+        <!-- 白名单交集为空提示：fail-closed，不展示任何客户端，但必须显式说明 -->
+        <div
+          v-if="showNoClientAllowedNotice"
+          data-testid="use-key-config-no-client-notice"
+          class="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+        >
+          <Icon name="exclamationCircle" size="md" class="text-amber-500 flex-shrink-0 mt-0.5" />
+          <p class="text-sm text-amber-800 dark:text-amber-200">
+            {{ t('keys.useKeyModal.useKeyConfigNoClient') }}
+          </p>
+        </div>
+
+        <!-- 无可用客户端时不渲染任何 tab、认证模式、目录区块与配置文件内容 -->
+        <template v-if="hasAvailableClients">
         <!-- Client Tabs -->
         <div v-if="clientTabs.length" class="overflow-x-auto border-b border-gray-200 dark:border-dark-700">
           <nav class="-mb-px flex min-w-max gap-4 sm:gap-6" aria-label="Client">
@@ -250,6 +276,7 @@
             {{ platformNote }}
           </p>
         </div>
+        </template>
       </template>
     </div>
 
@@ -274,7 +301,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { buildCodexModelCatalogUrl, fetchCodexModelsManifest } from '@/api/codex'
-import type { GroupPlatform } from '@/types'
+import type { GroupPlatform, UseKeyConfig } from '@/types'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -289,6 +316,8 @@ interface Props {
   platform: GroupPlatform | null
   claudeCodeOnly?: boolean
   allowMessagesDispatch?: boolean
+  /** 管理端「使用密钥」弹窗配置（公开设置 use_key_config）；未配置或解析失败时为 null。 */
+  useKeyConfig?: UseKeyConfig | null
 }
 
 interface Emits {
@@ -461,8 +490,142 @@ const SparkleIcon = {
   }
 }
 
+// 管理端「使用密钥」配置解析结果。v1 只覆盖 openai 分支，其他平台分支行为不变。
+interface OpenAiUseKeyOverrides {
+  providerId: string | null
+  providerName: string | null
+  model: string | null
+  reviewModel: string | null
+  reasoningEffort: string | null
+  tabs: string[] | null
+}
+
+const emptyOpenAiUseKeyOverrides: OpenAiUseKeyOverrides = {
+  providerId: null,
+  providerName: null,
+  model: null,
+  reviewModel: null,
+  reasoningEffort: null,
+  tabs: null
+}
+
+// [model_providers.<id>] 是 TOML 裸表键：带空格或其他字符会让整个 config.toml 语法非法，
+// 所以 provider id 只能用裸键字符集，长度上限与后端校验一致。
+const CODEX_PROVIDER_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+const CODEX_PROVIDER_ID_MAX_LENGTH = 64
+
+function isValidCodexProviderId(value: string): boolean {
+  return value.length <= CODEX_PROVIDER_ID_MAX_LENGTH && CODEX_PROVIDER_ID_PATTERN.test(value)
+}
+
+// 空字符串与缺省一律视为「未配置」，回退到前端硬编码值；非字符串属于结构不合法。
+// 换行同样判为不合法，而不是静默转义：这些值最终拼进 config.toml 的双引号内，真实换行会让
+// 整份 config.toml 语法非法；而静默转义会生成管理员没写过的值且用户看不到任何提示（项目禁止
+// 「回退但看不到」）。`"` 与 `\` 的转义是语义保真的，不能与换行类比。
+// 公开设置路径原样透传库值，后端写入校验挡不住手工改库，这里是唯一防线。
+function readUseKeyConfigString(
+  source: Record<string, unknown>,
+  key: string
+): { value: string | null; invalid: boolean } {
+  const raw = source[key]
+  if (raw === undefined || raw === null) return { value: null, invalid: false }
+  if (typeof raw !== 'string') return { value: null, invalid: true }
+  if (/[\n\r]/.test(raw)) return { value: null, invalid: true }
+  return { value: raw.trim() || null, invalid: false }
+}
+
+const useKeyConfigState = computed((): { overrides: OpenAiUseKeyOverrides; invalid: boolean } => {
+  const ignored = { overrides: emptyOpenAiUseKeyOverrides, invalid: false }
+  const raw: unknown = props.useKeyConfig
+  if (raw === undefined || raw === null) return ignored
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+
+  const config = raw as Record<string, unknown>
+  // 判据必须与后端一致（后端写入要求 Version == 1，缺省即 0 → 400；公开路径解析也把 0 判为无效）。
+  // 容忍缺省会让管理员看到「配置无效」而用户弹窗实际在应用它，两侧结论相反。
+  // 同时这是 TOML 生成前的最后一道防线，不能假设上游一定清洗过。
+  if (config.version !== 1) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+  if (config.enabled !== true) return ignored
+
+  const platforms = config.platforms === undefined || config.platforms === null ? {} : config.platforms
+  if (typeof platforms !== 'object' || Array.isArray(platforms)) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+  const openai = (platforms as Record<string, unknown>).openai
+  if (openai === undefined || openai === null) return ignored
+  if (typeof openai !== 'object' || Array.isArray(openai)) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+  const platformConfig = openai as Record<string, unknown>
+
+  let tabs: string[] | null = null
+  if (platformConfig.tabs !== undefined && platformConfig.tabs !== null) {
+    const rawTabs = platformConfig.tabs
+    if (!Array.isArray(rawTabs) || rawTabs.some((tab) => typeof tab !== 'string')) {
+      return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+    }
+    const allowed = (rawTabs as string[]).map((tab) => tab.trim()).filter((tab) => tab !== '')
+    // 空数组 = 不限制，沿用现有 tab 全集。
+    tabs = allowed.length ? allowed : null
+  }
+
+  const codexRaw = platformConfig.codex === undefined || platformConfig.codex === null
+    ? {}
+    : platformConfig.codex
+  if (typeof codexRaw !== 'object' || Array.isArray(codexRaw)) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+  const codex = codexRaw as Record<string, unknown>
+  const providerId = readUseKeyConfigString(codex, 'provider_id')
+  const providerName = readUseKeyConfigString(codex, 'provider_name')
+  const model = readUseKeyConfigString(codex, 'model')
+  const reviewModel = readUseKeyConfigString(codex, 'review_model')
+  const reasoningEffort = readUseKeyConfigString(codex, 'reasoning_effort')
+  if (providerId.invalid || providerName.invalid || model.invalid || reviewModel.invalid || reasoningEffort.invalid) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+  // 非法 provider id 绝不透传进 TOML，按「配置无效」整体回退。
+  if (providerId.value !== null && !isValidCodexProviderId(providerId.value)) {
+    return { overrides: emptyOpenAiUseKeyOverrides, invalid: true }
+  }
+
+  return {
+    overrides: {
+      providerId: providerId.value,
+      providerName: providerName.value,
+      model: model.value,
+      reviewModel: reviewModel.value,
+      reasoningEffort: reasoningEffort.value,
+      tabs
+    },
+    invalid: false
+  }
+})
+
+const useKeyOpenAiOverrides = computed(() => useKeyConfigState.value.overrides)
+
+// 结构不合法的配置按未配置处理（回退硬编码），但必须在弹窗内显式提示，不静默忽略。
+const showUseKeyConfigInvalidNotice = computed(() =>
+  props.platform === 'openai' && useKeyConfigState.value.invalid
+)
+
+// 管理员白名单与现有 tab 集、分组字段门取交集。交集为空时 fail-closed：不展示任何客户端，
+// 由模板给出显式提示。回退为「不限制」等于把管理员的白名单静默放大成全集（fail-open），
+// 会出现「配了只留 Claude Code、用户反而看到三个客户端」这种与管理员意图相反的静默降级。
+function applyUseKeyTabWhitelist(tabs: TabConfig[]): TabConfig[] {
+  const allowed = useKeyOpenAiOverrides.value.tabs
+  if (!allowed) return tabs
+  return tabs.filter((tab) => allowed.includes(tab.id))
+}
+
 const clientTabs = computed((): TabConfig[] => {
   if (!props.platform) return []
+  // 显式例外（计划 §3.2 v1.2 记录）：claude_code_only 分组只提供 Claude Code，不参与白名单交集。
+  // 方向上是安全的 —— 不会因配置把该分组唯一的客户端入口藏掉，故不按交集公式处理。
   if (props.claudeCodeOnly) {
     return [{ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon }]
   }
@@ -476,7 +639,7 @@ const clientTabs = computed((): TabConfig[] => {
         tabs.push({ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon })
       }
       tabs.push({ id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon })
-      return tabs
+      return applyUseKeyTabWhitelist(tabs)
     }
     case 'gemini':
       return [
@@ -518,6 +681,19 @@ const clientTabs = computed((): TabConfig[] => {
       ]
   }
 })
+
+// 白名单交集为空 = fail-closed：模板不渲染任何客户端与配置文件内容，只显示显式提示。
+const hasAvailableClients = computed(() => clientTabs.value.length > 0)
+const showNoClientAllowedNotice = computed(() =>
+  props.platform === 'openai' && !hasAvailableClients.value
+)
+
+// 白名单可能排除默认 tab，此时落到白名单内的第一个 tab，避免无 tab 选中。
+watch(clientTabs, (tabs) => {
+  if (!tabs.length) return
+  if (tabs.some((tab) => tab.id === activeClientTab.value)) return
+  activeClientTab.value = tabs[0]!.id
+}, { immediate: true })
 
 // Shell tabs (3 types for environment variable based configs)
 const shellTabs: TabConfig[] = [
@@ -715,6 +891,29 @@ function codexReasoningEffortTomlLine(modelSlug: string): string {
   return formatCodexReasoningEffortTomlLine(
     selectCodexConfigReasoningEffort(findCodexCatalogModel(codexModelManifestContent.value, modelSlug))
   )
+}
+
+// 管理员配置的模型优先：非空时直接使用，不再做清单替换（清单只用于推导 reasoning effort）。
+// 各字段为空时逐个回退到现有硬编码行为。
+function resolveOpenAiCodexConfig(): {
+  providerId: string
+  model: string
+  reviewModel: string
+  providerName: string
+  reasoningEffortLine: string
+} {
+  const overrides = useKeyOpenAiOverrides.value
+  const model = overrides.model || selectCodexCatalogModel('gpt-5.5')
+  return {
+    // provider_id 同时驱动 model_provider 与 [model_providers.<id>]，两行永远一致。
+    providerId: overrides.providerId || 'OpenAI',
+    model,
+    reviewModel: overrides.reviewModel || model,
+    providerName: overrides.providerName || 'OpenAI',
+    reasoningEffortLine: overrides.reasoningEffort
+      ? formatCodexReasoningEffortTomlLine(escapeTomlBasicString(overrides.reasoningEffort))
+      : codexReasoningEffortTomlLine(model)
+  }
 }
 
 const escapeHtml = (value: string) => value
@@ -1027,19 +1226,18 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
 
-  const model = selectCodexCatalogModel('gpt-5.5')
-  const reasoningEffortLine = codexReasoningEffortTomlLine(model)
+  const { providerId, model, reviewModel, providerName, reasoningEffortLine } = resolveOpenAiCodexConfig()
 
   // config.toml content
-  const configContent = `model_provider = "OpenAI"
-model = "${model}"
-review_model = "${model}"
+  const configContent = `model_provider = "${providerId}"
+model = "${escapeTomlBasicString(model)}"
+review_model = "${escapeTomlBasicString(reviewModel)}"
 ${reasoningEffortLine}disable_response_storage = true
 ${codexLocalCatalogToml.value}network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
-[model_providers.OpenAI]
-name = "OpenAI"
+[model_providers.${providerId}]
+name = "${escapeTomlBasicString(providerName)}"
 base_url = "${baseUrl}"
 ${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}wire_api = "responses"
 ${generateCodexProviderAuthConfig(apiKey)}
@@ -1375,19 +1573,18 @@ supports_websockets = false${codexModelCatalogMode.value === 'remote' ? '\n\n[fe
 function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
-  const model = selectCodexCatalogModel('gpt-5.5')
-  const reasoningEffortLine = codexReasoningEffortTomlLine(model)
+  const { providerId, model, reviewModel, providerName, reasoningEffortLine } = resolveOpenAiCodexConfig()
 
   // config.toml content with WebSocket v2
-  const configContent = `model_provider = "OpenAI"
-model = "${model}"
-review_model = "${model}"
+  const configContent = `model_provider = "${providerId}"
+model = "${escapeTomlBasicString(model)}"
+review_model = "${escapeTomlBasicString(reviewModel)}"
 ${reasoningEffortLine}disable_response_storage = true
 ${codexLocalCatalogToml.value}network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
-[model_providers.OpenAI]
-name = "OpenAI"
+[model_providers.${providerId}]
+name = "${escapeTomlBasicString(providerName)}"
 base_url = "${baseUrl}"
 ${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}wire_api = "responses"
 supports_websockets = true

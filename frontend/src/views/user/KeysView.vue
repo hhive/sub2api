@@ -1106,6 +1106,7 @@
       :platform="selectedKey?.group?.platform || null"
       :claude-code-only="selectedKey?.group?.claude_code_only || false"
       :allow-messages-dispatch="selectedKey?.group?.allow_messages_dispatch || false"
+      :use-key-config="publicSettings?.use_key_config || null"
       @close="closeUseKeyModal"
     />
 

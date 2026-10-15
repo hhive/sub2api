@@ -424,6 +424,7 @@ const (
 	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
 	SettingKeyVictoryMenuItems            = "victory_menu_items"            // 旗开得胜子菜单项（JSON 数组）
 	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
+	SettingKeyUseKeyConfig                = "use_key_config"                // 「使用密钥」弹窗配置（JSON 对象）
 	SettingKeyLaunchTokenTTLSeconds       = "launch_token_ttl_seconds"      // 通用跳转 token 有效期（秒）
 	SettingKeyDefaultTextModel            = "default_text_model"            // 通用默认文本模型
 	SettingKeyDefaultImageModel           = "default_image_model"           // 通用默认图片模型

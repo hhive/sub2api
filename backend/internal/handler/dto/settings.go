@@ -36,6 +36,35 @@ type CustomEndpoint struct {
 	Description string `json:"description"`
 }
 
+// UseKeyCodexConfig is the openai Codex block of the use_key_config setting.
+// Its string values are embedded verbatim into a TOML double-quoted literal by
+// the frontend, so the handler rejects quotes, backslashes and newlines.
+type UseKeyCodexConfig struct {
+	// ProviderID is emitted as a TOML bare table key ([model_providers.<id>]), so it
+	// is restricted to the bare-key charset; ProviderName is a quoted string value
+	// and keeps the looser rule (spaces allowed, quotes/backslashes rejected).
+	ProviderID      string `json:"provider_id"`
+	ProviderName    string `json:"provider_name"`
+	Model           string `json:"model"`
+	ReviewModel     string `json:"review_model"`
+	ReasoningEffort string `json:"reasoning_effort"`
+}
+
+// UseKeyPlatformConfig is a per-platform block of the use_key_config setting.
+// An empty Tabs slice means "no restriction"; Codex is nil when the client
+// omitted the block.
+type UseKeyPlatformConfig struct {
+	Tabs  []string           `json:"tabs"`
+	Codex *UseKeyCodexConfig `json:"codex,omitempty"`
+}
+
+// UseKeyConfig mirrors the JSON object stored under the use_key_config setting.
+type UseKeyConfig struct {
+	Version   int                             `json:"version"`
+	Enabled   bool                            `json:"enabled"`
+	Platforms map[string]UseKeyPlatformConfig `json:"platforms"`
+}
+
 // SystemSettings represents the admin settings API response payload.
 type SystemSettings struct {
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
@@ -183,6 +212,8 @@ type SystemSettings struct {
 	CustomMenuItems                 []CustomMenuItem  `json:"custom_menu_items"`
 	VictoryMenuItems                []VictoryMenuItem `json:"victory_menu_items"`
 	CustomEndpoints                 []CustomEndpoint  `json:"custom_endpoints"`
+	UseKeyConfig                    *UseKeyConfig     `json:"use_key_config"`
+	UseKeyConfigInvalid             bool              `json:"use_key_config_invalid"` // 库中存有但不可用（JSON 不可解析或 version 不受支持）时为 true；未配置为 false
 	LaunchTokenTTLSeconds           int               `json:"launch_token_ttl_seconds"`
 	DefaultTextModel                string            `json:"default_text_model"`
 	DefaultImageModel               string            `json:"default_image_model"`
@@ -452,6 +483,7 @@ type PublicSettings struct {
 	CustomMenuItems                     []CustomMenuItem         `json:"custom_menu_items"`
 	VictoryMenuItems                    []VictoryMenuItem        `json:"victory_menu_items"`
 	CustomEndpoints                     []CustomEndpoint         `json:"custom_endpoints"`
+	UseKeyConfig                        json.RawMessage          `json:"use_key_config"`
 	LobeHubEnabled                      bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                    string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                   string                   `json:"lobehub_launch_path"`
@@ -701,4 +733,31 @@ func ParseCustomEndpoints(raw string) []CustomEndpoint {
 		return []CustomEndpoint{}
 	}
 	return items
+}
+
+// UseKeyConfigVersion is the only use_key_config schema version this build can
+// apply; any other version is treated as an unusable configuration. The value
+// lives in the service package so the public endpoint and the admin view share
+// one source of truth.
+const UseKeyConfigVersion = service.UseKeyConfigVersion
+
+// ParseUseKeyConfigWithValidity parses the stored use_key_config string for the
+// admin view.
+//
+// invalid reports a stored value that exists but cannot be applied: unparsable
+// JSON, or a JSON object whose version is not UseKeyConfigVersion. An unset key
+// ("", "null") is "not configured" rather than invalid, and yields (nil, false).
+func ParseUseKeyConfigWithValidity(raw string) (cfg *UseKeyConfig, invalid bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || trimmed == "null" {
+		return nil, false
+	}
+	var parsed UseKeyConfig
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return nil, true
+	}
+	if parsed.Version != UseKeyConfigVersion {
+		return nil, true
+	}
+	return &parsed, false
 }

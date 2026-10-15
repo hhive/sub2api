@@ -4,6 +4,7 @@ export default {
       description: '管理注册、邮箱验证、默认值和 SMTP 设置',
       tabs: {
         general: '通用设置',
+        useKey: '使用密钥',
         agreement: '登录条款',
         features: '功能开关',
         security: '安全与认证',
@@ -656,6 +657,53 @@ export default {
         testResultTitle: '搜索结果',
         testResultProvider: '服务商',
         testNoResults: '无搜索结果',
+      },
+      useKeyConfig: {
+        title: '使用密钥弹窗配置',
+        description:
+          '配置用户端「使用密钥」弹窗里生成的客户端配置文件内容。作用域为全站，对所有分组生效；留空或关闭时弹窗按内置默认渲染。',
+        reset: '重置为默认',
+        invalidTitle: '配置无效，已回退默认',
+        invalidHint:
+          '后端读取该设置时判定库中内容不可解析（use_key_config 按未配置返回），弹窗已回退到内置默认渲染。下方表单显示的是默认值，保存后会覆盖该无效配置。',
+        enabled: '启用配置',
+        enabledHint: '开启后弹窗按下方配置生成文件；关闭后弹窗按内置默认渲染。',
+        disabledNotice:
+          '已关闭：下方字段仅在启用后可编辑，保存后弹窗按内置默认渲染。',
+        tabs: '客户端 Tab 白名单',
+        tabsHint:
+          '勾选允许在弹窗中展示的客户端。最多 4 项；全部不勾选表示不限制，沿用现有 Tab 全集。最终结果还会与分组字段门（仅 Claude Code、允许 Messages 调度）取交集；交集为空时该分组的弹窗不展示任何客户端（不会回退成不限制），因此勾选范围过窄会让部分分组的用户拿不到任何客户端配置。',
+        codexTitle: 'Codex / GPT 分支',
+        codexDescription:
+          '以下字段会写入生成的 config.toml，请填写纯文本值。',
+        providerId: '服务商引用 ID',
+        providerIdPlaceholder: 'OpenAI',
+        providerIdHint:
+          '最多 {max} 个字符，只允许字母、数字、下划线和连字符；留空按内置默认值处理。与「服务商名称」不是一回事：本项是引用 id，同时决定客户端 config.toml 里的 model_provider 取值与 [model_providers.<id>] 表头（裸键，不能带空格），带空格等非法字符会让整个 config.toml 解析失败；服务商名称只是展示用的显示名。',
+        providerName: '服务商名称',
+        providerNamePlaceholder: 'OpenAI',
+        providerNameHint: '最多 {max} 个字符；留空按内置默认值处理。',
+        model: '默认模型',
+        modelPlaceholder: 'gpt-5.5',
+        modelHint:
+          '最多 {max} 个字符；留空时沿用弹窗现有的模型清单选择逻辑。',
+        reviewModel: '审查模型',
+        reviewModelPlaceholder: '留空则跟随默认模型',
+        reviewModelHint: '最多 {max} 个字符；留空时跟随默认模型。',
+        reasoningEffort: '推理强度',
+        reasoningEffortDefault: '留空（按模型清单推导）',
+        reasoningEffortHint: '留空时沿用按模型清单推导的推理强度。',
+        saveBlocked:
+          '「{tab}」弹窗配置存在非法值，已阻止保存；请到「设置 → {tab}」标签页按字段提示修正。',
+        errors: {
+          tooLong: '长度超出上限（最多 {max} 个字符）。',
+          forbiddenChars:
+            '不能包含换行、双引号或反斜杠：该值会被拼进客户端 config.toml 的双引号内，这些字符可截断或逃逸出字符串边界。',
+          invalidProviderId:
+            '只能使用字母、数字、下划线和连字符：该值会作为 TOML 裸表键拼进客户端 config.toml，空格等字符会让整个 config.toml 解析失败。',
+          invalidTabs: '包含非法 Tab 取值：{tabs}。请取消勾选后保存。',
+          tooManyTabs: '最多勾选 {max} 个 Tab。',
+        },
       },
       site: {
         title: '站点设置',

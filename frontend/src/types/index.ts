@@ -229,6 +229,32 @@ export interface LoginAgreementDocument {
   content_md: string
 }
 
+/** 管理端配置的 Codex 字段（「使用密钥」弹窗）。空字符串 = 回退到前端硬编码值。 */
+export interface UseKeyCodexConfig {
+  /** provider 引用 id，同时驱动 model_provider 与 [model_providers.<id>]；受 TOML 裸键字符集约束。 */
+  provider_id?: string
+  provider_name?: string
+  model?: string
+  review_model?: string
+  reasoning_effort?: string
+}
+
+/** 单个平台的管理端配置。v1 只实现 openai，其他平台为 schema 预留位。 */
+export interface UseKeyPlatformConfig {
+  tabs?: string[]
+  codex?: UseKeyCodexConfig
+}
+
+/**
+ * 公开设置 `use_key_config` 的内容。
+ * 服务端未配置或解析失败时该字段为 null，此时弹窗完全走硬编码行为。
+ */
+export interface UseKeyConfig {
+  version?: number
+  enabled?: boolean
+  platforms?: Record<string, UseKeyPlatformConfig>
+}
+
 export interface PublicSettings {
   registration_enabled: boolean
   email_verify_enabled: boolean
@@ -331,6 +357,8 @@ export interface PublicSettings {
   media_playground_menu_label: string
   media_playground_launch_path: string
   allow_user_view_error_requests?: boolean
+  /** 管理端「使用密钥」弹窗配置；未配置或服务端解析失败时为 null。 */
+  use_key_config?: UseKeyConfig | null
 }
 
 export interface AuthResponse {

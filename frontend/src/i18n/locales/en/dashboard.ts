@@ -181,6 +181,10 @@ export default {
       claudeSettingsHint: 'User-level persistent configuration. Do not commit this file containing your API key to a project repository.',
       noGroupTitle: 'Please assign a group first',
       noGroupDescription: 'This API key has not been assigned to a group. Please click the group column in the key list to assign one before viewing the configuration.',
+      useKeyConfigInvalid:
+        'The administrator-provided use-key configuration is invalid, so the default setup is shown. Please ask an administrator to check the "Use Key" settings.',
+      useKeyConfigNoClient:
+        'The administrator-provided client whitelist does not allow any client available to this group, so there is no setup to show. Please ask an administrator to adjust the "Use Key" settings.',
       openai: {
         description: 'Add the following configuration files to your Codex CLI config directory.',
         authModeTitle: 'Codex authentication mode',

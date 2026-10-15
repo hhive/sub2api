@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import type { UseKeyConfig } from '@/types'
 
 const { copyToClipboardMock, saveAsMock } = vi.hoisted(() => ({
   copyToClipboardMock: vi.fn().mockResolvedValue(true),
@@ -1103,4 +1104,337 @@ describe('UseKeyModal', () => {
       }
     }
   )
+
+  // 管理端「使用密钥」配置（公开设置 use_key_config）的生效语义。
+  describe('admin use-key config', () => {
+    const stubs = {
+      BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
+      Icon: { template: '<span />' }
+    }
+
+    function mountOpenAiModal(
+      useKeyConfig: unknown,
+      extraProps: Record<string, unknown> = {}
+    ): VueWrapper {
+      return mount(UseKeyModal, {
+        props: {
+          show: true,
+          apiKey: 'sk-test',
+          baseUrl: 'https://example.com/v1',
+          platform: 'openai',
+          useKeyConfig: useKeyConfig as UseKeyConfig | null,
+          ...extraProps
+        },
+        global: { stubs }
+      })
+    }
+
+    function codexConfigToml(wrapper: VueWrapper): string {
+      const content = wrapper.findAll('pre code')
+        .map((code) => code.text())
+        .find((code) => code.includes('disable_response_storage = true'))
+      expect(content).toBeDefined()
+      return content as string
+    }
+
+    function clientTabLabels(wrapper: VueWrapper): string[] {
+      const nav = wrapper.find('nav[aria-label="Client"]')
+      if (!nav.exists()) return []
+      return nav.findAll('button').map((button) => button.text().trim())
+    }
+
+    // 改动前的实际输出（未配置、codex 标签、unix、远程目录模式）。
+    const baselineConfigToml = `model_provider = "OpenAI"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
+disable_response_storage = true
+network_access = "enabled"
+windows_wsl_setup_acknowledged = true
+
+[model_providers.OpenAI]
+name = "OpenAI"
+base_url = "https://example.com/v1"
+model_catalog_url = "https://example.com/v1/models"
+wire_api = "responses"
+requires_openai_auth = true
+
+[features]
+api_key_model_discovery = true
+goals = true`
+
+    // 兼容性关键证据：不传配置或传 null 时，config.toml 与改动前逐字节一致。
+    it('keeps the pre-change config.toml byte-for-byte when no config is provided', () => {
+      expect(codexConfigToml(mountOpenAiModal(undefined))).toBe(baselineConfigToml)
+      expect(codexConfigToml(mountOpenAiModal(null))).toBe(baselineConfigToml)
+    })
+
+    it('keeps the hardcoded behavior when the config is disabled or has empty fields', () => {
+      expect(codexConfigToml(mountOpenAiModal({ version: 1, enabled: false, platforms: { openai: { codex: { model: 'gpt-5.5-mini' } } } })))
+        .toBe(baselineConfigToml)
+      expect(codexConfigToml(mountOpenAiModal({ version: 1, enabled: true, platforms: { openai: { codex: { model: '', review_model: '', provider_name: '', reasoning_effort: '' } } } })))
+        .toBe(baselineConfigToml)
+    })
+
+    it('renders the configured Codex model and provider name', () => {
+      const wrapper = mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { provider_name: 'Sub2API Codex', model: 'gpt-5.5-mini' } } }
+      })
+
+      const config = codexConfigToml(wrapper)
+      expect(config).toContain('model = "gpt-5.5-mini"')
+      // review_model 为空时跟随 model（与现状一致）
+      expect(config).toContain('review_model = "gpt-5.5-mini"')
+      expect(config).toContain('name = "Sub2API Codex"')
+      // provider 表名保持稳定，避免自定义名字破坏 TOML 表头
+      expect(config).toContain('[model_providers.OpenAI]')
+    })
+
+    // model_provider 与 [model_providers.<id>] 必须来自同一字段，否则 config.toml 引用会断链。
+    function providerIdLines(config: string): { reference: string; header: string } {
+      const reference = config.match(/^model_provider = "([^"]*)"$/m)?.[1]
+      const header = config.match(/^\[model_providers\.([^\]]*)\]$/m)?.[1]
+      expect(reference).toBeDefined()
+      expect(header).toBeDefined()
+      return { reference: reference as string, header: header as string }
+    }
+
+    it('drives model_provider and the provider table header from one provider_id', async () => {
+      const wrapper = mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { provider_id: 'sub2api' } } }
+      })
+
+      const config = codexConfigToml(wrapper)
+      expect(providerIdLines(config)).toEqual({ reference: 'sub2api', header: 'sub2api' })
+      expect(config).toContain('model_provider = "sub2api"')
+      expect(config).toContain('[model_providers.sub2api]')
+      expect(config).not.toContain('[model_providers.OpenAI]')
+
+      // codex-ws 同属 openai 分支，必须同样生效
+      const wsTab = wrapper.findAll('button').find((button) =>
+        button.text().includes('keys.useKeyModal.cliTabs.codexCliWs')
+      )
+      expect(wsTab).toBeDefined()
+      await wsTab!.trigger('click')
+      await nextTick()
+      expect(providerIdLines(codexConfigToml(wrapper))).toEqual({ reference: 'sub2api', header: 'sub2api' })
+
+      // 裸键字符集上限：64 字符可用
+      const maxLengthId = 'a'.repeat(64)
+      const bounded = mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { provider_id: maxLengthId } } }
+      })
+      expect(providerIdLines(codexConfigToml(bounded))).toEqual({ reference: maxLengthId, header: maxLengthId })
+    })
+
+    it('falls back to the OpenAI provider id when provider_id is empty or missing', () => {
+      expect(codexConfigToml(mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { provider_id: '' } } }
+      }))).toBe(baselineConfigToml)
+
+      const named = codexConfigToml(mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { provider_name: 'Sub2API Codex' } } }
+      }))
+      expect(providerIdLines(named)).toEqual({ reference: 'OpenAI', header: 'OpenAI' })
+    })
+
+    it('rejects provider ids outside the TOML bare-key charset', () => {
+      const illegalIds: unknown[] = ['sub 2api', 'sub"2api', 'sub.2api', '子集', 'a'.repeat(65), 42]
+
+      // 其中一例故意传入非字符串，Vue 的 prop 类型检查会告警；此处显式静音，保持测试输出干净。
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        for (const providerId of illegalIds) {
+          const wrapper = mountOpenAiModal({
+            version: 1,
+            enabled: true,
+            platforms: { openai: { codex: { provider_id: providerId } } }
+          })
+          const config = codexConfigToml(wrapper)
+          // 非法 id 绝不透传进 TOML：整体回退硬编码并显式提示
+          expect(config).toBe(baselineConfigToml)
+          expect(config).not.toContain('model_providers.sub')
+          expect(config).not.toContain('子集')
+          expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(true)
+        }
+      } finally {
+        warnSpy.mockRestore()
+      }
+    })
+
+    it('renders the configured review model and reasoning effort', () => {
+      const wrapper = mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: {
+          openai: { codex: { model: 'gpt-5.5-mini', review_model: 'gpt-5.5', reasoning_effort: 'high' } }
+        }
+      })
+
+      const config = codexConfigToml(wrapper)
+      expect(config).toContain('model = "gpt-5.5-mini"')
+      expect(config).toContain('review_model = "gpt-5.5"')
+      expect(config).toContain('model_reasoning_effort = "high"')
+    })
+
+    it('renders only the whitelisted client tab', () => {
+      const wrapper = mountOpenAiModal({ version: 1, enabled: true, platforms: { openai: { tabs: ['opencode'] } } })
+
+      expect(clientTabLabels(wrapper)).toEqual(['keys.useKeyModal.cliTabs.opencode'])
+      const codeBlocks = wrapper.findAll('pre code').map((code) => code.text())
+      expect(codeBlocks.some((content) => content.includes('model_provider = "OpenAI"'))).toBe(false)
+    })
+
+    it('intersects the tab whitelist with the group field gates', () => {
+      // 分组未开放 Messages 分发：白名单里的 claude 仍不可用
+      const gated = mountOpenAiModal({ version: 1, enabled: true, platforms: { openai: { tabs: ['claude', 'opencode'] } } })
+      expect(clientTabLabels(gated)).toEqual(['keys.useKeyModal.cliTabs.opencode'])
+
+      // 分组开放 Messages 分发后交集扩大
+      const dispatch = mountOpenAiModal(
+        { version: 1, enabled: true, platforms: { openai: { tabs: ['claude', 'opencode'] } } },
+        { allowMessagesDispatch: true }
+      )
+      expect(clientTabLabels(dispatch)).toEqual([
+        'keys.useKeyModal.cliTabs.claudeCode',
+        'keys.useKeyModal.cliTabs.opencode'
+      ])
+    })
+
+    // v1.2 语义变更（用户授权）：交集为空时 fail-closed，不再回退为「不限制」。
+    // 期望值随已批准语义变更，断言强度不降反升（同时约束 tab、文件内容、目录区块与提示）。
+    it('shows no client at all when the whitelist intersects the group gates to nothing', () => {
+      const wrapper = mountOpenAiModal({ version: 1, enabled: true, platforms: { openai: { tabs: ['claude'] } } })
+
+      // 不渲染任何客户端 tab
+      expect(clientTabLabels(wrapper)).toEqual([])
+      // 不渲染任何配置文件内容（含 currentFiles 按过期 activeClientTab 生成的内容）
+      expect(wrapper.findAll('pre code')).toHaveLength(0)
+      // 目录区块、认证模式、shell tab、用法说明同样不渲染
+      expect(wrapper.find('[data-testid="codex-model-catalog"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="codex-auth-mode-legacy"]').exists()).toBe(false)
+      // 显式提示可见
+      expect(wrapper.find('[data-testid="use-key-config-no-client-notice"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('keys.useKeyModal.useKeyConfigNoClient')
+      expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(false)
+    })
+
+    it('rejects values containing newlines instead of silently escaping them', () => {
+      for (const key of ['provider_id', 'provider_name', 'model', 'review_model', 'reasoning_effort']) {
+        for (const raw of ['a\nb', 'a\rb', 'a\r\nb']) {
+          const wrapper = mountOpenAiModal({
+            version: 1,
+            enabled: true,
+            platforms: { openai: { codex: { [key]: raw } } }
+          })
+          const config = codexConfigToml(wrapper)
+          // 整份回退，且非法值（含真实换行）绝不进 TOML
+          expect(config).toBe(baselineConfigToml)
+          expect(config).not.toContain(raw)
+          expect(config).not.toMatch(/[^\n]*= "[^"\n]*\n[^"\n]*"\n/)
+          expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(true)
+        }
+      }
+    })
+
+    it('treats a config without version as invalid, matching the backend judgement', () => {
+      const wrapper = mountOpenAiModal({
+        enabled: true,
+        platforms: { openai: { codex: { model: 'gpt-5.5-mini' } } }
+      })
+
+      expect(codexConfigToml(wrapper)).toBe(baselineConfigToml)
+      expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(true)
+    })
+
+    it('keeps the configured model even when the downloaded catalog does not contain it', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ models: [{ slug: 'gpt-5.4' }] })
+      }))
+
+      const configured = mountOpenAiModal({
+        version: 1,
+        enabled: true,
+        platforms: { openai: { codex: { model: 'gpt-5.5-mini' } } }
+      })
+      await configured.get('[data-testid="codex-model-catalog-fetch"]').trigger('click')
+      await flushPromises()
+
+      const config = codexConfigToml(configured)
+      expect(config).toContain('model = "gpt-5.5-mini"')
+      expect(config).not.toContain('model = "gpt-5.4"')
+
+      // 对照组：未配置时沿用现有「清单里没有就换成清单第一个」的行为
+      const hardcoded = mountOpenAiModal(null)
+      await hardcoded.get('[data-testid="codex-model-catalog-fetch"]').trigger('click')
+      await flushPromises()
+      expect(codexConfigToml(hardcoded)).toContain('model = "gpt-5.4"')
+    })
+
+    it('falls back to the hardcoded config and shows a notice when the config is malformed', () => {
+      const malformed: unknown[] = [
+        { version: 1, enabled: true, platforms: 'openai' },
+        { version: 1, enabled: true, platforms: { openai: { tabs: 'opencode' } } },
+        { version: 1, enabled: true, platforms: { openai: { tabs: [1, 2] } } },
+        { version: 1, enabled: true, platforms: { openai: { codex: { model: 42 } } } },
+        { version: 2, enabled: true, platforms: { openai: { codex: { model: 'gpt-5.5-mini' } } } },
+        'not-an-object'
+      ]
+
+      // 其中一例故意传入非对象值，Vue 的 prop 类型检查会告警；此处显式静音，保持测试输出干净。
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        for (const useKeyConfig of malformed) {
+          const wrapper = mountOpenAiModal(useKeyConfig)
+          expect(codexConfigToml(wrapper)).toBe(baselineConfigToml)
+          expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(true)
+          expect(wrapper.text()).toContain('keys.useKeyModal.useKeyConfigInvalid')
+        }
+      } finally {
+        warnSpy.mockRestore()
+      }
+    })
+
+    it('does not show the invalid notice for absent or disabled configs', () => {
+      expect(mountOpenAiModal(null).find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(false)
+      expect(mountOpenAiModal({ version: 1, enabled: false, platforms: 'openai' }).find('[data-testid="use-key-config-invalid-notice"]').exists())
+        .toBe(false)
+    })
+
+    it('leaves the other platform branches unchanged', () => {
+      const wrapper = mount(UseKeyModal, {
+        props: {
+          show: true,
+          apiKey: 'sk-anthropic-test',
+          baseUrl: 'https://example.com/v1',
+          platform: 'anthropic',
+          useKeyConfig: {
+            version: 1,
+            enabled: true,
+            platforms: { openai: { tabs: ['opencode'], codex: { model: 'gpt-5.5-mini' } } }
+          } as UseKeyConfig
+        },
+        global: { stubs }
+      })
+
+      expect(clientTabLabels(wrapper)).toEqual([
+        'keys.useKeyModal.cliTabs.claudeCode',
+        'keys.useKeyModal.cliTabs.codexCli',
+        'keys.useKeyModal.cliTabs.opencode'
+      ])
+      expect(wrapper.find('[data-testid="use-key-config-invalid-notice"]').exists()).toBe(false)
+      expect(wrapper.find('pre code').text()).toContain('ANTHROPIC_BASE_URL')
+    })
+  })
 })

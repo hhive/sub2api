@@ -153,6 +153,10 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 	}
 	passkeyConfigured, passkeyRPID, passkeyRPOrigins := h.settingService.PasskeyConfiguration()
 
+	// use_key_config 的「未配置」与「配置无效」必须可区分：前者静默回退硬编码，
+	// 后者要在管理端显式提示「配置无效，已回退默认」。
+	useKeyConfig, useKeyConfigInvalid := dto.ParseUseKeyConfigWithValidity(settings.UseKeyConfig)
+
 	payload := dto.SystemSettings{
 		RegistrationEnabled:                                    settings.RegistrationEnabled,
 		EmailVerifyEnabled:                                     settings.EmailVerifyEnabled,
@@ -292,6 +296,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
+		UseKeyConfig:                                           useKeyConfig,
+		UseKeyConfigInvalid:                                    useKeyConfigInvalid,
 		LaunchTokenTTLSeconds:                                  settings.LaunchTokenTTLSeconds,
 		DefaultTextModel:                                       settings.DefaultTextModel,
 		DefaultImageModel:                                      settings.DefaultImageModel,

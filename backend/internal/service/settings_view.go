@@ -1,6 +1,9 @@
 package service
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
@@ -174,6 +177,7 @@ type SystemSettings struct {
 	CustomMenuItems             string // JSON array of custom menu items
 	VictoryMenuItems            string // JSON array of victory menu items
 	CustomEndpoints             string // JSON array of custom endpoints
+	UseKeyConfig                string // JSON object of the use-key modal config
 	LaunchTokenTTLSeconds       int
 	DefaultTextModel            string
 	DefaultImageModel           string
@@ -410,9 +414,10 @@ type PublicSettings struct {
 	PurchaseSubscriptionURL             string
 	TableDefaultPageSize                int
 	TablePageSizeOptions                []int
-	CustomMenuItems                     string // JSON array of custom menu items
-	VictoryMenuItems                    string // JSON array of victory menu items
-	CustomEndpoints                     string // JSON array of custom endpoints
+	CustomMenuItems                     string          // JSON array of custom menu items
+	VictoryMenuItems                    string          // JSON array of victory menu items
+	CustomEndpoints                     string          // JSON array of custom endpoints
+	UseKeyConfig                        json.RawMessage // parsed use_key_config object; JSON null when unset or invalid
 	LobeHubEnabled                      bool
 	LobeHubMenuLabel                    string
 	LobeHubLaunchPath                   string

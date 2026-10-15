@@ -369,6 +369,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
 	updates[SettingKeyVictoryMenuItems] = settings.VictoryMenuItems
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
+	updates[SettingKeyUseKeyConfig] = settings.UseKeyConfig
 	if settings.LaunchTokenTTLSeconds <= 0 {
 		settings.LaunchTokenTTLSeconds = 60
 	}

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -178,13 +180,15 @@ type UpdateSettingsRequest struct {
 	CustomMenuItems             *[]dto.CustomMenuItem  `json:"custom_menu_items"`
 	VictoryMenuItems            *[]dto.VictoryMenuItem `json:"victory_menu_items"`
 	CustomEndpoints             *[]dto.CustomEndpoint  `json:"custom_endpoints"`
-	LaunchTokenTTLSeconds       *int                   `json:"launch_token_ttl_seconds"`
-	DefaultTextModel            *string                `json:"default_text_model"`
-	DefaultImageModel           *string                `json:"default_image_model"`
-	LobeHubEnabled              *bool                  `json:"lobehub_enabled"`
-	LobeHubBaseURL              *string                `json:"lobehub_base_url"`
-	LobeHubMenuLabel            *string                `json:"lobehub_menu_label"`
-	LobeHubExchangeSecret       *string                `json:"lobehub_exchange_secret"`
+	// UseKeyConfig 为原始 JSON：null 表示清空该设置，对象表示整体覆盖，缺省表示保持现值。
+	UseKeyConfig          json.RawMessage `json:"use_key_config"`
+	LaunchTokenTTLSeconds *int            `json:"launch_token_ttl_seconds"`
+	DefaultTextModel      *string         `json:"default_text_model"`
+	DefaultImageModel     *string         `json:"default_image_model"`
+	LobeHubEnabled        *bool           `json:"lobehub_enabled"`
+	LobeHubBaseURL        *string         `json:"lobehub_base_url"`
+	LobeHubMenuLabel      *string         `json:"lobehub_menu_label"`
+	LobeHubExchangeSecret *string         `json:"lobehub_exchange_secret"`
 
 	// 默认配置
 	DefaultConcurrency                        int                               `json:"default_concurrency"`
@@ -496,6 +500,126 @@ func buildSettingKeyByJSONName() map[string]string {
 		out[name] = name
 	}
 	return out
+}
+
+const (
+	useKeyConfigVersion         = dto.UseKeyConfigVersion
+	useKeyConfigMaxTabs         = 4
+	useKeyConfigMaxProviderID   = 64
+	useKeyConfigMaxProviderName = 64
+	useKeyConfigMaxModel        = 128
+	useKeyConfigMaxReviewModel  = 128
+)
+
+// useKeyConfigTabs 是弹窗允许的客户端 tab 枚举；useKeyConfigReasoningEfforts 是
+// 允许的 reasoning_effort 枚举（空串表示沿用清单推导）。
+// useKeyProviderIDPattern 是 TOML 裸键字符集：provider_id 会以 [model_providers.<id>]
+// 的裸表键形式拼进客户端 config.toml，因此不允许空格、引号、点号等字符。
+var (
+	useKeyConfigTabs = map[string]struct{}{
+		"codex":    {},
+		"codex-ws": {},
+		"claude":   {},
+		"opencode": {},
+	}
+	useKeyProviderIDPattern      = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	useKeyConfigReasoningEfforts = map[string]struct{}{
+		"minimal": {},
+		"low":     {},
+		"medium":  {},
+		"high":    {},
+		"xhigh":   {},
+		"max":     {},
+	}
+)
+
+// normalizeUseKeyConfigJSON 校验并规范化 use_key_config 请求值。
+// null / 空串表示清空设置；其余必须是 version=1 的 JSON 对象。
+// 校验失败返回错误，由调用方显式回 400，避免把非法配置写进设置表。
+func normalizeUseKeyConfigJSON(raw json.RawMessage) (string, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" || trimmed == `""` {
+		return "", nil
+	}
+
+	var cfg dto.UseKeyConfig
+	if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+		return "", fmt.Errorf("use_key_config must be a JSON object or null")
+	}
+	if cfg.Version != useKeyConfigVersion {
+		return "", fmt.Errorf("use_key_config.version must be %d", useKeyConfigVersion)
+	}
+	if cfg.Platforms == nil {
+		cfg.Platforms = map[string]dto.UseKeyPlatformConfig{}
+	}
+
+	for platformName, platform := range cfg.Platforms {
+		// tabs 去重后不得超过枚举全集；枚举外的值直接拒绝。
+		tabs := make([]string, 0, len(platform.Tabs))
+		seen := make(map[string]struct{}, len(platform.Tabs))
+		for _, tab := range platform.Tabs {
+			tab = strings.TrimSpace(tab)
+			if _, ok := useKeyConfigTabs[tab]; !ok {
+				return "", fmt.Errorf("use_key_config.%s.tabs contains unsupported value %q", platformName, tab)
+			}
+			if _, duplicate := seen[tab]; duplicate {
+				continue
+			}
+			seen[tab] = struct{}{}
+			tabs = append(tabs, tab)
+		}
+		if len(tabs) > useKeyConfigMaxTabs {
+			return "", fmt.Errorf("use_key_config.%s.tabs must contain at most %d entries", platformName, useKeyConfigMaxTabs)
+		}
+		platform.Tabs = tabs
+
+		if platform.Codex != nil {
+			codex := *platform.Codex
+			for _, field := range []struct {
+				name  string
+				value *string
+				limit int
+			}{
+				{"provider_name", &codex.ProviderName, useKeyConfigMaxProviderName},
+				{"model", &codex.Model, useKeyConfigMaxModel},
+				{"review_model", &codex.ReviewModel, useKeyConfigMaxReviewModel},
+			} {
+				*field.value = strings.TrimSpace(*field.value)
+				if len(*field.value) > field.limit {
+					return "", fmt.Errorf("use_key_config.%s.codex.%s must be at most %d characters", platformName, field.name, field.limit)
+				}
+				// 这些值会被拼进 TOML 双引号字面量，换行/双引号/反斜杠都是注入面。
+				if strings.ContainsAny(*field.value, "\n\r\"\\") {
+					return "", fmt.Errorf("use_key_config.%s.codex.%s must not contain newlines, double quotes or backslashes", platformName, field.name)
+				}
+			}
+			// provider_id 进的是 TOML 裸表键 [model_providers.<id>]，判据是裸键字符集；
+			// 上面三个字段进的是双引号字符串值，判据不同（允许空格、禁引号），不可混用。
+			codex.ProviderID = strings.TrimSpace(codex.ProviderID)
+			if len(codex.ProviderID) > useKeyConfigMaxProviderID {
+				return "", fmt.Errorf("use_key_config.%s.codex.provider_id must be at most %d characters", platformName, useKeyConfigMaxProviderID)
+			}
+			if codex.ProviderID != "" && !useKeyProviderIDPattern.MatchString(codex.ProviderID) {
+				return "", fmt.Errorf("use_key_config.%s.codex.provider_id must contain only letters, digits, underscore or hyphen (it is emitted as a TOML bare table key)", platformName)
+			}
+
+			codex.ReasoningEffort = strings.TrimSpace(codex.ReasoningEffort)
+			if codex.ReasoningEffort != "" {
+				if _, ok := useKeyConfigReasoningEfforts[codex.ReasoningEffort]; !ok {
+					return "", fmt.Errorf("use_key_config.%s.codex.reasoning_effort must be empty or one of minimal/low/medium/high/xhigh/max", platformName)
+				}
+			}
+			platform.Codex = &codex
+		}
+
+		cfg.Platforms[platformName] = platform
+	}
+
+	encoded, err := json.Marshal(cfg)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize use_key_config")
+	}
+	return string(encoded), nil
 }
 
 // omittedSettingKeys reports the setting keys this payload never mentioned.
@@ -1610,6 +1734,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		customEndpointsJSON = string(endpointBytes)
 	}
 
+	// use_key_config 校验：这些字符串会被前端直接拼进 config.toml 的双引号内，
+	// 非法值必须在写入前显式 400，不落库。
+	useKeyConfigJSON := previousSettings.UseKeyConfig
+	if len(req.UseKeyConfig) > 0 {
+		normalized, err := normalizeUseKeyConfigJSON(req.UseKeyConfig)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		useKeyConfigJSON = normalized
+	}
+
 	// Ops metrics collector interval validation (seconds).
 	if req.OpsMetricsIntervalSeconds != nil {
 		v := *req.OpsMetricsIntervalSeconds
@@ -1873,6 +2009,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomMenuItems:                        customMenuJSON,
 		VictoryMenuItems:                       victoryMenuJSON,
 		CustomEndpoints:                        customEndpointsJSON,
+		UseKeyConfig:                           useKeyConfigJSON,
 		LaunchTokenTTLSeconds:                  launchTokenTTLSeconds,
 		DefaultTextModel:                       defaultTextModel,
 		DefaultImageModel:                      defaultImageModel,
@@ -2432,6 +2569,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	passkeyConfigured, passkeyRPID, passkeyRPOrigins := h.settingService.PasskeyConfiguration()
 
+	// 与 GET /settings 共用同一判据：部分更新时 use_key_config 可能被原样保留，
+	// 若只按请求值判断，PUT 会把库中仍然无效的配置报成 valid，前端随即清掉告警。
+	useKeyConfig, useKeyConfigInvalid := dto.ParseUseKeyConfigWithValidity(updatedSettings.UseKeyConfig)
+
 	payload := dto.SystemSettings{
 		RegistrationEnabled:                                    updatedSettings.RegistrationEnabled,
 		EmailVerifyEnabled:                                     updatedSettings.EmailVerifyEnabled,
@@ -2571,6 +2712,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
 		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(updatedSettings.VictoryMenuItems),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
+		UseKeyConfig:                                           useKeyConfig,
+		UseKeyConfigInvalid:                                    useKeyConfigInvalid,
 		LaunchTokenTTLSeconds:                                  updatedSettings.LaunchTokenTTLSeconds,
 		DefaultTextModel:                                       updatedSettings.DefaultTextModel,
 		DefaultImageModel:                                      updatedSettings.DefaultImageModel,

@@ -11,6 +11,7 @@ import type {
   CustomMenuItem,
   LoginAgreementDocument,
   NotifyEmailEntry,
+  UseKeyConfig,
   VictoryMenuItem,
 } from "@/types";
 import type { RechargeBonusTier } from "@/utils/rechargeBonus";
@@ -504,6 +505,14 @@ export interface SystemSettings {
   site_logo: string;
   site_subtitle: string;
   api_base_url: string;
+  /** 「使用密钥」弹窗配置；与后端管理端 API 一致走结构化对象，null = 未配置或库中内容不可解析。 */
+  use_key_config: UseKeyConfig | null;
+  /**
+   * 后端判定：库中存在 use_key_config 但内容不可解析。
+   * 此时 use_key_config 同样返回 null，前端无法自行区分「未配置」与「配置无效」，
+   * 故无效告警必须由该字段驱动，不得在前端二次推导。
+   */
+  use_key_config_invalid?: boolean;
   contact_info: string;
   doc_url: string;
   media_playground_doc_url: string;
@@ -880,6 +889,8 @@ export interface UpdateSettingsRequest {
   site_logo?: string;
   site_subtitle?: string;
   api_base_url?: string;
+  /** null = 清空该设置；缺省 = 保持现值（后端 json.RawMessage 语义）。 */
+  use_key_config?: UseKeyConfig | null;
   contact_info?: string;
   doc_url?: string;
   media_playground_doc_url?: string;

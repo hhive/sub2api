@@ -249,6 +249,11 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.defaults.platformQuotaNotice": "月限额为 30 天滚动窗口，非自然月",
     "admin.settings.authSourceDefaults.platformQuotasOverride": "平台限额覆盖",
     "admin.settings.authSourceDefaults.platformQuotasOverrideHint": "留空的字段继承「系统默认平台限额」；填 0 表示禁止该窗口使用。",
+    // 保存被拒的提示必须指明 tab：下面的用例会把它与真实词条逐字比对，
+    // 因此这两条与 zh/admin/settings.ts 漂移时会直接变红。
+    "admin.settings.tabs.useKey": "使用密钥",
+    "admin.settings.useKeyConfig.saveBlocked":
+      "「{tab}」弹窗配置存在非法值，已阻止保存；请到「设置 → {tab}」标签页按字段提示修正。",
   };
   return {
     ...actual,
@@ -549,6 +554,14 @@ const baseSettingsResponse = {
     antigravity: { daily: null, weekly: null, monthly: null },
   },
 };
+
+// 保存被拒时的提示：由真实词条渲染 tab 名，测试直接用它比对，
+// 词条漂移或组件漏传 tab 参数都会变红（而不是只断言「有报错」）。
+const useKeySaveBlockedMessage =
+  zhSettings.settings.useKeyConfig.saveBlocked.replace(
+    /\{tab\}/g,
+    zhSettings.settings.tabs.useKey,
+  );
 
 function mountView() {
   return mount(SettingsView, {
@@ -1997,6 +2010,453 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(Array.isArray(receivedProviders[0].supported_types)).toBe(true);
     expect(receivedProviders[0].supported_types).toEqual([]);
   });
+
+  // ── 「使用密钥」弹窗配置（use_key_config）────────────────────────────────
+  // 管理端 API 双向都是结构化对象（GET 对象/null，PUT 对象/null），与
+  // login_agreement_documents、custom_endpoints 一致。表单编辑结构化字段；
+  // 非法配置必须显式告警并在保存时阻断，不得静默当作空配置或静默截断。
+  function useKeyConfigBody(
+    codex: Record<string, unknown> = {},
+    tabs: string[] = [],
+    enabled = true,
+  ) {
+    return {
+      version: 1,
+      enabled,
+      platforms: { openai: { tabs, codex } },
+    };
+  }
+
+  function useKeyModelInput(wrapper: ReturnType<typeof mountView>) {
+    return wrapper.get(
+      "input[placeholder='admin.settings.useKeyConfig.modelPlaceholder']",
+    );
+  }
+
+  it("fills the form from a stored use_key_config object and re-sends it as an object", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        {
+          provider_id: "acme",
+          provider_name: "Acme",
+          model: "gpt-5.5-mini",
+          review_model: "gpt-5.5",
+          reasoning_effort: "high",
+        },
+        ["codex", "opencode"],
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(
+      (
+        wrapper.get(
+          "input[placeholder='admin.settings.useKeyConfig.providerIdPlaceholder']",
+        ).element as HTMLInputElement
+      ).value,
+    ).toBe("acme");
+    expect(
+      (
+        wrapper.get(
+          "input[placeholder='admin.settings.useKeyConfig.providerNamePlaceholder']",
+        ).element as HTMLInputElement
+      ).value,
+    ).toBe("Acme");
+    expect(
+      (useKeyModelInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("gpt-5.5-mini");
+    expect(
+      (
+        wrapper.get(
+          "input[placeholder='admin.settings.useKeyConfig.reviewModelPlaceholder']",
+        ).element as HTMLInputElement
+      ).value,
+    ).toBe("gpt-5.5");
+
+    const checkedBoxes = wrapper
+      .findAll("input[type='checkbox']")
+      .filter((box) => (box.element as HTMLInputElement).checked)
+      .map((box) => (box.element as HTMLInputElement).value);
+    expect(checkedBoxes).toContain("codex");
+    expect(checkedBoxes).toContain("opencode");
+
+    const effortSelect = wrapper
+      .findAll("select")
+      .find((node) =>
+        Array.from((node.element as HTMLSelectElement).options).some(
+          (option) => option.value === "xhigh",
+        ),
+      );
+    expect(effortSelect).toBeDefined();
+    expect((effortSelect!.element as HTMLSelectElement).value).toBe("high");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    const sent = payload["use_key_config"];
+    // 线格式必须是对象：后端 PUT 该字段是 json.RawMessage，传 JSON 字符串会 400，
+    // 且字符串载荷会让后端把它当成非法配置拒绝整次保存。
+    expect(typeof sent).toBe("object");
+    expect(sent).not.toBeNull();
+    expect(sent).toEqual({
+      version: 1,
+      enabled: true,
+      platforms: {
+        openai: {
+          tabs: ["codex", "opencode"],
+          codex: {
+            provider_id: "acme",
+            provider_name: "Acme",
+            model: "gpt-5.5-mini",
+            review_model: "gpt-5.5",
+            reasoning_effort: "high",
+          },
+        },
+      },
+    });
+  });
+
+  it("blocks saving without calling the API when provider_id is not a TOML bare key", async () => {
+    // provider_id 会拼成 TOML 裸表键 [model_providers.<id>]，带空格或双引号的裸键非法；
+    // 报错必须与 provider_name 的「禁引号」规则可区分（provider_name 允许空格）。
+    for (const invalidProviderId of ["acme provider", 'acme"provider']) {
+      getSettings.mockReset();
+      updateSettings.mockReset();
+      showError.mockReset();
+      getSettings.mockResolvedValue({ ...baseSettingsResponse });
+      updateSettings.mockImplementation(async (payload) => ({
+        ...baseSettingsResponse,
+        ...payload,
+      }));
+      getSettings.mockResolvedValueOnce({
+        ...baseSettingsResponse,
+        use_key_config: useKeyConfigBody({ provider_id: invalidProviderId }),
+      });
+
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain(
+        "admin.settings.useKeyConfig.errors.invalidProviderId",
+      );
+
+      await wrapper.find("form").trigger("submit.prevent");
+      await flushPromises();
+
+      // 关键断言：非法 provider_id 必须阻断保存，不得静默截断后提交
+      expect(updateSettings).not.toHaveBeenCalled();
+      expect(showError).toHaveBeenCalledWith(useKeySaveBlockedMessage);
+    }
+  });
+
+  it("allows a space in provider_name while rejecting it in provider_id", async () => {
+    // 两个字段的规则不同：provider_name 是双引号内的显示名（允许空格），
+    // provider_id 是裸键（不允许空格），不可互相套用。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({
+        provider_id: "sub2api",
+        provider_name: "Sub2API Gateway",
+      }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.errors.invalidProviderId",
+    );
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.errors.forbiddenChars",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(
+      (
+        payload["use_key_config"] as {
+          platforms: { openai: { codex: Record<string, unknown> } };
+        }
+      ).platforms.openai.codex,
+    ).toEqual({
+      provider_id: "sub2api",
+      provider_name: "Sub2API Gateway",
+      model: "",
+      review_model: "",
+      reasoning_effort: "",
+    });
+  });
+
+  it("preserves provider_id across an edit so saving does not wipe it", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({
+        provider_id: "sub2api",
+        model: "gpt-5.5",
+      }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await useKeyModelInput(wrapper).setValue("gpt-5.5-mini");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    const codex = (
+      payload["use_key_config"] as {
+        platforms: { openai: { codex: Record<string, unknown> } };
+      }
+    ).platforms.openai.codex;
+    expect(codex.provider_id).toBe("sub2api");
+    expect(codex).toEqual({
+      provider_id: "sub2api",
+      provider_name: "",
+      model: "gpt-5.5-mini",
+      review_model: "",
+      reasoning_effort: "",
+    });
+  });
+
+  it("sends a null use_key_config when nothing is stored", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    // null（而非空串）才是后端「清空该设置」的线格式
+    expect(payload["use_key_config"]).toBeNull();
+  });
+
+  it("does not warn when the backend reports no stored config", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: null,
+      use_key_config_invalid: false,
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // 未配置不是「配置无效」：不得误报
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.invalidTitle",
+    );
+    expect(
+      (useKeyModelInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("");
+  });
+
+  it("warns explicitly and falls back to defaults when the backend flags the stored config as invalid", async () => {
+    // 库中内容不可解析时后端同样返回 use_key_config: null，只有 use_key_config_invalid
+    // 能区分「未配置」与「配置无效」，告警必须以该字段为唯一来源。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: null,
+      use_key_config_invalid: true,
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("admin.settings.useKeyConfig.invalidTitle");
+    expect(
+      (useKeyModelInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toBeNull();
+  });
+
+  it("ignores a stored config whose version is not 1 without inventing a frontend warning", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: { version: 2, enabled: true },
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // 「无效」由后端判定；版本不符只按默认渲染，不在前端二次推导告警
+    expect(
+      (useKeyModelInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("");
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.invalidTitle",
+    );
+  });
+
+  it("blocks saving without calling the API when a string field contains a double quote", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({ model: 'gpt"5.5' }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "admin.settings.useKeyConfig.errors.forbiddenChars",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    // 关键断言：非法值必须阻断保存，而不是静默截断后提交
+    expect(updateSettings).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith(useKeySaveBlockedMessage);
+  });
+
+  it("blocks saving without calling the API when a string field exceeds its length limit", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({ model: "m".repeat(129) }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "admin.settings.useKeyConfig.errors.tooLong",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("flags an unknown tab value and lets it be unchecked before saving", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({}, ["codex", "bogus"]),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // 存量非法枚举必须可见（保留原值），不能被静默丢弃
+    expect(wrapper.text()).toContain(
+      "admin.settings.useKeyConfig.errors.invalidTabs",
+    );
+    expect(wrapper.text()).toContain("bogus");
+
+    const bogusBox = wrapper
+      .findAll("input[type='checkbox']")
+      .find((box) => (box.element as HTMLInputElement).value === "bogus");
+    expect(bogusBox).toBeDefined();
+    await bogusBox!.setValue(false);
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.errors.invalidTabs",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(
+      (
+        payload["use_key_config"] as {
+          platforms: { openai: { tabs: string[] } };
+        }
+      ).platforms.openai.tabs,
+    ).toEqual(["codex"]);
+  });
+
+  it("reset clears the stored config by sending null", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_name: "Acme", model: "gpt-5.5" },
+        ["codex"],
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    const resetButton = wrapper
+      .findAll("button")
+      .find((node) => node.text().includes("admin.settings.useKeyConfig.reset"));
+    expect(resetButton).toBeDefined();
+    await resetButton!.trigger("click");
+    await flushPromises();
+
+    expect(
+      (useKeyModelInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    // 重置 = 后端语义上的清空：必须发 null，不是空串
+    expect(payload["use_key_config"]).toBeNull();
+  });
+
+  it("locates the blocked-save fields in the use key tab when saving from another tab", async () => {
+    // 库中 tabs 含未知值（只能直写库）时，前置校验会在任何 tab 拦下保存。
+    // 此时提示若不指明位置，管理员会在当前 tab 里找一个并不存在的「被标记字段」，
+    // 结果连站点名这类无关设置都存不下去。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({}, ["codex", "bogus"]),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // 起点是「通用设置」tab，不是「使用密钥」
+    expect(
+      wrapper.find("#settings-tab-general").attributes("aria-selected"),
+    ).toBe("true");
+    expect(
+      wrapper.find("#settings-tab-useKey").attributes("aria-selected"),
+    ).toBe("false");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).not.toHaveBeenCalled();
+
+    // 提示必须能定位到「设置 → 使用密钥」：与真实词条逐字比对（含 tab 名插值），
+    // 词条漂移或未传 tab 参数都会变红。
+    const message = showError.mock.calls.at(-1)?.[0] as string;
+    expect(message).toBe(useKeySaveBlockedMessage);
+    expect(message).toContain("设置");
+    expect(message).toContain(zhSettings.settings.tabs.useKey);
+
+    // 并且把管理员带到那个 tab，字段级提示就在眼前
+    expect(
+      wrapper.find("#settings-tab-useKey").attributes("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("keeps the tabs hint explicit about the empty-intersection consequence", () => {
+    // 交集为空时 fail-closed（不展示任何客户端），不是回退成不限制；
+    // 管理员必须从 hint 知道勾选范围过窄的后果。
+    expect(zhSettings.settings.useKeyConfig.tabsHint).toContain("不展示任何客户端");
+    expect(zhSettings.settings.useKeyConfig.tabsHint).toContain("不会回退成不限制");
+    expect(enSettings.settings.useKeyConfig.tabsHint).toContain(
+      "does not fall back to unrestricted",
+    );
+  });
+
 });
 
 describe("admin SettingsView wechat connect controls", () => {

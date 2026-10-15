@@ -265,3 +265,46 @@ func TestSettingHandler_GetPublicSettings_ExposesWeChatOAuthModeCapabilities(t *
 	require.True(t, resp.Data.WeChatOAuthOpenEnabled)
 	require.True(t, resp.Data.WeChatOAuthMPEnabled)
 }
+
+// use_key_config 必须经 GET /api/v1/settings/public 暴露为解析后的对象；
+// 未配置或库中值非法时必须是 JSON null —— 前端对该字段直接 JSON.parse，
+// 空字符串会让解析炸掉。
+func TestSettingHandler_GetPublicSettings_ExposesUseKeyConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	const configured = `{"version":1,"enabled":true,"platforms":{"openai":{"tabs":["codex"],"codex":{"provider_name":"OpenAI","model":"gpt-5.5-mini","review_model":"","reasoning_effort":""}}}}`
+
+	cases := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "configured object is exposed verbatim", value: configured, want: configured},
+		{name: "unset key exposes JSON null", value: "", want: "null"},
+		{name: "invalid JSON exposes JSON null", value: "{not json", want: "null"},
+		{name: "unsupported version exposes JSON null", value: `{"version":2,"enabled":true,"platforms":{}}`, want: "null"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &settingHandlerPublicRepoStub{values: map[string]string{
+				service.SettingKeyUseKeyConfig: tc.value,
+			}}
+			h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
+
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+
+			h.GetPublicSettings(c)
+
+			require.Equal(t, http.StatusOK, recorder.Code)
+			var resp struct {
+				Data struct {
+					UseKeyConfig json.RawMessage `json:"use_key_config"`
+				} `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+			require.JSONEq(t, tc.want, string(resp.Data.UseKeyConfig))
+		})
+	}
+}

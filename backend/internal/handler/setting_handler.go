@@ -93,6 +93,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		CustomMenuItems:                     dto.ParseUserVisibleMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                    dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
 		CustomEndpoints:                     dto.ParseCustomEndpoints(settings.CustomEndpoints),
+		UseKeyConfig:                        settings.UseKeyConfig,
 		LobeHubEnabled:                      settings.LobeHubEnabled,
 		LobeHubMenuLabel:                    settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                   settings.LobeHubLaunchPath,

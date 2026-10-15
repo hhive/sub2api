@@ -86,6 +86,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyCustomMenuItems:                           "[]",
 		SettingKeyVictoryMenuItems:                          defaultVictoryMenuItemsValue,
 		SettingKeyCustomEndpoints:                           "[]",
+		SettingKeyUseKeyConfig:                              "",
 		SettingKeyLaunchTokenTTLSeconds:                     "60",
 		SettingKeyDefaultTextModel:                          "gpt-5.5",
 		SettingKeyDefaultImageModel:                         "gpt-image-2",
@@ -415,6 +416,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		CustomMenuItems:                        settings[SettingKeyCustomMenuItems],
 		VictoryMenuItems:                       s.getStringOrDefault(settings, SettingKeyVictoryMenuItems, defaultVictoryMenuItemsValue),
 		CustomEndpoints:                        settings[SettingKeyCustomEndpoints],
+		UseKeyConfig:                           settings[SettingKeyUseKeyConfig],
 		BackendModeEnabled:                     settings[SettingKeyBackendModeEnabled] == "true",
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
