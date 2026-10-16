@@ -7187,7 +7187,10 @@
                     {{ t("admin.settings.useKeyConfig.enabledHint") }}
                   </p>
                 </div>
-                <Toggle v-model="useKeyConfigForm.enabled" />
+                <Toggle
+                  v-model="useKeyConfigForm.enabled"
+                  data-testid="use-key-config-enabled-toggle"
+                />
               </div>
 
               <p
@@ -11120,6 +11123,18 @@ function serializeUseKeyConfig(): UseKeyConfig | null {
     !state.reasoning_effort;
   if (isDefault) return null;
 
+  // 关闭态仍整体覆盖保存合法字段：这些字段不生效，但重新启用时要沿用；若关闭态一律只发
+  // 开关本身，已存配置会被清空，重新启用后 tabs 空数组被解析为「不限制」，弹窗暴露的客户端
+  // 反而比管理员上次有意收窄的更多（fail-open）。仅当字段非法时才只发开关本身：后端
+  // normalizeUseKeyConfigJSON 不按 enabled 跳过校验，带上非法字段会 400 拒绝整次保存。
+  if (
+    !state.enabled &&
+    (hasUseKeyFieldErrors(computeUseKeyFieldErrors(state)) ||
+      hasInvalidUseKeyReasoningEffort(state))
+  ) {
+    return { version: 1, enabled: false };
+  }
+
   return {
     version: 1,
     enabled: state.enabled,
@@ -11154,21 +11169,28 @@ interface UseKeyFieldErrors {
   review_model: string;
 }
 
-/** 与后端一致的字段级校验；任一字段非空即拒绝保存并显式报错。 */
-const useKeyFieldErrors = computed<UseKeyFieldErrors>(() => {
-  const errors: UseKeyFieldErrors = {
+function emptyUseKeyFieldErrors(): UseKeyFieldErrors {
+  return {
     tabs: "",
     provider_id: "",
     provider_name: "",
     model: "",
     review_model: "",
   };
+}
+
+/**
+ * 与后端一致的字段级校验；与总开关无关，UI 展示与保存载荷判据共用同一份结果，
+ * 保证「校验什么」与「发送什么」不会分叉。
+ */
+function computeUseKeyFieldErrors(state: UseKeyConfigForm): UseKeyFieldErrors {
+  const errors = emptyUseKeyFieldErrors();
 
   const checkString = (
     field: "provider_name" | "model" | "review_model",
     maxLength: number,
   ): void => {
-    const value = useKeyConfigForm[field];
+    const value = state[field];
     if (!value) return;
     if (value.length > maxLength) {
       errors[field] = t("admin.settings.useKeyConfig.errors.tooLong", {
@@ -11185,7 +11207,7 @@ const useKeyFieldErrors = computed<UseKeyFieldErrors>(() => {
   checkString("review_model", USE_KEY_MODEL_MAX);
 
   // provider_id 单独一条规则：裸键字符集，报错与「禁引号」可区分
-  const providerId = useKeyConfigForm.provider_id;
+  const providerId = state.provider_id;
   if (providerId) {
     if (providerId.length > USE_KEY_PROVIDER_ID_MAX) {
       errors.provider_id = t("admin.settings.useKeyConfig.errors.tooLong", {
@@ -11198,20 +11220,30 @@ const useKeyFieldErrors = computed<UseKeyFieldErrors>(() => {
     }
   }
 
-  const invalidTabs = useKeyConfigForm.tabs.filter(
+  const invalidTabs = state.tabs.filter(
     (tab) => !USE_KEY_TAB_OPTIONS.includes(tab as UseKeyTabOption),
   );
   if (invalidTabs.length > 0) {
     errors.tabs = t("admin.settings.useKeyConfig.errors.invalidTabs", {
       tabs: invalidTabs.join(", "),
     });
-  } else if (useKeyConfigForm.tabs.length > USE_KEY_TABS_MAX) {
+  } else if (state.tabs.length > USE_KEY_TABS_MAX) {
     errors.tabs = t("admin.settings.useKeyConfig.errors.tooManyTabs", {
       max: USE_KEY_TABS_MAX,
     });
   }
   return errors;
-});
+}
+
+/**
+ * 关闭总开关时 UI 不做字段校验：这些字段已置灰、无法在当前状态修正，否则存量非法值会
+ * 阻断整个设置页的保存。保存载荷侧由 serializeUseKeyConfig 用同一份判据单独兜底。
+ */
+const useKeyFieldErrors = computed<UseKeyFieldErrors>(() =>
+  useKeyConfigForm.enabled
+    ? computeUseKeyFieldErrors(useKeyConfigForm)
+    : emptyUseKeyFieldErrors(),
+);
 
 function hasUseKeyFieldErrors(errors: UseKeyFieldErrors): boolean {
   return Boolean(
@@ -11220,6 +11252,18 @@ function hasUseKeyFieldErrors(errors: UseKeyFieldErrors): boolean {
       errors.provider_name ||
       errors.model ||
       errors.review_model,
+  );
+}
+
+/**
+ * reasoning_effort 不在字段级错误里（UI 只有固定选项的下拉框，不会产生非法值），
+ * 但后端按枚举校验；关闭态的保存判据必须一并覆盖，否则手工改库留下的非法枚举值
+ * 会让关闭态仍被 400 拒绝整次保存。
+ */
+function hasInvalidUseKeyReasoningEffort(state: UseKeyConfigForm): boolean {
+  return (
+    state.reasoning_effort !== "" &&
+    !useKeyReasoningEffortOptions.includes(state.reasoning_effort)
   );
 }
 

@@ -677,7 +677,7 @@ export default {
         enabledHint:
           'When on, the dialog generates files from the config below; when off it renders the built-in defaults.',
         disabledNotice:
-          'Disabled: the fields below are editable only while enabled; the dialog renders the built-in defaults after saving.',
+          'Disabled: the dialog renders the built-in defaults. Valid fields below are still saved so you can reuse them after re-enabling; invalid values are not saved and will not block the save.',
         tabs: 'Client tab allowlist',
         tabsHint:
           'Select the clients allowed in the dialog. At most 4; selecting none means unrestricted and keeps the current full tab set. The result is intersected with group-level gates (Claude Code only, Messages dispatch allowed). When that intersection is empty the group sees no client at all (it does not fall back to unrestricted), so a narrow selection can leave users in some groups with no client config.',

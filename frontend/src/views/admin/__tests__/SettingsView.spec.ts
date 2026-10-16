@@ -2033,6 +2033,16 @@ describe("admin SettingsView payment visible method controls", () => {
     );
   }
 
+  function useKeyProviderIdInput(wrapper: ReturnType<typeof mountView>) {
+    return wrapper.get(
+      "input[placeholder='admin.settings.useKeyConfig.providerIdPlaceholder']",
+    );
+  }
+
+  function useKeyEnabledToggle(wrapper: ReturnType<typeof mountView>) {
+    return wrapper.get('[data-testid="use-key-config-enabled-toggle"]');
+  }
+
   it("fills the form from a stored use_key_config object and re-sends it as an object", async () => {
     getSettings.mockResolvedValueOnce({
       ...baseSettingsResponse,
@@ -2223,6 +2233,131 @@ describe("admin SettingsView payment visible method controls", () => {
       review_model: "",
       reasoning_effort: "",
     });
+  });
+
+  it("stops validating the fields and sends only the off marker when the leftover value is invalid", async () => {
+    // 关闭总开关后该配置不生效，字段控件同时被置灰。若仍按字段值校验并拦截保存，
+    // 管理员会在无法修正该字段的状态下被拦住整个设置页的保存。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({
+        provider_id: "sub2api",
+        model: "gpt-5.5",
+      }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // 启用态填非法 provider_id：此时必须照常显式报错
+    await useKeyProviderIdInput(wrapper).setValue("OpenAI Inc");
+    expect(wrapper.text()).toContain(
+      "admin.settings.useKeyConfig.errors.invalidProviderId",
+    );
+
+    await useKeyEnabledToggle(wrapper).setValue(false);
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.errors.invalidProviderId",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    // 关闭态且字段非法：只发开关本身。带上非法字段块会被后端判非法并 400 拒绝整次保存
+    expect(payload["use_key_config"]).toEqual({ version: 1, enabled: false });
+  });
+
+  it("does not block unrelated saves when a stored config is off with invalid leftover values", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_id: "OpenAI Inc" },
+        ["codex"],
+        false,
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain(
+      "admin.settings.useKeyConfig.errors.invalidProviderId",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({ version: 1, enabled: false });
+  });
+
+  it("keeps the stored config when the switch is turned off and the fields are valid", async () => {
+    // 关闭态仍整体覆盖保存合法字段：这些字段不生效，但重新启用时要沿用。若关闭态一律只发
+    // 开关本身，已存 tabs 白名单会被清空，重新启用后空数组被解析为「不限制」，弹窗暴露的
+    // 客户端会比管理员上次有意收窄的更多（fail-open）。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_id: "sub2api", model: "gpt-5.5" },
+        ["claude"],
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await useKeyEnabledToggle(wrapper).setValue(false);
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({
+      version: 1,
+      enabled: false,
+      platforms: {
+        openai: {
+          tabs: ["claude"],
+          codex: {
+            provider_id: "sub2api",
+            provider_name: "",
+            model: "gpt-5.5",
+            review_model: "",
+            reasoning_effort: "",
+          },
+        },
+      },
+    });
+  });
+
+  it("sends only the off marker when a disabled config has an out-of-enum reasoning_effort", async () => {
+    // reasoning_effort 的 UI 只有固定选项，非法枚举值只能来自手工改库；它不在字段级错误里，
+    // 但后端按枚举校验，故关闭态的保存判据必须单独覆盖，否则保存仍会被 400 拒绝。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_id: "sub2api", reasoning_effort: "ultra" },
+        ["codex"],
+        false,
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({ version: 1, enabled: false });
   });
 
   it("sends a null use_key_config when nothing is stored", async () => {
