@@ -2258,6 +2258,12 @@ describe("admin SettingsView payment visible method controls", () => {
     await useKeyEnabledToggle(wrapper).setValue(false);
     await flushPromises();
 
+    // 值仍在输入框里：错误消失只能是「关闭态跳过校验」的结果，不能是「字段被清空」的副作用。
+    // 没有这条断言时，将来任何在关闭态清空/重置表单的改动都会让下面的断言因为错误的理由继续通过。
+    expect(
+      (useKeyProviderIdInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("OpenAI Inc");
+
     expect(wrapper.text()).not.toContain(
       "admin.settings.useKeyConfig.errors.invalidProviderId",
     );
@@ -2293,6 +2299,9 @@ describe("admin SettingsView payment visible method controls", () => {
 
     expect(updateSettings).toHaveBeenCalledTimes(1);
     const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    // 用例名承诺的是「无关键照常落库」：载荷里必须同时有无关设置项与该标记，
+    // 否则将来一个误伤其他键（或只发 use_key_config）的改动不会让它变红。
+    expect(payload["site_name"]).toBe("Sub2API");
     expect(payload["use_key_config"]).toEqual({ version: 1, enabled: false });
   });
 
