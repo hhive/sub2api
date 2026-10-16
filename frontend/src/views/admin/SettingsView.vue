@@ -7396,7 +7396,16 @@
                         {{ effort }}
                       </option>
                     </select>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <p
+                      v-if="useKeyFieldErrors.reasoning_effort"
+                      class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {{ useKeyFieldErrors.reasoning_effort }}
+                    </p>
+                    <p
+                      v-else
+                      class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
                       {{ t("admin.settings.useKeyConfig.reasoningEffortHint") }}
                     </p>
                   </div>
@@ -9737,6 +9746,7 @@ import type {
   NotifyEmailEntry,
   Proxy,
   UseKeyConfig,
+  UseKeyPlatformConfig,
 } from "@/types";
 import type { ProviderInstance } from "@/types/payment";
 import AppLayout from "@/components/layout/AppLayout.vue";
@@ -11063,6 +11073,9 @@ const useKeyConfigForm = reactive<UseKeyConfigForm>(defaultUseKeyConfigForm());
 // 无效告警的唯一来源是后端 use_key_config_invalid：库中内容不可解析时后端同样把
 // use_key_config 返回为 null，前端无法与「未配置」区分，自行推导会永远为 false。
 const useKeyConfigInvalid = ref(false);
+// 管理端 v1 只编辑 platforms.openai，但 PUT 是整键覆盖：其余平台条目（只能经 API 写入）
+// 必须原样带回，否则任意一次管理端保存都会把它们静默抹掉。
+const useKeyOtherPlatforms = ref<Record<string, UseKeyPlatformConfig>>({});
 
 function isUseKeyPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -11084,11 +11097,21 @@ function readUseKeyString(
 function applyUseKeyConfig(raw: UseKeyConfig | null | undefined): void {
   if (!isUseKeyPlainObject(raw) || raw.version !== 1) {
     Object.assign(useKeyConfigForm, defaultUseKeyConfigForm());
+    useKeyOtherPlatforms.value = {};
     return;
   }
 
   const platforms = isUseKeyPlainObject(raw.platforms) ? raw.platforms : {};
   const openai = isUseKeyPlainObject(platforms.openai) ? platforms.openai : {};
+  // 只留非 openai 的条目，保存时原样带回；非对象值无法安全往返，按未配置处理。
+  const otherPlatforms: Record<string, UseKeyPlatformConfig> = {};
+  for (const [name, platform] of Object.entries(platforms)) {
+    if (name === "openai") continue;
+    if (isUseKeyPlainObject(platform)) {
+      otherPlatforms[name] = platform as UseKeyPlatformConfig;
+    }
+  }
+  useKeyOtherPlatforms.value = otherPlatforms;
   const codex = isUseKeyPlainObject(openai.codex) ? openai.codex : {};
   // 保留未知 tab 值：直接丢弃会让管理员看不到存量非法配置，属于静默降级。
   const tabs = Array.isArray(openai.tabs)
@@ -11127,18 +11150,19 @@ function serializeUseKeyConfig(): UseKeyConfig | null {
   // 开关本身，已存配置会被清空，重新启用后 tabs 空数组被解析为「不限制」，弹窗暴露的客户端
   // 反而比管理员上次有意收窄的更多（fail-open）。仅当字段非法时才只发开关本身：后端
   // normalizeUseKeyConfigJSON 不按 enabled 跳过校验，带上非法字段会 400 拒绝整次保存。
-  if (
-    !state.enabled &&
-    (hasUseKeyFieldErrors(computeUseKeyFieldErrors(state)) ||
-      hasInvalidUseKeyReasoningEffort(state))
-  ) {
-    return { version: 1, enabled: false };
+  // 其他平台条目随两次分支一并回写：PUT 是整键覆盖，只重建 openai 会把它们静默抹掉。
+  if (!state.enabled && hasUseKeyFieldErrors(computeUseKeyFieldErrors(state))) {
+    const otherPlatforms = useKeyOtherPlatforms.value;
+    return Object.keys(otherPlatforms).length > 0
+      ? { version: 1, enabled: false, platforms: { ...otherPlatforms } }
+      : { version: 1, enabled: false };
   }
 
   return {
     version: 1,
     enabled: state.enabled,
     platforms: {
+      ...useKeyOtherPlatforms.value,
       openai: {
         tabs: state.tabs,
         codex: {
@@ -11146,7 +11170,7 @@ function serializeUseKeyConfig(): UseKeyConfig | null {
           provider_name: state.provider_name.trim(),
           model: state.model.trim(),
           review_model: state.review_model.trim(),
-          reasoning_effort: state.reasoning_effort,
+          reasoning_effort: state.reasoning_effort.trim(),
         },
       },
     },
@@ -11167,6 +11191,7 @@ interface UseKeyFieldErrors {
   provider_name: string;
   model: string;
   review_model: string;
+  reasoning_effort: string;
 }
 
 function emptyUseKeyFieldErrors(): UseKeyFieldErrors {
@@ -11176,12 +11201,17 @@ function emptyUseKeyFieldErrors(): UseKeyFieldErrors {
     provider_name: "",
     model: "",
     review_model: "",
+    reasoning_effort: "",
   };
 }
 
 /**
  * 与后端一致的字段级校验；与总开关无关，UI 展示与保存载荷判据共用同一份结果，
  * 保证「校验什么」与「发送什么」不会分叉。
+ *
+ * 会 trim 的字段按 trim 后的值判定（发送前同样 trim）：后端写入时也 trim，
+ * 若此处按未 trim 的原值判，手工改库留下的首尾空白会让一个后端本会接受的值
+ * 被判非法，从而丢掉整块 platforms。
  */
 function computeUseKeyFieldErrors(state: UseKeyConfigForm): UseKeyFieldErrors {
   const errors = emptyUseKeyFieldErrors();
@@ -11190,7 +11220,7 @@ function computeUseKeyFieldErrors(state: UseKeyConfigForm): UseKeyFieldErrors {
     field: "provider_name" | "model" | "review_model",
     maxLength: number,
   ): void => {
-    const value = state[field];
+    const value = state[field].trim();
     if (!value) return;
     if (value.length > maxLength) {
       errors[field] = t("admin.settings.useKeyConfig.errors.tooLong", {
@@ -11207,7 +11237,7 @@ function computeUseKeyFieldErrors(state: UseKeyConfigForm): UseKeyFieldErrors {
   checkString("review_model", USE_KEY_MODEL_MAX);
 
   // provider_id 单独一条规则：裸键字符集，报错与「禁引号」可区分
-  const providerId = state.provider_id;
+  const providerId = state.provider_id.trim();
   if (providerId) {
     if (providerId.length > USE_KEY_PROVIDER_ID_MAX) {
       errors.provider_id = t("admin.settings.useKeyConfig.errors.tooLong", {
@@ -11218,6 +11248,16 @@ function computeUseKeyFieldErrors(state: UseKeyConfigForm): UseKeyFieldErrors {
         "admin.settings.useKeyConfig.errors.invalidProviderId",
       );
     }
+  }
+
+  const reasoningEffort = state.reasoning_effort.trim();
+  if (
+    reasoningEffort !== "" &&
+    !useKeyReasoningEffortOptions.includes(reasoningEffort)
+  ) {
+    errors.reasoning_effort = t(
+      "admin.settings.useKeyConfig.errors.invalidReasoningEffort",
+    );
   }
 
   const invalidTabs = state.tabs.filter(
@@ -11251,25 +11291,15 @@ function hasUseKeyFieldErrors(errors: UseKeyFieldErrors): boolean {
       errors.provider_id ||
       errors.provider_name ||
       errors.model ||
-      errors.review_model,
+      errors.review_model ||
+      errors.reasoning_effort,
   );
 }
 
-/**
- * reasoning_effort 不在字段级错误里（UI 只有固定选项的下拉框，不会产生非法值），
- * 但后端按枚举校验；关闭态的保存判据必须一并覆盖，否则手工改库留下的非法枚举值
- * 会让关闭态仍被 400 拒绝整次保存。
- */
-function hasInvalidUseKeyReasoningEffort(state: UseKeyConfigForm): boolean {
-  return (
-    state.reasoning_effort !== "" &&
-    !useKeyReasoningEffortOptions.includes(state.reasoning_effort)
-  );
-}
-
-/** 重置为默认：清空表单并让保存发 null（后端语义 = 删除该设置项）。 */
+/** 重置为默认：清空表单并让保存发 null（后端语义 = 删除该设置项，含其他平台条目）。 */
 function resetUseKeyConfig(): void {
   Object.assign(useKeyConfigForm, defaultUseKeyConfigForm());
+  useKeyOtherPlatforms.value = {};
 }
 
 const authSourceDefaults = reactive<AuthSourceDefaultsState>(
@@ -13005,6 +13035,12 @@ async function saveSettings() {
     }
     // 告警同样以后端返回为准：保存成功后落库配置必为合法值
     useKeyConfigInvalid.value = updated.use_key_config_invalid === true;
+    // 回填表单：关闭态且字段非法时保存只发标记，服务端会丢弃字段块；不回填会让置灰字段
+    // 继续显示已被丢弃的值，界面与实际存储不一致。响应缺该键（保持现值语义）时不回填，
+    // 避免把表单清空成下一次保存会主动删除该设置的状态。
+    if ("use_key_config" in updated) {
+      applyUseKeyConfig(updated.use_key_config);
+    }
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(updated));
     form.default_platform_quotas = normalizePlatformQuotasMap(updated.default_platform_quotas);
     form.account_scheduling_thresholds = normalizeAccountSchedulingThresholdsMap(

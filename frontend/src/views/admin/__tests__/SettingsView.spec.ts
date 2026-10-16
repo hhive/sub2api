@@ -2360,6 +2360,169 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(payload["use_key_config"]).toEqual({ version: 1, enabled: false });
   });
 
+  it("trims reasoning_effort so the disabled-state judgment matches the payload", async () => {
+    // 手工改库可能留下带首尾空白的值，而后端写入时会 trim。判据与载荷都必须按 trim 后比对，
+    // 否则一个后端本会接受的值会让守卫命中、把整块 platforms 丢掉。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_id: "sub2api", reasoning_effort: " high" },
+        ["codex"],
+        false,
+      ),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({
+      version: 1,
+      enabled: false,
+      platforms: {
+        openai: {
+          tabs: ["codex"],
+          codex: {
+            provider_id: "sub2api",
+            provider_name: "",
+            model: "",
+            review_model: "",
+            reasoning_effort: "high",
+          },
+        },
+      },
+    });
+  });
+
+  it("trims reasoning_effort in the payload when the config is enabled", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({ reasoning_effort: " high" }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({
+      version: 1,
+      enabled: true,
+      platforms: {
+        openai: {
+          tabs: [],
+          codex: {
+            provider_id: "",
+            provider_name: "",
+            model: "",
+            review_model: "",
+            reasoning_effort: "high",
+          },
+        },
+      },
+    });
+  });
+
+  it("blocks the save with a field-level hint when reasoning_effort is out of enum", async () => {
+    // 此前该值在开启态只会换来一个无提示的 400（后端按枚举校验、前端无字段级错误），
+    // 整页设置被拒时管理员看不出是哪一项的问题。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody({ reasoning_effort: "ultra" }),
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain(
+      "admin.settings.useKeyConfig.errors.invalidReasoningEffort",
+    );
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalled();
+  });
+
+  it("refills the use-key form from the PUT response so the UI matches the stored config", async () => {
+    // 关闭态且字段非法时保存只发标记，服务端会丢弃字段块；保存后不回填的话，置灰字段会
+    // 继续显示已被丢弃的值，管理员会以为它还在。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: useKeyConfigBody(
+        { provider_id: "OpenAI Inc" },
+        ["codex"],
+        false,
+      ),
+    });
+    updateSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: { version: 1, enabled: false, platforms: {} },
+      use_key_config_invalid: false,
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    expect(
+      (useKeyProviderIdInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("OpenAI Inc");
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(
+      (useKeyProviderIdInput(wrapper).element as HTMLInputElement).value,
+    ).toBe("");
+  });
+
+  it("preserves non-openai platform entries written through the API", async () => {
+    // 管理端只编辑 platforms.openai，但 PUT 是整键覆盖：此前前端只重建 openai，
+    // 经 API 直塞的其他平台条目会在管理端任意一次保存时被静默抹掉。
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      use_key_config: {
+        version: 1,
+        enabled: true,
+        platforms: {
+          gemini: { tabs: ["claude"] },
+          openai: { tabs: ["codex"], codex: { provider_id: "sub2api" } },
+        },
+      },
+    });
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(payload["use_key_config"]).toEqual({
+      version: 1,
+      enabled: true,
+      platforms: {
+        gemini: { tabs: ["claude"] },
+        openai: {
+          tabs: ["codex"],
+          codex: {
+            provider_id: "sub2api",
+            provider_name: "",
+            model: "",
+            review_model: "",
+            reasoning_effort: "",
+          },
+        },
+      },
+    });
+  });
+
   it("sends a null use_key_config when nothing is stored", async () => {
     const wrapper = mountView();
 

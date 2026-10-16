@@ -677,7 +677,7 @@ export default {
         enabledHint:
           'When on, the dialog generates files from the config below; when off it renders the built-in defaults.',
         disabledNotice:
-          'Disabled: the dialog renders the built-in defaults. Valid fields below are still saved so you can reuse them after re-enabling; invalid values are not saved and will not block the save.',
+          'Disabled: the dialog renders the built-in defaults. When every field below is valid they are still saved so you can reuse them after re-enabling; if any one of them is invalid, none of them are saved this time, and the save is not blocked.',
         tabs: 'Client tab allowlist',
         tabsHint:
           'Select the clients allowed in the dialog. At most 4; selecting none means unrestricted and keeps the current full tab set. The result is intersected with group-level gates (Claude Code only, Messages dispatch allowed). When that intersection is empty the group sees no client at all (it does not fall back to unrestricted), so a narrow selection can leave users in some groups with no client config.',
@@ -713,6 +713,8 @@ export default {
             'Only letters, digits, underscores and hyphens are allowed: this value is emitted as a TOML bare table key in the client config.toml, where characters such as spaces make the whole config.toml fail to parse.',
           invalidTabs: 'Contains invalid tab values: {tabs}. Uncheck them before saving.',
           tooManyTabs: 'Select at most {max} tabs.',
+          invalidReasoningEffort:
+            'Value is out of range: pick one of the reasoning efforts offered by the dropdown (minimal/low/medium/high/xhigh/max) or leave it empty. This field is written into the client config.toml and the backend validates it against the same enum, so an invalid value rejects the whole save.',
         },
       },
       site: {
