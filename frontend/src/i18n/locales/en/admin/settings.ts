@@ -488,6 +488,12 @@ export default {
         accountSchedulingThresholdsDisabledHint: '100 disables platform auto-pause. Values 1–99 pause scheduling once utilization reaches that percent.',
         accountSchedulingThresholdsRangeHint: 'Integer 1–100 (percent). OpenAI/Anthropic/Grok only.'
       },
+      openaiGPT61SolLongContextBilling: {
+        title: 'GPT-6.1 Sol long-context pricing',
+        description: 'Controls whether GPT-6.1 Sol on non-subscription OpenAI accounts (API key) is billed with the official long-context tiers.',
+        enabled: 'Apply official long-context tiers',
+        enabledHint: 'Off by default: requests above 272k context are no longer billed at long-context rates (input x2 / output x1.5). Only affects GPT-6.1 Sol on non-subscription accounts; subscription accounts are already exempt, and channel custom intervals plus other models are unaffected.'
+      },
       upstreamBillingProbe: {
         title: 'Upstream Rate Auto Detection',
         description: 'Periodically retrieve rates declared by upstream Sub2API sites. Account rates change only when the separate sync switch is enabled.',

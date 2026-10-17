@@ -610,6 +610,11 @@ const (
 	// for probing remote Sub2API API-key billing metadata.
 	SettingKeyUpstreamBillingProbeSettings = "upstream_billing_probe_settings"
 
+	// SettingKeyOpenAIGPT61SolLongContextBillingEnabled 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否
+	// 应用官方价卡长上下文阶梯（默认 false：不应用，即不收长上下文附加费）。订阅账号本就豁免、
+	// 与其它模型无关；渠道自定义区间价不受本开关影响。
+	SettingKeyOpenAIGPT61SolLongContextBillingEnabled = "openai_gpt61sol_long_context_billing_enabled"
+
 	// SettingKeyOllamaCloudUsageSettings stores the opt-in global runner switch and interval.
 	SettingKeyOllamaCloudUsageSettings = "ollama_cloud_usage_settings"
 

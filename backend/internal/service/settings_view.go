@@ -303,6 +303,9 @@ type SystemSettings struct {
 	PaymentVisibleMethodAlipayEnabled bool
 	PaymentVisibleMethodWxpayEnabled  bool
 
+	// OpenAI 长上下文计费（GPT-6.1 Sol，默认关闭 = 不应用官方长上下文阶梯）
+	OpenAIGPT61SolLongContextBillingEnabled bool
+
 	// OpenAI 账号调度
 	OpenAILowUpstreamRatePriorityEnabled                   bool
 	OpenAIOAuthSchedulingRateMultiplier                    *float64

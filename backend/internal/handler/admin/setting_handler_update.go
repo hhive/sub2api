@@ -308,7 +308,9 @@ type UpdateSettingsRequest struct {
 	PaymentVisibleMethodWxpayEnabled  *bool   `json:"payment_visible_method_wxpay_enabled"`
 
 	// OpenAI account scheduling
-	OpenAILowUpstreamRatePriorityEnabled               *bool    `json:"openai_low_upstream_rate_priority_enabled"`
+	OpenAILowUpstreamRatePriorityEnabled *bool `json:"openai_low_upstream_rate_priority_enabled"`
+	// OpenAIGPT61SolLongContextBillingEnabled 省略 = 保持现值。
+	OpenAIGPT61SolLongContextBillingEnabled            *bool    `json:"openai_gpt61sol_long_context_billing_enabled"`
 	OpenAIOAuthSchedulingRateMultiplier                *float64 `json:"openai_oauth_scheduling_rate_multiplier"`
 	OpenAIAdvancedSchedulerEnabled                     *bool    `json:"openai_advanced_scheduler_enabled"`
 	OpenAIAdvancedSchedulerStickyWeightedEnabled       *bool    `json:"openai_advanced_scheduler_sticky_weighted_enabled"`
@@ -2225,6 +2227,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.OpenAILowUpstreamRatePriorityEnabled
 		}(),
+		OpenAIGPT61SolLongContextBillingEnabled: func() bool {
+			if req.OpenAIGPT61SolLongContextBillingEnabled != nil {
+				return *req.OpenAIGPT61SolLongContextBillingEnabled
+			}
+			return previousSettings.OpenAIGPT61SolLongContextBillingEnabled
+		}(),
 		OpenAIOAuthSchedulingRateMultiplier: func() *float64 {
 			// Omitted fields preserve the override; explicit null clears it.
 			if _, sent := sentFields[service.SettingKeyOpenAIOAuthSchedulingRateMultiplier]; sent {
@@ -2785,6 +2793,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		PaymentVisibleMethodAlipayEnabled:                      updatedSettings.PaymentVisibleMethodAlipayEnabled,
 		PaymentVisibleMethodWxpayEnabled:                       updatedSettings.PaymentVisibleMethodWxpayEnabled,
 		OpenAILowUpstreamRatePriorityEnabled:                   updatedSettings.OpenAILowUpstreamRatePriorityEnabled,
+		OpenAIGPT61SolLongContextBillingEnabled:                updatedSettings.OpenAIGPT61SolLongContextBillingEnabled,
 		OpenAIOAuthSchedulingRateMultiplier:                    updatedSettings.OpenAIOAuthSchedulingRateMultiplier,
 		OpenAIAdvancedSchedulerEnabled:                         updatedSettings.OpenAIAdvancedSchedulerEnabled,
 		OpenAIAdvancedSchedulerStickyWeightedEnabled:           updatedSettings.OpenAIAdvancedSchedulerStickyWeightedEnabled,

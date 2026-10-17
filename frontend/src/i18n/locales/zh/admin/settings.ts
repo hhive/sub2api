@@ -481,6 +481,12 @@ export default {
         accountSchedulingThresholdsDisabledHint: '100 表示禁用该平台自动停调；1–99 表示达到该利用率后暂停调度。',
         accountSchedulingThresholdsRangeHint: '整数 1–100（百分比）。仅 OpenAI / Anthropic / Grok。'
       },
+      openaiGPT61SolLongContextBilling: {
+        title: 'GPT-6.1 Sol 长上下文计费',
+        description: '控制非订阅 OpenAI 账号（API Key）的 GPT-6.1 Sol 是否按官方长上下文阶梯计费。',
+        enabled: '应用官方长上下文阶梯',
+        enabledHint: '默认关闭：超过 272k 上下文不再按长上下文费率（输入 ×2 / 输出 ×1.5）计费。仅影响非订阅账号的 GPT-6.1 Sol；订阅账号本就豁免，渠道自定义区间价与其它模型不受影响。'
+      },
       upstreamBillingProbe: {
         title: '上游倍率自动探测',
         description: '定期获取 API Key 账号所连接上游 Sub2API 站点声明的计费倍率；只有另行开启“同步上游声明倍率”的账号才会更新账号倍率。',

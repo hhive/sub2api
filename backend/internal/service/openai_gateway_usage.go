@@ -237,7 +237,8 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		serviceTier = strings.TrimSpace(*result.ServiceTier)
 	}
 	longContextBillingGate := openAILongContextBillingGate(billingAccount)
-	modelLongContextExempt := openAISubscriptionLongContextExempt(billingAccount, result)
+	modelLongContextExempt := openAISubscriptionLongContextExempt(billingAccount, result) ||
+		openAIGPT61SolAPILongContextExempt(billingAccount, result, s.gpt61SolLongContextBillingEnabled(ctx))
 	cost, err = s.calculateOpenAIRecordUsageCost(
 		ctx,
 		result,
@@ -568,11 +569,47 @@ func openAISubscriptionLongContextExempt(account *Account, result *OpenAIForward
 	if !account.IsOpenAIOAuthLike() || result == nil {
 		return false
 	}
+	return openai.IsGPT61SolModelSpelling(openAIForwardSentModel(result))
+}
+
+// openAIForwardSentModel 返回最终发往上游的模型名（缺失时回落请求模型）。
+// 订阅豁免与全局开关豁免必须用同一判据，否则两条路径会在别名/映射场景下分叉。
+func openAIForwardSentModel(result *OpenAIForwardResult) string {
+	if result == nil {
+		return ""
+	}
 	model := strings.TrimSpace(result.UpstreamModel)
 	if model == "" {
 		model = result.Model
 	}
-	return openai.IsGPT61SolModelSpelling(model)
+	return model
+}
+
+// openAIGPT61SolAPILongContextExempt 按全局开关判断「非订阅 OpenAI 账号 + GPT-6.1 Sol」
+// 是否豁免官方价卡长上下文阶梯（SettingKeyOpenAIGPT61SolLongContextBillingEnabled）：
+//   - 开关开启：返回 false，照旧按官方阶梯收费。
+//   - 开关关闭（默认）：非订阅账号的 GPT-6.1 Sol 返回 true，不应用官方阶梯。
+//
+// 该否决与订阅豁免同级，优先于分组 long_context_pricing_enabled 与账号
+// openai_long_context_billing_enabled（两者都无法把它加回来）；渠道自定义区间价不在豁免范围
+// （DisableModelLongContextPricing 只豁免模型价卡），其它模型也不受影响。
+func openAIGPT61SolAPILongContextExempt(account *Account, result *OpenAIForwardResult, billingEnabled bool) bool {
+	if billingEnabled || result == nil {
+		return false
+	}
+	if account == nil || !account.IsOpenAI() || account.IsOpenAIOAuthLike() {
+		return false
+	}
+	return openai.IsGPT61SolModelSpelling(openAIForwardSentModel(result))
+}
+
+// gpt61SolLongContextBillingEnabled 读取 GPT-6.1 Sol 长上下文计费全局开关。
+// 缺 settingService（测试或误配可达）时按默认 false = 不应用官方阶梯，与设置默认值同向。
+func (s *OpenAIGatewayService) gpt61SolLongContextBillingEnabled(ctx context.Context) bool {
+	if s == nil || s.settingService == nil {
+		return false
+	}
+	return s.settingService.GetOpenAIGPT61SolLongContextBillingEnabled(ctx)
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(

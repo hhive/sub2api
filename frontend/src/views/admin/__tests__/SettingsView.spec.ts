@@ -673,98 +673,7 @@ describe("admin SettingsView email domain quota copy", () => {
 });
 
 describe("admin SettingsView payment visible method controls", () => {
-  beforeEach(() => {
-    getSettings.mockReset();
-    updateSettings.mockReset();
-    getWebSearchEmulationConfig.mockReset();
-    updateWebSearchEmulationConfig.mockReset();
-    getAdminApiKey.mockReset();
-    getOverloadCooldownSettings.mockReset();
-    getRateLimit429CooldownSettings.mockReset();
-    updateRateLimit429CooldownSettings.mockReset();
-    getStreamTimeoutSettings.mockReset();
-    getRectifierSettings.mockReset();
-    getBetaPolicySettings.mockReset();
-    getUpstreamBillingProbeSettings.mockReset();
-    updateUpstreamBillingProbeSettings.mockReset();
-    getOllamaCloudUsageSettings.mockReset();
-    updateOllamaCloudUsageSettings.mockReset();
-    getGroups.mockReset();
-    listProxies.mockReset();
-    getProviders.mockReset();
-    updateProvider.mockReset();
-    createProvider.mockReset();
-    deleteProvider.mockReset();
-    fetchPublicSettings.mockReset();
-    adminSettingsFetch.mockReset();
-    showError.mockReset();
-    showSuccess.mockReset();
-    localeRef.value = "zh-CN";
-
-    getSettings.mockResolvedValue({ ...baseSettingsResponse });
-    updateSettings.mockImplementation(async (payload) => ({
-      ...baseSettingsResponse,
-      ...payload,
-    }));
-    getWebSearchEmulationConfig.mockResolvedValue({
-      enabled: false,
-      providers: [],
-    });
-    updateWebSearchEmulationConfig.mockResolvedValue({
-      enabled: false,
-      providers: [],
-    });
-    getAdminApiKey.mockResolvedValue({
-      exists: false,
-      masked_key: "",
-    });
-    getOverloadCooldownSettings.mockResolvedValue({
-      enabled: true,
-      cooldown_minutes: 10,
-    });
-    getRateLimit429CooldownSettings.mockResolvedValue({
-      enabled: true,
-      cooldown_seconds: 5,
-    });
-    updateRateLimit429CooldownSettings.mockImplementation(async (payload) => payload);
-    getStreamTimeoutSettings.mockResolvedValue({
-      enabled: true,
-      action: "temp_unsched",
-      temp_unsched_minutes: 5,
-      threshold_count: 3,
-      threshold_window_minutes: 10,
-    });
-    getRectifierSettings.mockResolvedValue({
-      enabled: true,
-      thinking_signature_enabled: true,
-      thinking_budget_enabled: true,
-      apikey_signature_enabled: false,
-      apikey_signature_patterns: [],
-    });
-    getBetaPolicySettings.mockResolvedValue({
-      rules: [],
-    });
-    getUpstreamBillingProbeSettings.mockResolvedValue({
-      enabled: true,
-      interval_minutes: 30,
-    });
-    updateUpstreamBillingProbeSettings.mockImplementation(async (payload) => payload);
-    getOllamaCloudUsageSettings.mockResolvedValue({
-      enabled: false,
-      interval_minutes: 60,
-      debounce_minutes: 1,
-    });
-    updateOllamaCloudUsageSettings.mockImplementation(async (payload) => payload);
-    getGroups.mockResolvedValue([]);
-    listProxies.mockResolvedValue({
-      items: [],
-    });
-    getProviders.mockResolvedValue({
-      data: [],
-    });
-    fetchPublicSettings.mockResolvedValue(undefined);
-    adminSettingsFetch.mockResolvedValue(undefined);
-  });
+  beforeEach(resetSettingsViewMocks);
 
   it("removes the legacy LobeHub visibility whitelist setting", async () => {
     const wrapper = mountView();
@@ -3165,5 +3074,140 @@ describe("admin SettingsView platform quota matrix", () => {
     const quotas = payload["default_platform_quotas"] as Record<string, Record<string, unknown>>;
     // 不管输入是什么，提交值应为 null（而非 "" 或 NaN）
     expect(quotas["anthropic"]?.["daily"]).toBe(null);
+  });
+});
+
+
+// 设置页用例共用的 mock 复位与默认返回值：新增设置项用例直接复用，避免逐条复制。
+function resetSettingsViewMocks() {
+  getSettings.mockReset();
+  updateSettings.mockReset();
+  getWebSearchEmulationConfig.mockReset();
+  updateWebSearchEmulationConfig.mockReset();
+  getAdminApiKey.mockReset();
+  getOverloadCooldownSettings.mockReset();
+  getRateLimit429CooldownSettings.mockReset();
+  updateRateLimit429CooldownSettings.mockReset();
+  getStreamTimeoutSettings.mockReset();
+  getRectifierSettings.mockReset();
+  getBetaPolicySettings.mockReset();
+  getUpstreamBillingProbeSettings.mockReset();
+  updateUpstreamBillingProbeSettings.mockReset();
+  getOllamaCloudUsageSettings.mockReset();
+  updateOllamaCloudUsageSettings.mockReset();
+  getGroups.mockReset();
+  listProxies.mockReset();
+  getProviders.mockReset();
+  updateProvider.mockReset();
+  createProvider.mockReset();
+  deleteProvider.mockReset();
+  fetchPublicSettings.mockReset();
+  adminSettingsFetch.mockReset();
+  showError.mockReset();
+  showSuccess.mockReset();
+  localeRef.value = "zh-CN";
+
+  getSettings.mockResolvedValue({ ...baseSettingsResponse });
+  updateSettings.mockImplementation(async (payload) => ({
+    ...baseSettingsResponse,
+    ...payload,
+  }));
+  getWebSearchEmulationConfig.mockResolvedValue({
+    enabled: false,
+    providers: [],
+  });
+  updateWebSearchEmulationConfig.mockResolvedValue({
+    enabled: false,
+    providers: [],
+  });
+  getAdminApiKey.mockResolvedValue({
+    exists: false,
+    masked_key: "",
+  });
+  getOverloadCooldownSettings.mockResolvedValue({
+    enabled: true,
+    cooldown_minutes: 10,
+  });
+  getRateLimit429CooldownSettings.mockResolvedValue({
+    enabled: true,
+    cooldown_seconds: 5,
+  });
+  updateRateLimit429CooldownSettings.mockImplementation(async (payload) => payload);
+  getStreamTimeoutSettings.mockResolvedValue({
+    enabled: true,
+    action: "temp_unsched",
+    temp_unsched_minutes: 5,
+    threshold_count: 3,
+    threshold_window_minutes: 10,
+  });
+  getRectifierSettings.mockResolvedValue({
+    enabled: true,
+    thinking_signature_enabled: true,
+    thinking_budget_enabled: true,
+    apikey_signature_enabled: false,
+    apikey_signature_patterns: [],
+  });
+  getBetaPolicySettings.mockResolvedValue({
+    rules: [],
+  });
+  getUpstreamBillingProbeSettings.mockResolvedValue({
+    enabled: true,
+    interval_minutes: 30,
+  });
+  updateUpstreamBillingProbeSettings.mockImplementation(async (payload) => payload);
+  getOllamaCloudUsageSettings.mockResolvedValue({
+    enabled: false,
+    interval_minutes: 60,
+    debounce_minutes: 1,
+  });
+  updateOllamaCloudUsageSettings.mockImplementation(async (payload) => payload);
+  getGroups.mockResolvedValue([]);
+  listProxies.mockResolvedValue({
+    items: [],
+  });
+  getProviders.mockResolvedValue({
+    data: [],
+  });
+  fetchPublicSettings.mockResolvedValue(undefined);
+  adminSettingsFetch.mockResolvedValue(undefined);
+}
+
+describe("admin SettingsView GPT-6.1 Sol long-context billing switch", () => {
+  beforeEach(resetSettingsViewMocks);
+
+  it("默认关闭，保存时提交开关值", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    const toggle = wrapper.get(
+      '[data-testid="openai-gpt61sol-long-context-billing-toggle"]',
+    );
+    expect((toggle.element as HTMLInputElement).checked).toBe(false);
+
+    await toggle.setValue(true);
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ openai_gpt61sol_long_context_billing_enabled: true }),
+    );
+    wrapper.unmount();
+  });
+
+  it("按后端返回值回填开关状态", async () => {
+    getSettings.mockResolvedValue({
+      ...baseSettingsResponse,
+      openai_gpt61sol_long_context_billing_enabled: true,
+    });
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    const toggle = wrapper.get(
+      '[data-testid="openai-gpt61sol-long-context-billing-toggle"]',
+    );
+    expect((toggle.element as HTMLInputElement).checked).toBe(true);
+    wrapper.unmount();
   });
 });

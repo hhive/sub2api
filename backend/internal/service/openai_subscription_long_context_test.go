@@ -52,6 +52,10 @@ func TestOpenAIGatewayServiceRecordUsage_GPT61SolSubscriptionLongContext(t *test
 							usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
 							userRepo := &openAIRecordUsageUserRepoStub{}
 							svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, &openAIRecordUsageSubRepoStub{}, nil)
+							// 本用例验证账号/分组门槛语义，需显式打开 GPT-6.1 Sol 长上下文计费全局开关：
+							// 默认关闭 = 非订阅账号豁免（见 openAIGPT61SolAPILongContextExempt），
+							// 默认关闭态的用例在 openai_gpt61sol_long_context_switch_test.go。
+							svc.settingService = newGPT61SolSwitchSettingService(true)
 							if catalog {
 								svc.billingService = NewBillingService(svc.cfg, newStubPricingServiceFromJSON(t, `{
 									"gpt-6.1-sol": {"litellm_provider": "openai", "mode": "chat",
@@ -182,6 +186,9 @@ func TestOpenAIGatewayServiceRecordUsage_GPT61SolLongContextBoundary(t *testing.
 			t.Run(fmt.Sprintf("%s/%d", accountType, totalInput), func(t *testing.T) {
 				usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
 				svc := newOpenAIRecordUsageServiceForTest(usageRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+				// 同 TestOpenAIGatewayServiceRecordUsage_GPT61SolSubscriptionLongContext：
+				// 验证门槛语义需显式打开全局开关（默认关闭 = 非订阅账号豁免）。
+				svc.settingService = newGPT61SolSwitchSettingService(true)
 				err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
 					Result: &OpenAIForwardResult{RequestID: "boundary", Model: "gpt-6.1-sol", Duration: time.Second,
 						Usage: OpenAIUsage{InputTokens: totalInput, OutputTokens: 1000}},

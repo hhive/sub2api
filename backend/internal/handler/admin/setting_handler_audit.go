@@ -545,6 +545,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.OpenAILowUpstreamRatePriorityEnabled != after.OpenAILowUpstreamRatePriorityEnabled {
 		changed = append(changed, "openai_low_upstream_rate_priority_enabled")
 	}
+	if before.OpenAIGPT61SolLongContextBillingEnabled != after.OpenAIGPT61SolLongContextBillingEnabled {
+		changed = append(changed, "openai_gpt61sol_long_context_billing_enabled")
+	}
 	if !equalNullableFloat(before.OpenAIOAuthSchedulingRateMultiplier, after.OpenAIOAuthSchedulingRateMultiplier) {
 		changed = append(changed, "openai_oauth_scheduling_rate_multiplier")
 	}

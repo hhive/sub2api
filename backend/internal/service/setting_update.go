@@ -568,6 +568,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingPaymentVisibleMethodAlipayEnabled] = strconv.FormatBool(settings.PaymentVisibleMethodAlipayEnabled)
 	updates[SettingPaymentVisibleMethodWxpayEnabled] = strconv.FormatBool(settings.PaymentVisibleMethodWxpayEnabled)
 	updates[SettingKeyOpenAILowUpstreamRatePriorityEnabled] = strconv.FormatBool(settings.OpenAILowUpstreamRatePriorityEnabled)
+	updates[SettingKeyOpenAIGPT61SolLongContextBillingEnabled] = strconv.FormatBool(settings.OpenAIGPT61SolLongContextBillingEnabled)
 	updates[SettingKeyOpenAIOAuthSchedulingRateMultiplier] = ""
 	if rate := settings.OpenAIOAuthSchedulingRateMultiplier; rate != nil {
 		updates[SettingKeyOpenAIOAuthSchedulingRateMultiplier] = strconv.FormatFloat(*rate, 'f', -1, 64)
@@ -846,6 +847,16 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 			expiresAt: 0,
 		})
 	}
+	// GPT-6.1 Sol 长上下文计费开关直接写入新值：管理端保存后必须立即按新值计费，
+	// 不能等 60s TTL 过期（计费开关的陈旧值会直接算错钱）。先递增代次再落值：
+	// 在途刷新据此丢弃自己的结果，不会把旧值覆盖回新值。
+	generation := s.gpt61SolLongContextBillingEnabledGen.Add(1)
+	s.gpt61SolLongContextBillingEnabledSF.Forget(openAIGPT61SolLongContextBillingEnabledRefreshKey)
+	s.gpt61SolLongContextBillingEnabledCache.Store(&cachedOpenAIGPT61SolLongContextBillingEnabled{
+		enabled:    settings.OpenAIGPT61SolLongContextBillingEnabled,
+		expiresAt:  time.Now().Add(openAIGPT61SolLongContextBillingEnabledCacheTTL).UnixNano(),
+		generation: generation,
+	})
 	accountSchedulingThresholdsSF.Forget(SettingKeyAccountSchedulingThresholds)
 	if settings.AccountSchedulingThresholds != nil {
 		normalizedThresholds, err := validateAndNormalizeAccountSchedulingThresholds(settings.AccountSchedulingThresholds)
