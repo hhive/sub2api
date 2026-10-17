@@ -118,6 +118,7 @@ export default {
     id: 'ID',
     apiKey: 'API 密钥',
     group: '分组',
+    availableModels: '可用模型',
     currentConcurrency: '当前并发',
     noGroup: '无分组',
     searchGroup: '搜索分组...',

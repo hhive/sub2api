@@ -118,6 +118,7 @@ export default {
     id: 'ID',
     apiKey: 'API Key',
     group: 'Group',
+    availableModels: 'Available Models',
     currentConcurrency: 'Current Concurrency',
     noGroup: 'No group',
     searchGroup: 'Search groups...',

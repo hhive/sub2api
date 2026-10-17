@@ -193,33 +193,15 @@
                     />
                   </svg>
                 </span>
-                <span
-                  v-if="row.group"
-                  class="flex max-w-[320px] flex-wrap gap-1"
-                  :title="keyModelTitle(row)"
-                >
-                  <span
-                    v-for="model in keyVisibleModels(row)"
-                    :key="`${model.platform}:${model.name}`"
-                    class="max-w-[150px] truncate rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-600 dark:bg-dark-600 dark:text-dark-300"
-                  >
-                    {{ model.name }}
-                  </span>
-                  <span
-                    v-if="keyHiddenModelCount(row) > 0"
-                    class="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] leading-4 text-gray-500 dark:bg-dark-600 dark:text-dark-400"
-                  >
-                    +{{ keyHiddenModelCount(row) }}
-                  </span>
-                  <span
-                    v-if="keySupportedModels(row).length === 0"
-                    class="text-[11px] text-gray-400 dark:text-dark-500"
-                  >
-                    {{ t('keys.noAvailableModels') }}
-                  </span>
-                </span>
               </button>
             </div>
+          </template>
+
+          <template #cell-models="{ row }">
+            <KeyModelsCell
+              :models="keySupportedModels(row)"
+              :empty-label="keyModelsEmptyLabel(row)"
+            />
           </template>
 
           <template #cell-current_concurrency="{ value }">
@@ -601,8 +583,6 @@
                 :peak-end="(option as unknown as GroupOption).peakEnd"
                 :peak-rate-multiplier="(option as unknown as GroupOption).peakRateMultiplier"
                 :description="(option as unknown as GroupOption).description"
-                :supported-models="(option as unknown as GroupOption).supportedModels"
-                :no-models-label="t('keys.noAvailableModels')"
                 :selected="selected"
               />
             </template>
@@ -1212,8 +1192,6 @@
               :peak-end="option.peakEnd"
               :peak-rate-multiplier="option.peakRateMultiplier"
               :description="option.description"
-              :supported-models="option.supportedModels"
-              :no-models-label="t('keys.noAvailableModels')"
               :selected="
                 selectedKeyForGroup?.group_id === option.value ||
                 (!selectedKeyForGroup?.group_id && option.value === null)
@@ -1243,6 +1221,7 @@ import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import BulkEditKeysModal from '@/components/keys/BulkEditKeysModal.vue'
+import KeyModelsCell from '@/components/keys/KeyModelsCell.vue'
 	import DataTable from '@/components/common/DataTable.vue'
 	import Pagination from '@/components/common/Pagination.vue'
 	import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -1288,7 +1267,6 @@ interface GroupOption {
   peakRateMultiplier: number
   subscriptionType: SubscriptionType
   platform: GroupPlatform
-  supportedModels: UserSupportedModel[]
 }
 
 const appStore = useAppStore()
@@ -1300,6 +1278,7 @@ const allColumns = computed<Column[]>(() => [
   { key: 'id', label: t('keys.id'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
   { key: 'group', label: t('keys.group'), sortable: true },
+  { key: 'models', label: t('keys.availableModels'), sortable: false },
   { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true },
   { key: 'usage', label: t('keys.usage'), sortable: false },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
@@ -1556,8 +1535,7 @@ const groupOptions = computed(() =>
     peakEnd: group.peak_end,
     peakRateMultiplier: group.peak_rate_multiplier,
     subscriptionType: group.subscription_type,
-    platform: group.platform,
-    supportedModels: group.supported_models ?? []
+    platform: group.platform
   }))
 )
 
@@ -1606,10 +1584,10 @@ const keySupportedModels = (key: ApiKey): UserSupportedModel[] => {
   const group = groups.value.find((g) => g.id === key.group_id) || key.group
   return groupSupportedModels(group)
 }
-const keyVisibleModels = (key: ApiKey): UserSupportedModel[] => keySupportedModels(key).slice(0, 3)
-const keyHiddenModelCount = (key: ApiKey): number =>
-  Math.max(keySupportedModels(key).length - keyVisibleModels(key).length, 0)
-const keyModelTitle = (key: ApiKey): string => keySupportedModels(key).map((model) => model.name).join(', ')
+const keyModelsEmptyLabel = (key: ApiKey): string =>
+  (key.group_id !== null && key.group_id !== undefined) || Boolean(key.group)
+    ? t('keys.noAvailableModels')
+    : t('keys.noGroup')
 
 const copyToClipboard = async (text: string, keyId: number) => {
   const success = await clipboardCopy(text, t('keys.copied'))

@@ -38,6 +38,7 @@ const messages: Record<string, string> = {
   'common.refresh': 'Refresh',
   'common.status': 'Status',
   'keys.apiKey': 'API Key',
+  'keys.availableModels': 'Available Models',
   'keys.allGroups': 'All Groups',
   'keys.allStatus': 'All Status',
   'keys.columnSettings': 'Column Settings',
@@ -49,6 +50,8 @@ const messages: Record<string, string> = {
   'keys.currentConcurrency': 'Current Concurrency',
   'keys.lastUsedAt': 'Last Used',
   'keys.lastUsedIP': 'Last Used IP',
+  'keys.noAvailableModels': 'No available models',
+  'keys.noGroup': 'No group',
   'keys.rateLimitColumn': 'Rate Limit',
   'keys.searchPlaceholder': 'Search name or key...',
   'keys.status.active': 'Active',
@@ -106,6 +109,23 @@ vi.mock('vue-i18n', async () => {
       t: (key: string) => messages[key] ?? key,
     }),
   }
+})
+
+const createSupportedModels = () => [
+  { name: 'claude-opus-4-1', platform: 'anthropic' },
+  { name: 'gpt-5.5', platform: 'openai' },
+  { name: 'claude-sonnet-5-5', platform: 'anthropic' },
+  { name: 'gemini-3-pro', platform: 'gemini' },
+  { name: 'gpt-5.4', platform: 'openai' },
+]
+
+const createGroupWithModels = () => ({
+  id: 7,
+  name: 'Claude',
+  platform: 'anthropic',
+  rate_multiplier: 1,
+  subscription_type: 'standard',
+  supported_models: createSupportedModels(),
 })
 
 const createApiKey = (): ApiKey => ({
@@ -173,6 +193,12 @@ const DataTableStub = {
           <slot name="cell-id" :value="row.id" :row="row" />
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
+        <div v-if="columns.some((col) => col.key === 'group')" data-test="group-cell">
+          <slot name="cell-group" :row="row" />
+        </div>
+        <div v-if="columns.some((col) => col.key === 'models')" data-test="models-cell">
+          <slot name="cell-models" :row="row" />
+        </div>
         <slot name="cell-actions" :row="row" />
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
@@ -193,7 +219,33 @@ const SelectStub = {
   name: 'Select',
   props: ['modelValue', 'options'],
   emits: ['update:modelValue'],
-  template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"></select>',
+  template: `
+    <select :value="modelValue" @change="$emit('update:modelValue', $event.target.value)">
+      <template v-for="(option, index) in options" :key="option.value ?? index">
+        <slot name="option" :option="option" :selected="option.value === modelValue" />
+      </template>
+    </select>
+  `,
+}
+
+const GroupOptionItemStub = {
+  name: 'GroupOptionItem',
+  props: [
+    'name',
+    'platform',
+    'subscriptionType',
+    'rateMultiplier',
+    'userRateMultiplier',
+    'peakRateEnabled',
+    'peakStart',
+    'peakEnd',
+    'peakRateMultiplier',
+    'description',
+    'supportedModels',
+    'noModelsLabel',
+    'selected',
+  ],
+  template: '<div data-test="group-option" />',
 }
 
 const SearchInputStub = {
@@ -242,7 +294,7 @@ const mountView = async () => {
         BulkEditKeysModal: true,
         EndpointPopover: true,
         GroupBadge: true,
-        GroupOptionItem: true,
+        GroupOptionItem: GroupOptionItemStub,
         Teleport: true,
       },
     },
@@ -394,6 +446,7 @@ describe('user KeysView column settings', () => {
       'name',
       'key',
       'group',
+      'models',
       'current_concurrency',
       'usage',
       'expires_at',
@@ -405,6 +458,111 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).not.toContain('last_used_at')
     expect(visibleColumnKeys(wrapper)).not.toContain('last_used_ip')
     expect(visibleColumnKeys(wrapper)).not.toContain('id')
+  })
+
+  it('renders the available models column after group with a three-model preview and full popover', async () => {
+    getAvailableGroups.mockResolvedValue([createGroupWithModels()])
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), group_id: 7 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    const columnKeys = visibleColumnKeys(wrapper)
+    const groupIndex = columnKeys.indexOf('group')
+    expect(groupIndex).toBeGreaterThanOrEqual(0)
+    expect(columnKeys.slice(groupIndex, groupIndex + 2)).toEqual(['group', 'models'])
+
+    const cell = wrapper.get('[data-test="models-cell"]')
+    expect(cell.findAll('[data-test="model-preview-pill"]').map((pill) => pill.text())).toEqual([
+      'claude-opus-4-1',
+      'gpt-5.5',
+      'claude-sonnet-5-5',
+    ])
+    expect(cell.get('[data-test="model-hidden-count"]').text()).toBe('+2')
+
+    await cell.get('[data-test="key-models-trigger"]').trigger('mouseenter')
+    await nextTick()
+    expect(cell.findAll('[data-test="model-popover-pill"]')).toHaveLength(5)
+    wrapper.unmount()
+  })
+
+  it('shows the no-group empty state in the models column', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-test="models-cell"]').text()).toBe('No group')
+    expect(wrapper.find('[data-test="key-models-trigger"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows the no-models empty state when the group has no supported models', async () => {
+    getAvailableGroups.mockResolvedValue([
+      { ...createGroupWithModels(), supported_models: [] },
+    ])
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), group_id: 7 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-test="models-cell"]').text()).toBe('No available models')
+    expect(wrapper.find('[data-test="key-models-trigger"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('no longer renders model pills in the group cell', async () => {
+    getAvailableGroups.mockResolvedValue([createGroupWithModels()])
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), group_id: 7 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    const groupCell = wrapper.get('[data-test="group-cell"]')
+    expect(groupCell.find('[data-test="model-preview-pill"]').exists()).toBe(false)
+    expect(groupCell.text()).not.toContain('claude-opus-4-1')
+    wrapper.unmount()
+  })
+
+  it('no longer passes models to the group selector options', async () => {
+    getAvailableGroups.mockResolvedValue([createGroupWithModels()])
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), group_id: 7 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await nextTick()
+    const formOptions = wrapper.findAllComponents({ name: 'GroupOptionItem' })
+    expect(formOptions.length).toBeGreaterThan(0)
+    for (const option of formOptions) {
+      expect(option.props('supportedModels')).toBeUndefined()
+      expect(option.props('noModelsLabel')).toBeUndefined()
+    }
+
+    await wrapper.get('[data-test="close-dialog"]').trigger('click')
+    await wrapper.get('[data-test="group-cell"] button').trigger('click')
+    await flushPromises()
+    const inlineOptions = wrapper.findAllComponents({ name: 'GroupOptionItem' })
+    expect(inlineOptions.length).toBeGreaterThan(0)
+    for (const option of inlineOptions) {
+      expect(option.props('supportedModels')).toBeUndefined()
+      expect(option.props('noModelsLabel')).toBeUndefined()
+    }
+    wrapper.unmount()
   })
 
   it('opens bulk editing with only selected visible keys', async () => {
@@ -520,6 +678,7 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
+      'models',
       'current_concurrency',
       'usage',
       'rate_limit',
