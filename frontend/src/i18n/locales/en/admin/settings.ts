@@ -490,9 +490,17 @@ export default {
       },
       openaiGPT61SolLongContextBilling: {
         title: 'GPT-6.1 Sol long-context pricing',
-        description: 'Controls whether GPT-6.1 Sol on non-subscription OpenAI accounts (API key) is billed with the official long-context tiers.',
-        enabled: 'Apply official long-context tiers',
-        enabledHint: 'Off by default: requests above 272k context are no longer billed at long-context rates (input x2 / output x1.5). Only affects GPT-6.1 Sol on non-subscription accounts; subscription accounts are already exempt, and channel custom intervals plus other models are unaffected.'
+        description: 'Controls whether GPT-6.1 Sol on non-subscription OpenAI accounts (API key) is exempt from the official long-context tiers.',
+        enabled: 'Exempt requests above 272k context from long-context rates',
+        enabledHint: 'On = exempt: requests above 272k context are no longer billed at long-context rates (input x2 / output x1.5). Off = every account is billed at the official long-context rates. Only affects GPT-6.1 Sol on non-subscription OpenAI accounts; subscription accounts are already exempt, and channel custom intervals plus other models are unaffected.',
+        accountIds: 'Exempt accounts (empty = all accounts)',
+        accountIdsHint: 'When the switch is on: empty applies to every non-subscription OpenAI account; when selected, only those accounts are exempt and all others keep long-context rates.',
+        accountSearchPlaceholder: 'Search by account name or ID',
+        accountSearchEmpty: 'No matching accounts found',
+        accountMissing: 'Account missing or inaccessible',
+        accountIdFallback: 'Account #{id}',
+        removeAccount: 'Remove account',
+        disabledHint: 'When off, no account is exempt.'
       },
       upstreamBillingProbe: {
         title: 'Upstream Rate Auto Detection',

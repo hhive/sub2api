@@ -310,7 +310,9 @@ type UpdateSettingsRequest struct {
 	// OpenAI account scheduling
 	OpenAILowUpstreamRatePriorityEnabled *bool `json:"openai_low_upstream_rate_priority_enabled"`
 	// OpenAIGPT61SolLongContextBillingEnabled 省略 = 保持现值。
-	OpenAIGPT61SolLongContextBillingEnabled            *bool    `json:"openai_gpt61sol_long_context_billing_enabled"`
+	OpenAIGPT61SolLongContextBillingEnabled *bool `json:"openai_gpt61sol_long_context_billing_enabled"`
+	// OpenAIGPT61SolLongContextBillingAccountIDs 省略/null = 保持现值；[] = 清空（全部账号豁免）。
+	OpenAIGPT61SolLongContextBillingAccountIDs         *[]int64 `json:"openai_gpt61sol_long_context_billing_account_ids"`
 	OpenAIOAuthSchedulingRateMultiplier                *float64 `json:"openai_oauth_scheduling_rate_multiplier"`
 	OpenAIAdvancedSchedulerEnabled                     *bool    `json:"openai_advanced_scheduler_enabled"`
 	OpenAIAdvancedSchedulerStickyWeightedEnabled       *bool    `json:"openai_advanced_scheduler_sticky_weighted_enabled"`
@@ -659,10 +661,32 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	auditReq := settingsAuditRequest(req)
 	omitted := omittedSettingKeys(sentFields)
 
+	// 豁免名单边界校验：非法（非正整数或超过上限）直接 400，不静默丢弃也不写库。
+	if req.OpenAIGPT61SolLongContextBillingAccountIDs != nil {
+		if err := service.ValidateOpenAIGPT61SolLongContextBillingAccountIDs(*req.OpenAIGPT61SolLongContextBillingAccountIDs); err != nil {
+			response.BadRequest(c, "Invalid openai_gpt61sol_long_context_billing_account_ids: "+err.Error())
+			return
+		}
+	}
+
 	previousSettings, err := h.settingService.GetAllSettings(c.Request.Context())
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
+	}
+
+	// 库中名单损坏（无法解析）时不得把「损坏」洗成空名单：空名单在开关打开时等于
+	// 全员豁免，是少收费方向，而计费侧对同一损坏按不豁免 fail closed。因此这里把该键
+	// 加入 omitted 保留原值（省略该键的写入 = 库中损坏值原样留在原处）。
+	// 语义边界：损坏态下唯一的覆盖途径是显式提交非空名单；显式 [] 也被保留
+	// （运营者需先写一次非空名单让库值恢复可解析，再清空）。
+	if previousSettings.OpenAIGPT61SolLongContextBillingAccountIDsInvalid {
+		explicitIDs := req.OpenAIGPT61SolLongContextBillingAccountIDs != nil &&
+			len(service.NormalizeOpenAIGPT61SolLongContextBillingAccountIDs(*req.OpenAIGPT61SolLongContextBillingAccountIDs)) > 0
+		// 显式提交非空名单即修复库值，本次照常写入；否则保留库中原值不写。
+		if !explicitIDs {
+			omitted[service.SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs] = struct{}{}
+		}
 	}
 	previousAuthSourceDefaults, err := h.settingService.GetAuthSourceDefaultSettings(c.Request.Context())
 	if err != nil {
@@ -2233,6 +2257,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.OpenAIGPT61SolLongContextBillingEnabled
 		}(),
+		OpenAIGPT61SolLongContextBillingAccountIDs: func() []int64 {
+			if req.OpenAIGPT61SolLongContextBillingAccountIDs != nil {
+				return service.NormalizeOpenAIGPT61SolLongContextBillingAccountIDs(*req.OpenAIGPT61SolLongContextBillingAccountIDs)
+			}
+			return previousSettings.OpenAIGPT61SolLongContextBillingAccountIDs
+		}(),
 		OpenAIOAuthSchedulingRateMultiplier: func() *float64 {
 			// Omitted fields preserve the override; explicit null clears it.
 			if _, sent := sentFields[service.SettingKeyOpenAIOAuthSchedulingRateMultiplier]; sent {
@@ -2794,6 +2824,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		PaymentVisibleMethodWxpayEnabled:                       updatedSettings.PaymentVisibleMethodWxpayEnabled,
 		OpenAILowUpstreamRatePriorityEnabled:                   updatedSettings.OpenAILowUpstreamRatePriorityEnabled,
 		OpenAIGPT61SolLongContextBillingEnabled:                updatedSettings.OpenAIGPT61SolLongContextBillingEnabled,
+		OpenAIGPT61SolLongContextBillingAccountIDs:             updatedSettings.OpenAIGPT61SolLongContextBillingAccountIDs,
 		OpenAIOAuthSchedulingRateMultiplier:                    updatedSettings.OpenAIOAuthSchedulingRateMultiplier,
 		OpenAIAdvancedSchedulerEnabled:                         updatedSettings.OpenAIAdvancedSchedulerEnabled,
 		OpenAIAdvancedSchedulerStickyWeightedEnabled:           updatedSettings.OpenAIAdvancedSchedulerStickyWeightedEnabled,

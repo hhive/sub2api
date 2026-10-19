@@ -483,9 +483,17 @@ export default {
       },
       openaiGPT61SolLongContextBilling: {
         title: 'GPT-6.1 Sol 长上下文计费',
-        description: '控制非订阅 OpenAI 账号（API Key）的 GPT-6.1 Sol 是否按官方长上下文阶梯计费。',
-        enabled: '应用官方长上下文阶梯',
-        enabledHint: '默认关闭：超过 272k 上下文不再按长上下文费率（输入 ×2 / 输出 ×1.5）计费。仅影响非订阅账号的 GPT-6.1 Sol；订阅账号本就豁免，渠道自定义区间价与其它模型不受影响。'
+        description: '控制非订阅 OpenAI 账号（API Key）的 GPT-6.1 Sol 是否豁免官方长上下文阶梯计费。',
+        enabled: '支持超过 272k 上下文不按长上下文费率',
+        enabledHint: '打开 = 豁免：超过 272k 上下文不再按长上下文费率（输入 ×2 / 输出 ×1.5）计费；关闭 = 所有账号均按官方长上下文费率计费。仅影响非订阅 OpenAI 账号的 GPT-6.1 Sol；订阅账号本就豁免，渠道自定义区间价与其它模型不受影响。',
+        accountIds: '豁免账号（留空 = 全部账号）',
+        accountIdsHint: '开关打开时：留空表示全部非订阅 OpenAI 账号生效；选中后仅这些账号豁免，名单外照常按长上下文费率计费。',
+        accountSearchPlaceholder: '输入账号名称或 ID 搜索',
+        accountSearchEmpty: '未找到匹配账号',
+        accountMissing: '账号不存在或不可访问',
+        accountIdFallback: '账号 #{id}',
+        removeAccount: '移除账号',
+        disabledHint: '关闭时所有账号均不豁免。'
       },
       upstreamBillingProbe: {
         title: '上游倍率自动探测',

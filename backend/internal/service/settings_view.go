@@ -303,8 +303,16 @@ type SystemSettings struct {
 	PaymentVisibleMethodAlipayEnabled bool
 	PaymentVisibleMethodWxpayEnabled  bool
 
-	// OpenAI 长上下文计费（GPT-6.1 Sol，默认关闭 = 不应用官方长上下文阶梯）
+	// OpenAI 长上下文豁免（GPT-6.1 Sol，默认关闭 = 不豁免，照常应用官方长上下文阶梯）
 	OpenAIGPT61SolLongContextBillingEnabled bool
+	// OpenAIGPT61SolLongContextBillingAccountIDs 豁免名单：空 = 全部非订阅 OpenAI 账号；
+	// 非空 = 仅名单内账号（仅在开关打开时生效）。
+	OpenAIGPT61SolLongContextBillingAccountIDs []int64
+	// OpenAIGPT61SolLongContextBillingAccountIDsInvalid 派生标志（不是设置键、不写库）：
+	// 库中名单无法解析（非法 JSON 或非法 ID）时为 true，此时上面的切片只是展示占位。
+	// 调用方（管理端保存路径）据此避免把「损坏」回写成空名单 —— 空名单在开关打开时
+	// 等于全员豁免，是少收费方向；计费侧同一情形按不豁免 fail closed。
+	OpenAIGPT61SolLongContextBillingAccountIDsInvalid bool
 
 	// OpenAI 账号调度
 	OpenAILowUpstreamRatePriorityEnabled                   bool

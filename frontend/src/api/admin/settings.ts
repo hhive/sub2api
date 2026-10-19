@@ -729,8 +729,10 @@ export interface SystemSettings {
   payment_visible_method_alipay_enabled?: boolean;
   payment_visible_method_wxpay_enabled?: boolean;
   openai_low_upstream_rate_priority_enabled?: boolean;
-  /** 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否应用官方长上下文阶梯；默认 false（不应用）。 */
+  /** 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否豁免官方长上下文阶梯；true = 豁免，默认 false（不豁免）。 */
   openai_gpt61sol_long_context_billing_enabled?: boolean;
+  /** 豁免名单：空 = 全部非订阅 OpenAI 账号；非空 = 仅这些账号豁免。 */
+  openai_gpt61sol_long_context_billing_account_ids?: number[];
   /** null means OAuth accounts use their individual account rates. */
   openai_oauth_scheduling_rate_multiplier?: number | null;
   openai_advanced_scheduler_enabled?: boolean;
@@ -1081,8 +1083,10 @@ export interface UpdateSettingsRequest {
   payment_visible_method_alipay_enabled?: boolean;
   payment_visible_method_wxpay_enabled?: boolean;
   openai_low_upstream_rate_priority_enabled?: boolean;
-  /** 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否应用官方长上下文阶梯；省略 = 保持现值。 */
+  /** 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否豁免官方长上下文阶梯；省略 = 保持现值。 */
   openai_gpt61sol_long_context_billing_enabled?: boolean;
+  /** 豁免名单；省略 = 保持现值，[] = 清空名单（清空后回到「全部账号」）。 */
+  openai_gpt61sol_long_context_billing_account_ids?: number[];
   /** Omit to preserve the override; null clears it; zero is an explicit rate. */
   openai_oauth_scheduling_rate_multiplier?: number | null;
   openai_advanced_scheduler_enabled?: boolean;

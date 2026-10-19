@@ -1079,7 +1079,7 @@
                 {{ t("admin.settings.openaiGPT61SolLongContextBilling.description") }}
               </p>
             </div>
-            <div class="px-6 py-4">
+            <div class="space-y-4 px-6 py-4">
               <div class="flex items-center justify-between gap-6">
                 <div class="min-w-0">
                   <label
@@ -1095,6 +1095,35 @@
                   v-model="form.openai_gpt61sol_long_context_billing_enabled"
                   data-testid="openai-gpt61sol-long-context-billing-toggle"
                 />
+              </div>
+              <!-- 关闭时置灰并禁用：避免「关闭 = 全部豁免」的误读 -->
+              <div
+                class="transition-opacity"
+                :class="{
+                  'pointer-events-none opacity-50':
+                    !form.openai_gpt61sol_long_context_billing_enabled,
+                }"
+                data-testid="openai-gpt61sol-account-selector"
+              >
+                <label
+                  class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                >
+                  {{ t("admin.settings.openaiGPT61SolLongContextBilling.accountIds") }}
+                </label>
+                <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
+                  {{ t("admin.settings.openaiGPT61SolLongContextBilling.accountIdsHint") }}
+                </p>
+                <OpenAIGPT61SolAccountSelector
+                  v-model="form.openai_gpt61sol_long_context_billing_account_ids"
+                  :disabled="!form.openai_gpt61sol_long_context_billing_enabled"
+                />
+                <p
+                  v-if="!form.openai_gpt61sol_long_context_billing_enabled"
+                  class="mt-2 text-xs text-gray-400 dark:text-gray-500"
+                  data-testid="openai-gpt61sol-account-selector-disabled-hint"
+                >
+                  {{ t("admin.settings.openaiGPT61SolLongContextBilling.disabledHint") }}
+                </p>
               </div>
             </div>
           </div>
@@ -9807,6 +9836,7 @@ import {
   type RechargeBonusTierDraft,
 } from "@/utils/rechargeBonus";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
+import OpenAIGPT61SolAccountSelector from "@/views/admin/settings/OpenAIGPT61SolAccountSelector.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
   useStepUp,
@@ -10517,6 +10547,7 @@ type SettingsForm = Omit<
   force_email_on_third_party_signup: boolean;
   openai_low_upstream_rate_priority_enabled: boolean;
   openai_gpt61sol_long_context_billing_enabled: boolean;
+  openai_gpt61sol_long_context_billing_account_ids: number[];
   openai_oauth_scheduling_rate_multiplier: number | "" | null;
   openai_advanced_scheduler_enabled: boolean;
   openai_advanced_scheduler_sticky_weighted_enabled: boolean;
@@ -10803,6 +10834,7 @@ const form = reactive<SettingsForm>({
   allow_ungrouped_key_scheduling: false,
   openai_low_upstream_rate_priority_enabled: false,
   openai_gpt61sol_long_context_billing_enabled: false,
+  openai_gpt61sol_long_context_billing_account_ids: [],
   openai_oauth_scheduling_rate_multiplier: 1,
   openai_advanced_scheduler_enabled: false,
   openai_advanced_scheduler_sticky_weighted_enabled: false,
@@ -11701,6 +11733,21 @@ function normalizeForwardedClientIpHeaders(value: unknown): string[] {
   return headers;
 }
 
+// GPT-6.1 Sol 豁免名单：只保留正整数、去重并升序，与后端写入校验一致。
+function normalizeGpt61SolAccountIds(value: unknown): number[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value.filter(
+        (id): id is number => Number.isInteger(id) && (id as number) > 0,
+      ),
+    ),
+  ).sort((a, b) => a - b);
+}
+
 function removeForwardedClientIpHeader(header: string) {
   form.forwarded_client_ip_headers = form.forwarded_client_ip_headers.filter(
     (item) => item !== header,
@@ -12182,6 +12229,10 @@ async function loadSettings() {
     if (settings.openai_oauth_scheduling_rate_multiplier === null) {
       form.openai_oauth_scheduling_rate_multiplier = null;
     }
+    // 名单归一化：缺键与非数组都落在 []（= 全部账号生效）
+    form.openai_gpt61sol_long_context_billing_account_ids = normalizeGpt61SolAccountIds(
+      settings.openai_gpt61sol_long_context_billing_account_ids,
+    );
     // 无效判定由后端给出（库中不可解析时 use_key_config 同样是 null，前端无法区分）
     applyUseKeyConfig(settings.use_key_config);
     useKeyConfigInvalid.value = settings.use_key_config_invalid === true;
@@ -12938,6 +12989,10 @@ async function saveSettings() {
         form.openai_low_upstream_rate_priority_enabled,
       openai_gpt61sol_long_context_billing_enabled:
         form.openai_gpt61sol_long_context_billing_enabled,
+      // 归一化为去重升序的正整数，与后端写入校验一致
+      openai_gpt61sol_long_context_billing_account_ids: normalizeGpt61SolAccountIds(
+        form.openai_gpt61sol_long_context_billing_account_ids,
+      ),
       openai_oauth_scheduling_rate_multiplier:
         oauthSchedulingRate === "" ? null : oauthSchedulingRate,
       openai_advanced_scheduler_enabled: form.openai_advanced_scheduler_enabled,
@@ -13066,6 +13121,9 @@ async function saveSettings() {
     if (updated.openai_oauth_scheduling_rate_multiplier === null) {
       form.openai_oauth_scheduling_rate_multiplier = null;
     }
+    form.openai_gpt61sol_long_context_billing_account_ids = normalizeGpt61SolAccountIds(
+      updated.openai_gpt61sol_long_context_billing_account_ids,
+    );
     // 告警同样以后端返回为准：保存成功后落库配置必为合法值
     useKeyConfigInvalid.value = updated.use_key_config_invalid === true;
     // 回填表单：关闭态且字段非法时保存只发标记，服务端会丢弃字段块；不回填会让置灰字段

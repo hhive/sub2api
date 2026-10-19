@@ -309,9 +309,11 @@ type SystemSettings struct {
 
 	// OpenAI account scheduling
 	OpenAILowUpstreamRatePriorityEnabled bool `json:"openai_low_upstream_rate_priority_enabled"`
-	// OpenAIGPT61SolLongContextBillingEnabled 非订阅 OpenAI 账号的 GPT-6.1 Sol 是否应用官方
-	// 长上下文阶梯；默认 false（不应用）。
-	OpenAIGPT61SolLongContextBillingEnabled                bool     `json:"openai_gpt61sol_long_context_billing_enabled"`
+	// OpenAIGPT61SolLongContextBillingEnabled 非订阅 OpenAI 账号的 GPT-6.1 Sol 长上下文豁免开关；
+	// 默认 false（不豁免，照常应用官方长上下文阶梯）。
+	OpenAIGPT61SolLongContextBillingEnabled bool `json:"openai_gpt61sol_long_context_billing_enabled"`
+	// OpenAIGPT61SolLongContextBillingAccountIDs 豁免名单：空 = 全部非订阅 OpenAI 账号。
+	OpenAIGPT61SolLongContextBillingAccountIDs             []int64  `json:"openai_gpt61sol_long_context_billing_account_ids"`
 	OpenAIOAuthSchedulingRateMultiplier                    *float64 `json:"openai_oauth_scheduling_rate_multiplier"`
 	OpenAIAdvancedSchedulerEnabled                         bool     `json:"openai_advanced_scheduler_enabled"`
 	OpenAIAdvancedSchedulerStickyWeightedEnabled           bool     `json:"openai_advanced_scheduler_sticky_weighted_enabled"`

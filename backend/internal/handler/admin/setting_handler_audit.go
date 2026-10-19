@@ -2,6 +2,7 @@ package admin
 
 import (
 	"log/slog"
+	"slices"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -547,6 +548,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.OpenAIGPT61SolLongContextBillingEnabled != after.OpenAIGPT61SolLongContextBillingEnabled {
 		changed = append(changed, "openai_gpt61sol_long_context_billing_enabled")
+	}
+	if !slices.Equal(before.OpenAIGPT61SolLongContextBillingAccountIDs, after.OpenAIGPT61SolLongContextBillingAccountIDs) {
+		changed = append(changed, "openai_gpt61sol_long_context_billing_account_ids")
 	}
 	if !equalNullableFloat(before.OpenAIOAuthSchedulingRateMultiplier, after.OpenAIOAuthSchedulingRateMultiplier) {
 		changed = append(changed, "openai_oauth_scheduling_rate_multiplier")

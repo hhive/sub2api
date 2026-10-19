@@ -154,14 +154,14 @@ type SettingService struct {
 	openAIQuotaAutoPauseSettingsSF    singleflight.Group
 	openAIAPIKeyHealthBreakerCache    atomic.Value // *cachedOpenAIAPIKeyHealthBreakerSettings
 
-	// gpt61SolLongContextBillingEnabledCache 非订阅 OpenAI 账号 GPT-6.1 Sol 长上下文计费开关
-	// 的进程内缓存（*cachedOpenAIGPT61SolLongContextBillingEnabled）。OpenAI 用量计费热路径
-	// 每请求读取，禁止在热路径上直接访问 DB。
-	gpt61SolLongContextBillingEnabledCache atomic.Value
-	gpt61SolLongContextBillingEnabledSF    singleflight.Group
-	// gpt61SolLongContextBillingEnabledGen 设置写入代次：写入路径递增，刷新路径据此
+	// gpt61SolLongContextExemptionCache 非订阅 OpenAI 账号 GPT-6.1 Sol 长上下文豁免设置
+	// （开关 + 账号名单）的进程内缓存（*cachedOpenAIGPT61SolLongContextExemption）。
+	// OpenAI 用量计费热路径每请求读取，禁止在热路径上直接访问 DB。
+	gpt61SolLongContextExemptionCache atomic.Value
+	gpt61SolLongContextExemptionSF    singleflight.Group
+	// gpt61SolLongContextExemptionGen 设置写入代次：写入路径递增，刷新路径据此
 	// 丢弃「读旧值、却在写入之后才落缓存」的在途刷新结果。
-	gpt61SolLongContextBillingEnabledGen atomic.Uint64
+	gpt61SolLongContextExemptionGen atomic.Uint64
 
 	channelMonitorRuntimeListenersMu sync.Mutex
 	channelMonitorRuntimeListeners   []func()

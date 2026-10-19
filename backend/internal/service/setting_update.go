@@ -569,6 +569,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingPaymentVisibleMethodWxpayEnabled] = strconv.FormatBool(settings.PaymentVisibleMethodWxpayEnabled)
 	updates[SettingKeyOpenAILowUpstreamRatePriorityEnabled] = strconv.FormatBool(settings.OpenAILowUpstreamRatePriorityEnabled)
 	updates[SettingKeyOpenAIGPT61SolLongContextBillingEnabled] = strconv.FormatBool(settings.OpenAIGPT61SolLongContextBillingEnabled)
+	updates[SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs] = MarshalOpenAIGPT61SolLongContextBillingAccountIDs(settings.OpenAIGPT61SolLongContextBillingAccountIDs)
 	updates[SettingKeyOpenAIOAuthSchedulingRateMultiplier] = ""
 	if rate := settings.OpenAIOAuthSchedulingRateMultiplier; rate != nil {
 		updates[SettingKeyOpenAIOAuthSchedulingRateMultiplier] = strconv.FormatFloat(*rate, 'f', -1, 64)
@@ -847,14 +848,26 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 			expiresAt: 0,
 		})
 	}
-	// GPT-6.1 Sol 长上下文计费开关直接写入新值：管理端保存后必须立即按新值计费，
-	// 不能等 60s TTL 过期（计费开关的陈旧值会直接算错钱）。先递增代次再落值：
+	// GPT-6.1 Sol 长上下文豁免设置（开关 + 账号名单）直接写入新值：管理端保存后必须立即
+	// 按新值计费，不能等 60s TTL 过期（豁免设置的陈旧值会直接算错钱）。先递增代次再落值：
 	// 在途刷新据此丢弃自己的结果，不会把旧值覆盖回新值。
-	generation := s.gpt61SolLongContextBillingEnabledGen.Add(1)
-	s.gpt61SolLongContextBillingEnabledSF.Forget(openAIGPT61SolLongContextBillingEnabledRefreshKey)
-	s.gpt61SolLongContextBillingEnabledCache.Store(&cachedOpenAIGPT61SolLongContextBillingEnabled{
+	generation := s.gpt61SolLongContextExemptionGen.Add(1)
+	s.gpt61SolLongContextExemptionSF.Forget(openAIGPT61SolLongContextExemptionRefreshKey)
+	exemption := openAIGPT61SolLongContextExemption{
 		enabled:    settings.OpenAIGPT61SolLongContextBillingEnabled,
-		expiresAt:  time.Now().Add(openAIGPT61SolLongContextBillingEnabledCacheTTL).UnixNano(),
+		accountIDs: openAIGPT61SolLongContextAccountIDSet(NormalizeOpenAIGPT61SolLongContextBillingAccountIDs(settings.OpenAIGPT61SolLongContextBillingAccountIDs)),
+	}
+	exemptionTTL := openAIGPT61SolLongContextExemptionCacheTTL
+	if settings.OpenAIGPT61SolLongContextBillingAccountIDsInvalid {
+		// 库中名单损坏且本次写入未修复它（管理端已把该键放进 omitted 保留原值）：
+		// 快照必须与计费侧同一失败方向 —— 按不豁免 fail closed，并改用短 TTL 尽快重试。
+		// 否则会把「开关打开 + 空名单」缓存成全员豁免，正是计划 §3 禁止的少收费方向。
+		exemption = openAIGPT61SolLongContextExemption{}
+		exemptionTTL = openAIGPT61SolLongContextExemptionErrorTTL
+	}
+	s.gpt61SolLongContextExemptionCache.Store(&cachedOpenAIGPT61SolLongContextExemption{
+		exemption:  exemption,
+		expiresAt:  time.Now().Add(exemptionTTL).UnixNano(),
 		generation: generation,
 	})
 	accountSchedulingThresholdsSF.Forget(SettingKeyAccountSchedulingThresholds)

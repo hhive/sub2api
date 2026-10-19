@@ -26,6 +26,8 @@ const {
   updateUpstreamBillingProbeSettings,
   getOllamaCloudUsageSettings,
   updateOllamaCloudUsageSettings,
+  listAccounts,
+  getAccountById,
   getGroups,
   listProxies,
   getProviders,
@@ -67,6 +69,8 @@ const {
     debounce_minutes: 1,
   }),
   updateOllamaCloudUsageSettings: vi.fn().mockImplementation(async (payload) => payload),
+  listAccounts: vi.fn(),
+  getAccountById: vi.fn(),
   getGroups: vi.fn(),
   listProxies: vi.fn(),
   getProviders: vi.fn(),
@@ -103,6 +107,8 @@ vi.mock("@/api", () => ({
       updateUpstreamBillingProbeSettings,
       getOllamaCloudUsageSettings,
       updateOllamaCloudUsageSettings,
+      list: listAccounts,
+      getById: getAccountById,
     },
     groups: {
       getAll: getGroups,
@@ -3161,6 +3167,20 @@ function resetSettingsViewMocks() {
     debounce_minutes: 1,
   });
   updateOllamaCloudUsageSettings.mockImplementation(async (payload) => payload);
+  listAccounts.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 20,
+    pages: 0,
+  });
+  getAccountById.mockImplementation(async (id: number) => ({
+    id,
+    name: `account-${id}`,
+    platform: "openai",
+    type: "apikey",
+    parent_account_id: null,
+  }));
   getGroups.mockResolvedValue([]);
   listProxies.mockResolvedValue({
     items: [],
@@ -3208,6 +3228,150 @@ describe("admin SettingsView GPT-6.1 Sol long-context billing switch", () => {
       '[data-testid="openai-gpt61sol-long-context-billing-toggle"]',
     );
     expect((toggle.element as HTMLInputElement).checked).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("默认关闭时选择器置灰、禁用并提示关闭时全不豁免", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    const toggle = wrapper.get(
+      '[data-testid="openai-gpt61sol-long-context-billing-toggle"]',
+    );
+    expect((toggle.element as HTMLInputElement).checked).toBe(false);
+
+    const selector = wrapper.get('[data-testid="openai-gpt61sol-account-selector"]');
+    expect(selector.classes()).toContain("opacity-50");
+    expect(selector.classes()).toContain("pointer-events-none");
+    expect(
+      (selector.get("input").element as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect(
+      wrapper
+        .find('[data-testid="openai-gpt61sol-account-selector-disabled-hint"]')
+        .exists(),
+    ).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("打开开关后选择器恢复可用且关闭态提示消失", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    const toggle = wrapper.get(
+      '[data-testid="openai-gpt61sol-long-context-billing-toggle"]',
+    );
+    await toggle.setValue(true);
+    await flushPromises();
+
+    const selector = wrapper.get('[data-testid="openai-gpt61sol-account-selector"]');
+    expect(selector.classes()).not.toContain("opacity-50");
+    expect(selector.classes()).not.toContain("pointer-events-none");
+    expect(
+      (selector.get("input").element as HTMLInputElement).disabled,
+    ).toBe(false);
+    expect(
+      wrapper
+        .find('[data-testid="openai-gpt61sol-account-selector-disabled-hint"]')
+        .exists(),
+    ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("保存载荷同时提交开关与名单字段（空名单 = 全部账号）", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    await wrapper
+      .get('[data-testid="openai-gpt61sol-long-context-billing-toggle"]')
+      .setValue(true);
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openai_gpt61sol_long_context_billing_enabled: true,
+        openai_gpt61sol_long_context_billing_account_ids: [],
+      }),
+    );
+    wrapper.unmount();
+  });
+
+  it("选中账号后保存载荷带上该账号 ID", async () => {
+    listAccounts.mockResolvedValue({
+      items: [
+        {
+          id: 11,
+          name: "exempt-account",
+          platform: "openai",
+          type: "apikey",
+          parent_account_id: null,
+        },
+      ],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    });
+
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    await wrapper
+      .get('[data-testid="openai-gpt61sol-long-context-billing-toggle"]')
+      .setValue(true);
+    await flushPromises();
+
+    const input = wrapper.get(
+      '[data-testid="openai-gpt61sol-account-selector"] input',
+    );
+    await input.trigger("focus");
+    await input.setValue("exempt");
+    await input.trigger("input");
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await flushPromises();
+
+    const option = wrapper
+      .findAll('[data-testid="openai-gpt61sol-account-selector"] button')
+      .find((button) => button.text().includes("exempt-account"));
+    expect(option).toBeDefined();
+    await option!.trigger("click");
+    await flushPromises();
+
+    expect(listAccounts).toHaveBeenCalledWith(1, 20, {
+      platform: "openai",
+      search: "exempt",
+    });
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openai_gpt61sol_long_context_billing_account_ids: [11],
+      }),
+    );
+    wrapper.unmount();
+  });
+
+  it("按后端返回值回填名单并展示账号 chip", async () => {
+    getSettings.mockResolvedValue({
+      ...baseSettingsResponse,
+      openai_gpt61sol_long_context_billing_enabled: true,
+      openai_gpt61sol_long_context_billing_account_ids: [3, 5],
+    });
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+
+    expect(getAccountById).toHaveBeenCalledWith(3);
+    expect(getAccountById).toHaveBeenCalledWith(5);
+    expect(wrapper.text()).toContain("account-3");
+    expect(wrapper.text()).toContain("account-5");
     wrapper.unmount();
   });
 });

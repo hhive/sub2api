@@ -238,7 +238,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	}
 	longContextBillingGate := openAILongContextBillingGate(billingAccount)
 	modelLongContextExempt := openAISubscriptionLongContextExempt(billingAccount, result) ||
-		openAIGPT61SolAPILongContextExempt(billingAccount, result, s.gpt61SolLongContextBillingEnabled(ctx))
+		openAIGPT61SolAPILongContextExempt(billingAccount, result, s.gpt61SolLongContextExemption(ctx))
 	cost, err = s.calculateOpenAIRecordUsageCost(
 		ctx,
 		result,
@@ -585,31 +585,40 @@ func openAIForwardSentModel(result *OpenAIForwardResult) string {
 	return model
 }
 
-// openAIGPT61SolAPILongContextExempt 按全局开关判断「非订阅 OpenAI 账号 + GPT-6.1 Sol」
-// 是否豁免官方价卡长上下文阶梯（SettingKeyOpenAIGPT61SolLongContextBillingEnabled）：
-//   - 开关开启：返回 false，照旧按官方阶梯收费。
-//   - 开关关闭（默认）：非订阅账号的 GPT-6.1 Sol 返回 true，不应用官方阶梯。
+// openAIGPT61SolAPILongContextExempt 按全局豁免设置判断「非订阅 OpenAI 账号 + GPT-6.1 Sol」
+// 是否豁免官方价卡长上下文阶梯（SettingKeyOpenAIGPT61SolLongContextBillingEnabled
+// + SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs）：
+//   - 开关关闭（默认）：返回 false，照旧按官方阶梯收费，名单忽略。
+//   - 开关打开且名单为空：非订阅账号的 GPT-6.1 Sol 返回 true，不应用官方阶梯。
+//   - 开关打开且名单非空：仅名单内账号返回 true，名单外照常收费。
 //
 // 该否决与订阅豁免同级，优先于分组 long_context_pricing_enabled 与账号
 // openai_long_context_billing_enabled（两者都无法把它加回来）；渠道自定义区间价不在豁免范围
 // （DisableModelLongContextPricing 只豁免模型价卡），其它模型也不受影响。
-func openAIGPT61SolAPILongContextExempt(account *Account, result *OpenAIForwardResult, billingEnabled bool) bool {
-	if billingEnabled || result == nil {
+func openAIGPT61SolAPILongContextExempt(account *Account, result *OpenAIForwardResult, exemption openAIGPT61SolLongContextExemption) bool {
+	if !exemption.enabled || result == nil {
 		return false
 	}
 	if account == nil || !account.IsOpenAI() || account.IsOpenAIOAuthLike() {
 		return false
 	}
-	return openai.IsGPT61SolModelSpelling(openAIForwardSentModel(result))
-}
-
-// gpt61SolLongContextBillingEnabled 读取 GPT-6.1 Sol 长上下文计费全局开关。
-// 缺 settingService（测试或误配可达）时按默认 false = 不应用官方阶梯，与设置默认值同向。
-func (s *OpenAIGatewayService) gpt61SolLongContextBillingEnabled(ctx context.Context) bool {
-	if s == nil || s.settingService == nil {
+	if !openai.IsGPT61SolModelSpelling(openAIForwardSentModel(result)) {
 		return false
 	}
-	return s.settingService.GetOpenAIGPT61SolLongContextBillingEnabled(ctx)
+	if len(exemption.accountIDs) == 0 {
+		return true // 名单为空 = 全部非订阅 OpenAI 账号豁免
+	}
+	_, ok := exemption.accountIDs[account.ID]
+	return ok
+}
+
+// gpt61SolLongContextExemption 读取 GPT-6.1 Sol 长上下文豁免设置快照。
+// 缺 settingService（测试或误配可达）时按默认（不豁免）处理，与设置默认值同向。
+func (s *OpenAIGatewayService) gpt61SolLongContextExemption(ctx context.Context) openAIGPT61SolLongContextExemption {
+	if s == nil || s.settingService == nil {
+		return openAIGPT61SolLongContextExemption{}
+	}
+	return s.settingService.GetOpenAIGPT61SolLongContextExemption(ctx)
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(

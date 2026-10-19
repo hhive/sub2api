@@ -269,6 +269,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAllowUngroupedKeyScheduling:                        "false",
 		SettingKeyOpenAILowUpstreamRatePriorityEnabled:               "false",
 		SettingKeyOpenAIGPT61SolLongContextBillingEnabled:            "false",
+		SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs:         "[]",
 		SettingKeyOpenAIOAuthSchedulingRateMultiplier:                "1",
 		SettingKeyEnableAnthropicCacheTTL1hInjection:                 "false",
 		SettingKeyRewriteMessageCacheControl:                         strconv.FormatBool(s.defaultRewriteMessageCacheControl()),
@@ -1016,8 +1017,19 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.PaymentVisibleMethodAlipayEnabled = settings[SettingPaymentVisibleMethodAlipayEnabled] == "true"
 	result.PaymentVisibleMethodWxpayEnabled = settings[SettingPaymentVisibleMethodWxpayEnabled] == "true"
 	result.OpenAILowUpstreamRatePriorityEnabled = settings[SettingKeyOpenAILowUpstreamRatePriorityEnabled] == "true"
-	// 默认 false（不应用长上下文阶梯）：键缺失或非 "true" 都按不应用处理，与默认值同向。
+	// 默认 false（不豁免，照常应用长上下文阶梯）：键缺失或非 "true" 都按不豁免处理，与默认值同向。
 	result.OpenAIGPT61SolLongContextBillingEnabled = settings[SettingKeyOpenAIGPT61SolLongContextBillingEnabled] == "true"
+	// 名单解析失败（非法 JSON / 非法 ID）回退为空名单供展示，并标记 invalid：计费侧由
+	// 缓存快照按「整体不豁免」处理（见 setting_openai_gpt61sol_long_context_exemption.go），
+	// 管理端保存路径据 invalid 拒绝把损坏值回写成空名单（空 = 全员豁免，少收费方向）。
+	if ids, err := ParseOpenAIGPT61SolLongContextBillingAccountIDs(settings[SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs]); err == nil {
+		result.OpenAIGPT61SolLongContextBillingAccountIDs = ids
+	} else {
+		result.OpenAIGPT61SolLongContextBillingAccountIDs = []int64{}
+		result.OpenAIGPT61SolLongContextBillingAccountIDsInvalid = true
+		slog.Warn("[Setting] parseSettings: openai_gpt61sol_long_context_billing_account_ids invalid",
+			"setting_key", SettingKeyOpenAIGPT61SolLongContextBillingAccountIDs, "error", err)
+	}
 	result.OpenAIOAuthSchedulingRateMultiplier = parseOpenAIOAuthSchedulingRateMultiplier(settings)
 	result.OpenAIAdvancedSchedulerEnabled = settings[openAIAdvancedSchedulerSettingKey] == "true"
 	result.OpenAIAdvancedSchedulerStickyWeightedEnabled = settings[SettingKeyOpenAIAdvancedSchedulerStickyWeightedEnabled] == "true"
