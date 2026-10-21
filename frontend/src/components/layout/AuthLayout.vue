@@ -275,6 +275,34 @@ onMounted(() => {
   background-color: rgba(255, 255, 255, 0.82);
 }
 
+/* 认证页统一强调色：卡片标题与主按钮跟随落地页的青紫口径 */
+.auth-card-shell :deep(h2) {
+  background-image: linear-gradient(100deg, #0891b2, #22d3ee 32%, #8b5cf6 88%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html:not(.dark) .auth-card-shell :deep(h2) {
+  background-image: linear-gradient(100deg, #0e7490, #0891b2 32%, #7c3aed 88%);
+}
+
+.auth-card-shell :deep(.btn.btn-primary) {
+  background-image: linear-gradient(112deg, #67e8f9, #22d3ee 42%, #8b5cf6);
+  border: 1px solid rgba(196, 181, 253, 0.4);
+  color: #04121f;
+  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.28), 0 8px 28px rgba(139, 92, 246, 0.28);
+}
+
+.auth-card-shell :deep(.btn.btn-primary:hover:not(:disabled)) {
+  background-image: linear-gradient(112deg, #8df2ff, #22d3ee 45%, #a78bfa);
+  box-shadow: 0 14px 38px rgba(34, 211, 238, 0.36), 0 10px 34px rgba(139, 92, 246, 0.34);
+}
+
+.auth-card-shell :deep(.btn.btn-primary svg) {
+  color: inherit;
+}
+
 html.dark .auth-card-shell > .card-glass {
   background-color: rgba(15, 23, 42, 0.8);
 }

@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="login-title text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
@@ -101,7 +101,7 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary auth-cta w-full"
+          class="btn btn-primary w-full"
         >
           <svg
             v-if="isLoading"
@@ -791,34 +791,13 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
-/* 标题与主按钮沿用落地页的青→紫极光口径；只做视觉层，不改表单语义 */
-.login-title {
-  background: linear-gradient(100deg, #0891b2, #22d3ee 32%, #8b5cf6 88%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* 卡片内强调链接：青紫口径，浅色卡片上用更深的紫保证对比度 */
+html:not(.dark) .auth-accent-link {
+  color: #7c3aed;
 }
 
-/* 浅色卡片上用更深的青紫，保证标题对比度 */
-html:not(.dark) .login-title {
-  background-image: linear-gradient(100deg, #0e7490, #0891b2 32%, #7c3aed 88%);
-}
-
-.btn.btn-primary.auth-cta {
-  background-image: linear-gradient(112deg, #67e8f9, #22d3ee 42%, #8b5cf6);
-  border: 1px solid rgba(196, 181, 253, 0.4);
-  color: #04121f;
-  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.28), 0 8px 28px rgba(139, 92, 246, 0.28);
-}
-
-/* 渐变两端都是亮色，深色文字才能稳定达到对比度 */
-.btn.btn-primary.auth-cta svg {
-  color: inherit;
-}
-
-.btn.btn-primary.auth-cta:hover:not(:disabled) {
-  background-image: linear-gradient(112deg, #8df2ff, #22d3ee 45%, #a78bfa);
-  box-shadow: 0 14px 38px rgba(34, 211, 238, 0.36), 0 10px 34px rgba(139, 92, 246, 0.34);
+html.dark .auth-accent-link {
+  color: #c4b5fd;
 }
 
 .auth-footer-copy {
