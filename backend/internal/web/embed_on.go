@@ -99,6 +99,12 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
+		// 品牌落地页需要允许同源 iframe 嵌入（home_content 内嵌），
+		// 因此该路径单独响应，并在该响应上覆盖全局的 X-Frame-Options / CSP。
+		if isLandingPagePath(path) && serveLandingPageFromFS(c, s.distFS) {
+			return
+		}
+
 		// For index.html or SPA routes, serve with injected settings
 		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
 			s.serveIndexHTML(c)
@@ -321,6 +327,10 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
+		if isLandingPagePath(path) && serveLandingPageFromFS(c, distFS) {
+			return
+		}
+
 		if file, err := distFS.Open(cleanPath); err == nil {
 			_ = file.Close()
 			// Try local override first
@@ -350,6 +360,62 @@ func tryServeOverrideFile(c *gin.Context, overrideDir, cleanPath string) bool {
 	c.File(filePath)
 	c.Abort()
 	return true
+}
+
+// landingIndexPath 是品牌落地页在 dist 中的入口文件。
+const landingIndexPath = "landing/index.html"
+
+// isLandingPagePath 只匹配落地页的两个入口 URL。
+// 其余路径（含 /landing/app.css 等静态资源）继续走既有静态文件分支。
+func isLandingPagePath(path string) bool {
+	return path == "/landing" || path == "/landing/"
+}
+
+// serveLandingPageFromFS 响应品牌落地页，并为该响应放开同源 iframe 嵌入。
+// dist 中缺少该文件时返回 false，由调用方继续走原有 SPA / 静态分支。
+func serveLandingPageFromFS(c *gin.Context, distFS fs.FS) bool {
+	if c == nil || distFS == nil {
+		return false
+	}
+
+	content, err := fs.ReadFile(distFS, landingIndexPath)
+	if err != nil {
+		return false
+	}
+
+	c.Header("Cache-Control", "no-cache")
+	// 全局中间件默认下发 DENY；落地页需要被同源 /home 以 iframe 嵌入。
+	c.Header("X-Frame-Options", "SAMEORIGIN")
+	if policy := c.Writer.Header().Get("Content-Security-Policy"); policy != "" {
+		c.Header("Content-Security-Policy", relaxFrameAncestorsToSelf(policy))
+	}
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	c.Abort()
+	return true
+}
+
+// relaxFrameAncestorsToSelf 只改写 frame-ancestors 指令，其它指令逐字保留。
+// 策略中没有该指令时原样返回，不新增指令。
+func relaxFrameAncestorsToSelf(policy string) string {
+	directives := strings.Split(policy, ";")
+	changed := false
+
+	for i, raw := range directives {
+		fields := strings.Fields(raw)
+		if len(fields) == 0 || fields[0] != "frame-ancestors" {
+			continue
+		}
+		// 保留原指令前的空白，拼接后其余部分逐字不变。
+		prefix := raw[:len(raw)-len(strings.TrimLeft(raw, " \t"))]
+		directives[i] = prefix + "frame-ancestors 'self'"
+		changed = true
+	}
+
+	if !changed {
+		return policy
+	}
+	return strings.Join(directives, ";")
 }
 
 func shouldBypassEmbeddedFrontend(path string) bool {

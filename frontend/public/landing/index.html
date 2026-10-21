@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#06090f">
+<title>小逆AI</title>
+<link rel="stylesheet" href="/landing/app.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <i class="blob blob-a"></i>
+  <i class="blob blob-b"></i>
+  <i class="grid"></i>
+  <i class="scan"></i>
+  <i class="spot"></i>
+</div>
+
+<header class="site-header">
+  <a class="brand" href="/dashboard" target="_top" aria-label="进入控制台">
+    <img class="brand-logo" data-site-logo src="/logo.svg" alt="" width="38" height="38">
+    <span class="brand-name" data-site-name>小逆AI</span>
+  </a>
+  <nav class="nav">
+    <a class="nav-link" data-doc-link href="#" target="_blank" rel="noopener noreferrer" hidden>文档</a>
+    <a class="nav-cta" data-auth-link href="/login" target="_top">登录</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow"><span class="pulse"></span>一站式模型接入</p>
+    <h1 class="headline">
+      <span class="line">一个入口</span>
+      <span class="line accent">直连主流大模型</span>
+    </h1>
+    <p class="subtitle" data-subtitle>你的 AI 故事，从这里开始</p>
+    <div class="actions">
+      <a class="cta primary" href="/dashboard" target="_top">开始使用<span class="cta-arrow">↗</span></a>
+      <a class="cta ghost" href="#models">查看模型<span class="cta-arrow">↓</span></a>
+    </div>
+    <p class="micro">ChatGPT · Claude · Gemini · Grok · 更多</p>
+  </section>
+
+  <section class="values reveal" aria-labelledby="values-title">
+    <div class="section-head">
+      <h2 id="values-title">为什么选择 <span data-site-name>小逆AI</span></h2>
+    </div>
+    <div class="value-grid">
+      <article class="value-card">
+        <span class="value-index">01</span>
+        <h3>主流模型一站可用</h3>
+        <p>ChatGPT / Claude / Gemini / Grok 等主流模型统一入口，按需切换。</p>
+      </article>
+      <article class="value-card">
+        <span class="value-index">02</span>
+        <h3>客户端一键接入</h3>
+        <p>支持 CCS 导入与 Codex 密钥配置，现有客户端配置直接复用。</p>
+      </article>
+      <article class="value-card">
+        <span class="value-index">03</span>
+        <h3>用量明细实时可查</h3>
+        <p>调用记录与用量在控制台逐条可查，额度变化随时掌握。</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="models" class="models reveal" aria-labelledby="models-title">
+    <div class="section-head">
+      <h2 id="models-title">一站可用，多模型自由切换</h2>
+      <p class="section-note">完整可用模型请在控制台查看</p>
+    </div>
+    <ul class="model-grid">
+      <li class="model-chip" style="--i:0"><span class="chip-dot"></span>ChatGPT</li>
+      <li class="model-chip" style="--i:1"><span class="chip-dot"></span>Claude</li>
+      <li class="model-chip" style="--i:2"><span class="chip-dot"></span>Gemini</li>
+      <li class="model-chip" style="--i:3"><span class="chip-dot"></span>Grok</li>
+      <li class="model-chip" style="--i:4"><span class="chip-dot"></span>更多主流模型</li>
+    </ul>
+    <a class="inline-link" href="/dashboard" target="_top">进入控制台查看全部模型<span>↗</span></a>
+  </section>
+
+  <section class="contact reveal" aria-labelledby="contact-title">
+    <div class="contact-card">
+      <h2 id="contact-title">需要帮助？</h2>
+      <p>文档覆盖接入步骤与常见问题，客服群随时答疑。</p>
+      <div class="contact-actions">
+        <a class="cta ghost small" data-doc-link href="#" target="_blank" rel="noopener noreferrer" hidden>查看文档</a>
+        <button class="cta ghost small" type="button" data-contact hidden>复制客服群号</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>© <span data-year>2026</span> <span data-site-name>小逆AI</span></span>
+</footer>
+
+<div class="toast" role="status" aria-live="polite"></div>
+<script src="/landing/app.js" defer></script>
+</body>
+</html>
