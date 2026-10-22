@@ -108,7 +108,7 @@
   }
 
   /**
-   * 与 Vue 侧保持同一口径：中文万/亿、英文 K/M/B，取整后追加 +。
+   * 中文万/亿紧凑表示，正数取整后追加 +。
    */
   function formatCompact(value, fractionDigits) {
     var amount = Number(value);
@@ -130,12 +130,18 @@
 
   function applyStats(data) {
     if (!data || typeof data !== 'object') return false;
+
+    var requests = Number(data.total_requests);
+    var tokens = Number(data.total_tokens);
+    if (!isFinite(requests) || !isFinite(tokens) || requests < 0 || tokens < 0) return false;
+    if (requests <= 0 && tokens <= 0) return false;
+
     var section = document.querySelector('[data-stats]');
     if (!section) return false;
 
     setStatsText('days', data.running_days == null ? '--' : String(data.running_days));
-    setStatsText('requests', formatCompact(data.total_requests, 0));
-    setStatsText('tokens', formatCompact(data.total_tokens, 0));
+    setStatsText('requests', formatCompact(requests, 0));
+    setStatsText('tokens', formatCompact(tokens, 0));
 
     var availability = Number(data.availability_30d);
     if (data.availability_30d == null || !isFinite(availability)) {

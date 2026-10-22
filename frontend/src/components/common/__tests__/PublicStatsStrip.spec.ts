@@ -55,6 +55,9 @@ describe('PublicStatsStrip', () => {
     expect(wrapper.text()).toContain('94.0%')
     expect(wrapper.findAll('.public-stats-item')).toHaveLength(4)
     expect(wrapper.find('[data-testid="public-stats"]').attributes('aria-busy')).toBe('false')
+    expect(wrapper.find('[aria-label="运行天数 168 天"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="累计调用量 285万+"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="近 30 天在线率 94.0%"]').exists()).toBe(true)
   })
 
   it('renders en compact values', async () => {
@@ -88,6 +91,18 @@ describe('PublicStatsStrip', () => {
 
   it('hides the whole strip when the payload is invalid', async () => {
     getPublicStatsMock.mockResolvedValue({ running_days: 168 })
+    const wrapper = mountStrip()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="public-stats"]').exists()).toBe(false)
+  })
+
+  it('hides the whole strip when both totals are zero', async () => {
+    getPublicStatsMock.mockResolvedValue({
+      ...statsFixture,
+      total_requests: 0,
+      total_tokens: 0
+    })
     const wrapper = mountStrip()
     await flushPromises()
 

@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { routeLocationKey } from 'vue-router'
 import AuthLayout from '@/components/layout/AuthLayout.vue'
 
 const { getPublicStatsMock } = vi.hoisted(() => ({
@@ -39,14 +40,15 @@ function stubMatchMedia() {
   })) as unknown as typeof window.matchMedia
 }
 
-function setPath(path: string) {
-  window.history.pushState({}, '', path)
-}
-
-function mountLayout() {
+function mountLayout(routeName: string) {
   return mount(AuthLayout, {
     slots: {
       default: '<form data-testid="auth-form">form</form>'
+    },
+    global: {
+      provide: {
+        [routeLocationKey]: { name: routeName }
+      }
     }
   })
 }
@@ -68,12 +70,10 @@ describe('AuthLayout public stats routing', () => {
 
   afterEach(() => {
     window.matchMedia = realMatchMedia
-    setPath('/')
   })
 
   it('renders the strip on the login page', async () => {
-    setPath('/login')
-    const wrapper = mountLayout()
+    const wrapper = mountLayout('Login')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="public-stats"]').exists()).toBe(true)
@@ -81,16 +81,14 @@ describe('AuthLayout public stats routing', () => {
   })
 
   it('renders the strip on the register page', async () => {
-    setPath('/register')
-    const wrapper = mountLayout()
+    const wrapper = mountLayout('Register')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="public-stats"]').exists()).toBe(true)
   })
 
   it('does not render the strip on other auth pages', async () => {
-    setPath('/forgot-password')
-    const wrapper = mountLayout()
+    const wrapper = mountLayout('ForgotPassword')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="public-stats"]').exists()).toBe(false)

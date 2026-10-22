@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ func TestGetPublicUsageTotals(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	repo := &usageLogRepository{sql: db}
-	mock.ExpectQuery("FROM usage_dashboard_daily").
+	mock.ExpectQuery("(?s)SUM\\(input_tokens \\+ output_tokens \\+ cache_creation_tokens \\+ cache_read_tokens\\)").
 		WillReturnRows(sqlmock.NewRows([]string{"total_requests", "total_tokens"}).
 			AddRow(int64(2853851), int64(318729031558)))
 
@@ -43,6 +44,27 @@ func TestGetPublicUsageTotalsErrors(t *testing.T) {
 	require.ErrorContains(t, err, "nil usage log repository")
 }
 
+func TestGetPublicStatsEmptyResults(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	usageRepo := &usageLogRepository{sql: db}
+	mock.ExpectQuery("FROM usage_dashboard_daily").
+		WillReturnRows(sqlmock.NewRows([]string{"total_requests", "total_tokens"}))
+	_, _, err = usageRepo.GetPublicUsageTotals(context.Background())
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	start := time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+	opsRepo := &opsRepository{db: db}
+	mock.ExpectQuery("FROM ops_metrics_daily").
+		WithArgs(start, end).
+		WillReturnRows(sqlmock.NewRows([]string{"success_count", "sla_total"}))
+	_, _, err = opsRepo.GetPublicAvailability(context.Background(), start, end)
+	require.ErrorIs(t, err, sql.ErrNoRows)
+}
+
 func TestGetPublicAvailability(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -52,7 +74,7 @@ func TestGetPublicAvailability(t *testing.T) {
 	end := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
 
 	repo := &opsRepository{db: db}
-	mock.ExpectQuery("FROM ops_metrics_daily").
+	mock.ExpectQuery("(?s)platform IS NULL.*group_id IS NULL.*bucket_date >= \\$1::date.*bucket_date < \\$2::date").
 		WithArgs(start, end).
 		WillReturnRows(sqlmock.NewRows([]string{"success_count", "sla_total"}).
 			AddRow(int64(408394), int64(434281)))

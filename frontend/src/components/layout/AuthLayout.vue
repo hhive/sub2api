@@ -55,19 +55,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { routeLocationKey } from 'vue-router'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import PublicStatsStrip from '@/components/common/PublicStatsStrip.vue'
 
 const appStore = useAppStore()
 
-// 登录/注册页展示公开指标；判断依据为当前路径。
-const showAuthStats = (() => {
-  if (typeof window === 'undefined') return false
-  const path = window.location.pathname.replace(/\/+$/, '')
-  return path === '/login' || path === '/register'
-})()
+// 登录/注册页展示公开指标；判断依据为当前路由名。
+const route = inject(routeLocationKey, null) as { name?: unknown } | null
+const showAuthStats = route?.name === 'Login' || route?.name === 'Register'
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))

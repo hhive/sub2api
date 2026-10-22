@@ -101,6 +101,25 @@ func TestPublicStatsHandlerRunningDaysBoundary(t *testing.T) {
 	require.Equal(t, 169, envelope.Data.RunningDays)
 }
 
+func TestPublicStatsRunningDaysBoundaries(t *testing.T) {
+	loc := time.FixedZone("CST", 8*3600)
+	cases := []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		{"before launch", time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC), 0},
+		{"launch day", time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC), 0},
+		{"next day", time.Date(2026, 5, 8, 12, 0, 0, 0, time.UTC), 1},
+		{"2026-10-22", time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC), 168},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, publicStatsRunningDays(tc.now, loc))
+		})
+	}
+}
+
 func TestPublicStatsHandlerCachesWithinTTL(t *testing.T) {
 	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 	h, usage, availability := newPublicStatsTestHandler(&now)

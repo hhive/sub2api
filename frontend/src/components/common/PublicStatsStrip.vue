@@ -6,7 +6,11 @@
     :aria-busy="loading"
   >
     <dl class="public-stats-grid">
-      <div class="public-stats-item">
+      <div
+        class="public-stats-item"
+        role="group"
+        :aria-label="`${copy.runningDays} ${runningDaysText} ${copy.dayUnit}`"
+      >
         <dt>{{ copy.runningDays }}</dt>
         <dd>
           <span class="public-stats-value">{{ runningDaysText }}</span>
@@ -14,21 +18,34 @@
         </dd>
       </div>
 
-      <div class="public-stats-item">
+      <div
+        class="public-stats-item"
+        role="group"
+        :aria-label="`${copy.totalRequests} ${requestsText}`"
+      >
         <dt>{{ copy.totalRequests }}</dt>
         <dd>
           <span class="public-stats-value">{{ requestsText }}</span>
         </dd>
       </div>
 
-      <div class="public-stats-item">
+      <div
+        class="public-stats-item"
+        role="group"
+        :aria-label="`${copy.totalTokens} ${tokensText}`"
+      >
         <dt>{{ copy.totalTokens }}</dt>
         <dd>
           <span class="public-stats-value">{{ tokensText }}</span>
         </dd>
       </div>
 
-      <div v-if="availabilityText !== null" class="public-stats-item">
+      <div
+        v-if="availabilityText !== null"
+        class="public-stats-item"
+        role="group"
+        :aria-label="`${copy.availability} ${availabilityText}`"
+      >
         <dt>{{ copy.availability }}</dt>
         <dd>
           <span class="public-stats-value">{{ availabilityText }}</span>
@@ -92,7 +109,7 @@ const availabilityText = computed(() => {
 })
 
 /**
- * 中文使用万/亿，英文使用 K/M/B；取整后追加 +，与公开口径一致。
+ * 正数使用万/亿（中文）或 K/M/B（英文）的紧凑表示，取整后追加 +。
  */
 function formatCompact(value: number, numberLocale: string, fractionDigits: number): string {
   if (!Number.isFinite(value) || value <= 0) return '0'
@@ -111,6 +128,10 @@ onMounted(async () => {
     if (cancelled) return
     if (!data || typeof data.total_requests !== 'number' || typeof data.total_tokens !== 'number') {
       throw new Error('invalid public stats payload')
+    }
+    if (data.total_requests <= 0 && data.total_tokens <= 0) {
+      failed.value = true
+      return
     }
     stats.value = data
   } catch {

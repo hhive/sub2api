@@ -42,8 +42,8 @@ SELECT
 FROM ops_metrics_daily
 WHERE platform IS NULL
   AND group_id IS NULL
-  AND bucket_date >= $1
-  AND bucket_date < $2`
+  AND bucket_date >= $1::date
+  AND bucket_date < $2::date`
 
 	var success, total int64
 	if err := r.db.QueryRowContext(ctx, query, start, end).Scan(&success, &total); err != nil {
