@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler"
@@ -244,6 +245,13 @@ func RegisterAuthRoutes(
 	settings.Use(panelRateLimiter.PublicIP())
 	{
 		settings.GET("/public", h.Setting.GetPublicSettings)
+		// 公开可靠性指标复用 admin dashboard/ops 的只读聚合能力；
+		// 最小化测试路由可能不构造 Admin handlers，此时跳过注册而不是 panic。
+		if h.Admin != nil && h.Admin.Dashboard != nil && h.Admin.Ops != nil {
+			settings.GET("/public-stats", handler.NewPublicStatsHandler(h.Admin.Dashboard, h.Admin.Ops).Get)
+		} else {
+			log.Printf("[WARN] public stats route not registered: admin handlers unavailable")
+		}
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 

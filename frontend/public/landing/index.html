@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#050814">
 <title>小逆AI</title>
 <!-- 静态资源无指纹文件名，改动样式/脚本时必须同步递增版本参数，避免 CDN 命中旧缓存 -->
-<link rel="stylesheet" href="/landing/app.css?v=20261021a">
+<link rel="stylesheet" href="/landing/app.css?v=20261022a">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -42,6 +42,31 @@
       <a class="cta ghost" href="#models">查看模型<span class="cta-arrow">↓</span></a>
     </div>
     <p class="micro">ChatGPT · Claude · Gemini · Grok · 更多</p>
+  </section>
+
+  <section class="stats reveal" aria-labelledby="stats-title" data-stats hidden>
+    <div class="section-head">
+      <h2 id="stats-title">稳定运行，数据说话</h2>
+      <p class="section-note">公开指标每 60 秒更新</p>
+    </div>
+    <dl class="stats-grid">
+      <div class="stat-item">
+        <dt>运行天数</dt>
+        <dd><span class="stat-value" data-stat="days">--</span><span class="stat-unit">天</span></dd>
+      </div>
+      <div class="stat-item">
+        <dt>累计调用量</dt>
+        <dd><span class="stat-value" data-stat="requests">--</span></dd>
+      </div>
+      <div class="stat-item">
+        <dt>累计 Token</dt>
+        <dd><span class="stat-value" data-stat="tokens">--</span></dd>
+      </div>
+      <div class="stat-item" data-stat-item="availability">
+        <dt>近 30 天在线率</dt>
+        <dd><span class="stat-value" data-stat="availability">--</span></dd>
+      </div>
+    </dl>
   </section>
 
   <section class="values reveal" aria-labelledby="values-title">
@@ -99,6 +124,6 @@
 </footer>
 
 <div class="toast" role="status" aria-live="polite"></div>
-<script src="/landing/app.js?v=20261021a" defer></script>
+<script src="/landing/app.js?v=20261022a" defer></script>
 </body>
 </html>

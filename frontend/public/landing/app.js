@@ -2,6 +2,7 @@
   'use strict';
 
   var SETTINGS_URL = '/api/v1/settings/public';
+  var STATS_URL = '/api/v1/settings/public-stats';
   var TIMEOUT_MS = 3000;
 
   var root = document.documentElement;
@@ -103,6 +104,73 @@
       .catch(function () {
         window.clearTimeout(timer);
         // 公开设置不可用时保持静态兜底：站名、副标题与 logo 使用 HTML 默认值。
+      });
+  }
+
+  /**
+   * 与 Vue 侧保持同一口径：中文万/亿、英文 K/M/B，取整后追加 +。
+   */
+  function formatCompact(value, fractionDigits) {
+    var amount = Number(value);
+    if (!isFinite(amount) || amount <= 0) return '0';
+    try {
+      return new Intl.NumberFormat('zh-CN', {
+        notation: 'compact',
+        maximumFractionDigits: fractionDigits
+      }).format(amount) + '+';
+    } catch (err) {
+      return String(Math.floor(amount)) + '+';
+    }
+  }
+
+  function setStatsText(name, text) {
+    var node = document.querySelector('[data-stat="' + name + '"]');
+    if (node) node.textContent = text;
+  }
+
+  function applyStats(data) {
+    if (!data || typeof data !== 'object') return false;
+    var section = document.querySelector('[data-stats]');
+    if (!section) return false;
+
+    setStatsText('days', data.running_days == null ? '--' : String(data.running_days));
+    setStatsText('requests', formatCompact(data.total_requests, 0));
+    setStatsText('tokens', formatCompact(data.total_tokens, 0));
+
+    var availability = Number(data.availability_30d);
+    if (data.availability_30d == null || !isFinite(availability)) {
+      var item = document.querySelector('[data-stat-item="availability"]');
+      if (item && item.parentNode) item.parentNode.removeChild(item);
+    } else {
+      setStatsText('availability', (availability * 100).toFixed(1) + '%');
+    }
+
+    section.hidden = false;
+    return true;
+  }
+
+  function loadStats() {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = window.setTimeout(function () {
+      if (controller) controller.abort();
+    }, TIMEOUT_MS);
+
+    return fetch(STATS_URL, {
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: controller ? controller.signal : undefined
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error('stats status ' + response.status);
+        return response.json();
+      })
+      .then(function (body) {
+        window.clearTimeout(timer);
+        applyStats(body && body.data ? body.data : null);
+      })
+      .catch(function () {
+        window.clearTimeout(timer);
+        // 指标接口不可用时保持区块隐藏，不展示 0 或占位假数据。
       });
   }
 
@@ -214,4 +282,5 @@
   watchReveal();
   watchPointer();
   loadSettings();
+  loadStats();
 })();

@@ -38,6 +38,9 @@
         </div>
       </div>
 
+      <!-- 公开可靠性指标：仅登录/注册页展示，数据失败时组件自行隐藏 -->
+      <PublicStatsStrip v-if="showAuthStats" />
+
       <!-- Footer Links -->
       <div class="auth-footer-links mt-6 text-center text-sm">
         <slot name="footer" />
@@ -55,8 +58,17 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
+import PublicStatsStrip from '@/components/common/PublicStatsStrip.vue'
 
 const appStore = useAppStore()
+
+// 只在登录/注册页展示公开指标，避免找回密码等认证页也出现。
+// 用路径判断而非路由注入：AuthLayout 在测试与嵌入场景下可能没有 Router 上下文。
+const showAuthStats = (() => {
+  if (typeof window === 'undefined') return false
+  const path = window.location.pathname.replace(/\/+$/, '')
+  return path === '/login' || path === '/register'
+})()
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
