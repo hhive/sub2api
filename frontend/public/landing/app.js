@@ -170,7 +170,7 @@
       })
       .catch(function () {
         window.clearTimeout(timer);
-        // 指标接口不可用时保持区块隐藏，不展示 0 或占位假数据。
+        // 指标接口不可用时保持区块隐藏。
       });
   }
 

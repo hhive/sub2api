@@ -8,9 +8,7 @@ import (
 )
 
 // ErrPublicStatsUnsupported 表示当前仓储实现没有提供公开统计所需的查询能力。
-//
-// 公开统计通过可选接口而非扩展既有仓储接口实现，目的是避免改动被多个路径
-// 共用的接口定义；断言失败时显式报错，由上层返回 500 并让前端隐藏看板。
+// 该错误向上返回后由 HTTP 层转换为 500。
 var ErrPublicStatsUnsupported = errors.New("public stats query is not supported by the configured repository")
 
 type publicUsageTotalsRepository interface {

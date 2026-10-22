@@ -8,8 +8,7 @@ import (
 
 // GetPublicUsageTotals 返回全量成功调用数与 Token 总量。
 //
-// 数据源是 dashboard 的按天预聚合表，行数上限由保留策略决定（730 天），
-// 不受 usage_logs 90 天原始日志清理影响，因此适合作为公开累计口径。
+// 数据源是 dashboard 的按天预聚合表，保留窗口 730 天。
 func (r *usageLogRepository) GetPublicUsageTotals(ctx context.Context) (int64, int64, error) {
 	if r == nil || r.sql == nil {
 		return 0, 0, fmt.Errorf("nil usage log repository")
@@ -30,8 +29,7 @@ FROM usage_dashboard_daily`
 
 // GetPublicAvailability 返回 [start, end) 内全局请求的成功数与 SLA 分母。
 //
-// 只取 (platform, group_id) 均为 NULL 的整站汇总行；窗口按 caller 传入的
-// 显式日期计算，避免依赖数据库 current_date 的时区行为。
+// 只取 (platform, group_id) 均为 NULL 的整站汇总行；窗口由调用方传入的日期决定。
 func (r *opsRepository) GetPublicAvailability(ctx context.Context, start, end time.Time) (int64, int64, error) {
 	if r == nil || r.db == nil {
 		return 0, 0, fmt.Errorf("nil ops repository")

@@ -120,7 +120,7 @@ onMounted(async () => {
   }
 })
 
-// 组件卸载后不再写入状态，避免测试或路由切换时产生无意义更新。
+// 组件卸载后忽略未完成的请求结果。
 onBeforeUnmount(() => {
   cancelled = true
 })

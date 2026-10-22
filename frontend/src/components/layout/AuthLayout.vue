@@ -62,8 +62,7 @@ import PublicStatsStrip from '@/components/common/PublicStatsStrip.vue'
 
 const appStore = useAppStore()
 
-// 只在登录/注册页展示公开指标，避免找回密码等认证页也出现。
-// 用路径判断而非路由注入：AuthLayout 在测试与嵌入场景下可能没有 Router 上下文。
+// 登录/注册页展示公开指标；判断依据为当前路径。
 const showAuthStats = (() => {
   if (typeof window === 'undefined') return false
   const path = window.location.pathname.replace(/\/+$/, '')

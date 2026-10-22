@@ -19,8 +19,7 @@ const (
 	publicStatsQueryTTL   = 2 * time.Second
 )
 
-// 运行天数起点：站点首个注册用户出现在北京时间 2026-05-07。
-// 该日期为业务口径常量，不从日志反推（usage_logs 会被 90 天保留策略清理）。
+// 运行天数起点：北京时间 2026-05-07，业务口径常量。
 const publicStatsRunningSince = "2026-05-07"
 
 var publicStatsLaunchDate = time.Date(2026, time.May, 7, 0, 0, 0, 0, time.UTC)
@@ -78,7 +77,7 @@ func (h *PublicStatsHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// 聚合结果无用户维度，可安全公开缓存，降低重复请求的 DB 压力。
+	// 响应为全局聚合，无用户维度。
 	c.Header("Cache-Control", "public, max-age=60")
 	response.Success(c, payload)
 }
@@ -135,7 +134,7 @@ func (h *PublicStatsHandler) build(ctx context.Context) (*PublicStatsPayload, er
 	return &cached, nil
 }
 
-// publicStatsRunningDays 按站点时区自然日计算运行天数，避免 DST 与时刻差影响。
+// publicStatsRunningDays 按站点时区自然日计算运行天数。
 func publicStatsRunningDays(now time.Time, loc *time.Location) int {
 	if loc == nil {
 		loc = time.Local
