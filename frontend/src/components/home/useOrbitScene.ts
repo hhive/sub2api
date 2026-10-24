@@ -3,6 +3,8 @@ import { getModelIcon } from '@/constants/modelIconPaths'
 /**
  * 着陆页/认证页共用的轨道地球场景。
  * three 在 start() 内动态加载，避免进入首屏主包。
+ *
+ * 结构参照目标站：菲涅尔球壳 + 陆地加权点阵 + 极淡经纬线 + 两条轨道与卫星。
  */
 
 export type OrbitSceneMode = 'hero' | 'auth'
@@ -19,80 +21,56 @@ export interface OrbitSceneHandle {
   dispose: () => void
 }
 
-interface ChipSpec {
+interface SatelliteSpec {
   model: string
   label: string
-  ring: 0 | 1 | 2
-  angle: number
+  track: 0 | 1
+  phase: number
   scale: number
 }
 
-interface RingSpec {
-  rx: number
-  ry: number
-  tiltX: number
-  tiltZ: number
+interface TrackSpec {
+  angle: number
+  radius: number
   alpha: number
 }
 
 const BALL_RADIUS = 1.284
 const CAM_FOV = 42
-const CYCLE_SECONDS = 42
+const CAM_Z_BY_MODE: Record<OrbitSceneMode, number> = { hero: 4.75, auth: 5.4 }
 
-/* 相机距离决定球体在屏幕上的占比：hero 约 64% 视口高，auth 约 54% */
-const CAM_Z_BY_MODE: Record<OrbitSceneMode, number> = { hero: 5.0, auth: 5.6 }
-const STAR_COUNT_BY_MODE: Record<OrbitSceneMode, number> = { hero: 6000, auth: 2600 }
+const COOL = '#93aec7'
+const SILVER = '#e9f1f8'
+const WARM = '#cbb8a6'
 
-const INK = '#eef2f4'
-
-const CHIPS: ChipSpec[] = [
-  { model: 'gemini', label: 'GM-3.6 Flash', ring: 1, angle: -1.92, scale: 1 },
-  { model: 'zhipu', label: 'GLM-5.3', ring: 0, angle: -2.3, scale: 0.82 },
-  { model: 'qwen', label: 'Qwen3-Max', ring: 2, angle: -2.66, scale: 0.76 },
-  { model: 'claude', label: 'CL-Fable 5.1', ring: 1, angle: -2.94, scale: 1.08 },
-  { model: 'deepseek', label: 'DeepSeek V4', ring: 0, angle: 2.9, scale: 0.9 },
-  { model: 'openai', label: 'GPT-5.6', ring: 1, angle: 2.4, scale: 1.12 },
-  { model: 'mistral', label: 'Mistral L', ring: 2, angle: 2.06, scale: 0.72 },
-  { model: 'minimax', label: 'MiniMax M2', ring: 0, angle: 1.74, scale: 0.84 },
-  { model: 'doubao', label: 'Doubao Pro', ring: 1, angle: 1.4, scale: 0.88 },
-  { model: 'moonshot', label: 'Kimi K3', ring: 2, angle: 1.04, scale: 0.74 },
-  { model: 'xai', label: 'Grok 4', ring: 0, angle: 0.72, scale: 0.84 },
-  { model: 'meta', label: 'Llama 5', ring: 1, angle: 0.36, scale: 0.7 },
-  { model: 'qwen', label: 'Qwen3-VL', ring: 2, angle: 0.14, scale: 0.6 },
-  { model: 'gemini', label: 'GM-3 Pro Image', ring: 0, angle: -0.3, scale: 0.64 },
-  { model: 'yi', label: 'Yi-Large', ring: 1, angle: -0.7, scale: 0.6 },
-  { model: 'cohere', label: 'Command R', ring: 2, angle: -1.1, scale: 0.55 },
-  { model: 'openrouter', label: 'OpenRouter', ring: 0, angle: -1.46, scale: 0.52 },
-  { model: 'ollama', label: 'Ollama', ring: 1, angle: -2.58, scale: 0.5 },
-  { model: 'jina', label: 'Jina', ring: 2, angle: 2.58, scale: 0.46 },
-  { model: 'suno', label: 'Suno', ring: 0, angle: 1.08, scale: 0.46 },
-  { model: 'wenxin', label: 'ERNIE 5', ring: 2, angle: -0.95, scale: 0.62 },
-  { model: 'spark', label: 'Spark 5', ring: 0, angle: -1.72, scale: 0.58 },
-  { model: 'hunyuan', label: 'Hunyuan X', ring: 1, angle: 2.74, scale: 0.68 },
-  { model: 'midjourney', label: 'MJ v8', ring: 2, angle: 1.86, scale: 0.64 },
-  { model: 'perplexity', label: 'PPLX', ring: 0, angle: 0.3, scale: 0.58 },
-  { model: 'yi', label: 'Yi-Vision', ring: 2, angle: -1.9, scale: 0.56 }
+const TRACKS: TrackSpec[] = [
+  { angle: -0.27, radius: 1.52, alpha: 0.5 },
+  { angle: 0.54, radius: 1.68, alpha: 0.34 }
 ]
 
-/* 只有少数厂商标是纯线条，其余保留品牌色 */
+/* 12 颗卫星，沿两条轨道分布 */
+const SATELLITES: SatelliteSpec[] = [
+  { model: 'gemini', label: 'GM-3.6 Flash', track: 0, phase: 0.02, scale: 1.0 },
+  { model: 'openai', label: 'GPT-5.6', track: 0, phase: 0.2, scale: 1.1 },
+  { model: 'claude', label: 'CL-Fable 5.1', track: 0, phase: 0.38, scale: 1.02 },
+  { model: 'deepseek', label: 'DeepSeek V4', track: 0, phase: 0.56, scale: 0.92 },
+  { model: 'qwen', label: 'Qwen3-Max', track: 0, phase: 0.74, scale: 0.88 },
+  { model: 'zhipu', label: 'GLM-5.3', track: 0, phase: 0.9, scale: 0.84 },
+  { model: 'minimax', label: 'MiniMax M2', track: 1, phase: 0.08, scale: 0.9 },
+  { model: 'doubao', label: 'Doubao Pro', track: 1, phase: 0.24, scale: 0.86 },
+  { model: 'moonshot', label: 'Kimi K3', track: 1, phase: 0.42, scale: 0.82 },
+  { model: 'xai', label: 'Grok 4', track: 1, phase: 0.6, scale: 0.88 },
+  { model: 'mistral', label: 'Mistral L', track: 1, phase: 0.76, scale: 0.8 },
+  { model: 'meta', label: 'Llama 5', track: 1, phase: 0.92, scale: 0.78 }
+]
+
 const MONO_LOGOS = new Set(['openai', 'moonshot', 'xai', 'ollama', 'jina', 'suno'])
-
-const RINGS: RingSpec[] = [
-  { rx: BALL_RADIUS * 1.16, ry: BALL_RADIUS * 0.34, tiltX: 0.72, tiltZ: -0.18, alpha: 0.42 },
-  { rx: BALL_RADIUS * 1.1, ry: BALL_RADIUS * 0.92, tiltX: -0.18, tiltZ: 0.34, alpha: 0.3 },
-  { rx: BALL_RADIUS * 1.24, ry: BALL_RADIUS * 0.62, tiltX: 0.22, tiltZ: -0.85, alpha: 0.24 }
-]
-
-/* 图标轨道半径大于可见轨道，让图标散布在球体之外 */
-const CHIP_RINGS: RingSpec[] = [
-  { rx: BALL_RADIUS * 1.46, ry: BALL_RADIUS * 0.8, tiltX: 0.42, tiltZ: -0.16, alpha: 0 },
-  { rx: BALL_RADIUS * 1.6, ry: BALL_RADIUS * 0.98, tiltX: -0.32, tiltZ: 0.22, alpha: 0 },
-  { rx: BALL_RADIUS * 1.7, ry: BALL_RADIUS * 0.66, tiltX: 0.08, tiltZ: -0.4, alpha: 0 }
-]
 
 const SPRITE_W = 176
 const SPRITE_H = 224
 const SPRITE_TILE = 132
+
+const LAND_MASK_URL = '/globe/land-mask.png'
 
 function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   const cv = document.createElement('canvas')
@@ -107,7 +85,6 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   const icon = getModelIcon(model)
   const brand = icon?.color || '#7c8cff'
 
-  // 外发光：让图标从深色背景里浮起来
   const glow = ctx.createRadialGradient(
     SPRITE_W / 2, pad + tile / 2, tile * 0.32,
     SPRITE_W / 2, pad + tile / 2, tile * 0.86
@@ -117,7 +94,6 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, SPRITE_W, SPRITE_H)
 
-  // 底板：品牌色渐变玻璃片
   const base = ctx.createLinearGradient(pad, pad, pad + tile, pad + tile)
   base.addColorStop(0, `${brand}59`)
   base.addColorStop(0.55, 'rgba(14,17,24,0.94)')
@@ -131,7 +107,6 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   ctx.strokeStyle = `${brand}aa`
   ctx.stroke()
 
-  // 顶部高光
   const sheen = ctx.createLinearGradient(pad, pad, pad, pad + tile * 0.66)
   sheen.addColorStop(0, 'rgba(255,255,255,0.22)')
   sheen.addColorStop(0.6, 'rgba(255,255,255,0.04)')
@@ -157,7 +132,6 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
       }
     }
 
-    // 图标本体用亮色填充，底色已由品牌渐变承担
     ctx.fillStyle = MONO_LOGOS.has(model) ? '#ffffff' : brand
     for (const path of paths) ctx.fill(path)
 
@@ -178,6 +152,36 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   return cv
 }
 
+/** 读取陆地掩码，供点阵按陆海加权 */
+interface LandMask {
+  data: Uint8ClampedArray
+  width: number
+  height: number
+}
+
+async function loadLandMask(): Promise<LandMask | null> {
+  if (typeof Image === 'undefined') return null
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const cv = document.createElement('canvas')
+      cv.width = img.width
+      cv.height = img.height
+      const ctx = cv.getContext('2d', { willReadFrequently: true })
+      if (!ctx) {
+        resolve(null)
+        return
+      }
+      ctx.drawImage(img, 0, 0)
+      resolve({ data: ctx.getImageData(0, 0, img.width, img.height).data, width: img.width, height: img.height })
+    }
+    img.onerror = () => resolve(null)
+    img.src = LAND_MASK_URL
+  })
+}
+
 export function useOrbitScene(
   canvas: HTMLCanvasElement,
   options: OrbitSceneOptions = {}
@@ -188,7 +192,6 @@ export function useOrbitScene(
   let disposed = false
   let applySizeFn: (() => void) | null = null
   let cleanupFn: (() => void) | null = null
-  /* 场景构建中途抛错时，dispose 仍能释放已创建的渲染器 */
   let pendingRenderer: { forceContextLoss: () => void; dispose: () => void } | null = null
 
   function resize(): void {
@@ -199,6 +202,9 @@ export function useOrbitScene(
     if (disposed) return
 
     const THREE = await import('three')
+    if (disposed) return
+
+    const landMask = await loadLandMask()
     if (disposed) return
 
     const reduceMotion =
@@ -220,192 +226,243 @@ export function useOrbitScene(
     const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.1, 200)
     camera.position.set(0, 0, CAM_Z_BY_MODE[mode])
 
+    const root = new THREE.Group()
+    scene.add(root)
+
     const globe = new THREE.Group()
-    scene.add(globe)
+    root.add(globe)
 
-    /* ---------- 经纬线 ---------- */
-    const linePositions: number[] = []
-    const MERIDIANS = 16
-    const PARALLELS = 9
-    const R_LINE = BALL_RADIUS * 1.004
+    const silver = new THREE.Color(SILVER)
+    const cool = new THREE.Color(COOL)
+    const warm = new THREE.Color(WARM)
 
-    for (let m = 0; m < MERIDIANS; m++) {
-      const lon = (m / MERIDIANS) * Math.PI * 2
-      const SEG = 64
-      for (let i = 0; i < SEG; i++) {
-        const t0 = (i / SEG) * Math.PI
-        const t1 = ((i + 1) / SEG) * Math.PI
-        linePositions.push(
-          Math.sin(t0) * Math.cos(lon) * R_LINE, Math.cos(t0) * R_LINE, Math.sin(t0) * Math.sin(lon) * R_LINE,
-          Math.sin(t1) * Math.cos(lon) * R_LINE, Math.cos(t1) * R_LINE, Math.sin(t1) * Math.sin(lon) * R_LINE
-        )
-      }
-    }
-
-    for (let p = 1; p <= PARALLELS; p++) {
-      const theta = (p / (PARALLELS + 1)) * Math.PI
-      const y = Math.cos(theta) * R_LINE
-      const r = Math.sin(theta) * R_LINE
-      const SEG = 96
-      for (let i = 0; i < SEG; i++) {
-        const a0 = (i / SEG) * Math.PI * 2
-        const a1 = ((i + 1) / SEG) * Math.PI * 2
-        linePositions.push(
-          Math.cos(a0) * r, y, Math.sin(a0) * r,
-          Math.cos(a1) * r, y, Math.sin(a1) * r
-        )
-      }
-    }
-
-    const lineGeo = new THREE.BufferGeometry()
-    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
-    const lineMat = new THREE.LineBasicMaterial({
-      color: new THREE.Color(INK),
-      transparent: true,
-      opacity: 0.07,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    })
-    globe.add(new THREE.LineSegments(lineGeo, lineMat))
-
-    /* ---------- 球面点阵 ----------
-       Fibonacci 球面均匀采样：避免经纬网格在极点附近挤压成横杠与摩尔纹 */
-    const DOT_COUNT = 16000
-    const DOT_GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
-    const dotPos: number[] = []
-    const dotAlpha: number[] = []
-
-    for (let i = 0; i < DOT_COUNT; i++) {
-      const y = 1 - (i / (DOT_COUNT - 1)) * 2
-      const ringRadius = Math.sqrt(Math.max(0, 1 - y * y))
-      const lon = DOT_GOLDEN_ANGLE * i
-      const radius = BALL_RADIUS * 1.008
-
-      dotPos.push(
-        Math.cos(lon) * ringRadius * radius,
-        y * radius,
-        Math.sin(lon) * ringRadius * radius
-      )
-
-      dotAlpha.push(0.5 + Math.random() * 0.5)
-    }
-
-    const dotGeo = new THREE.BufferGeometry()
-    dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dotPos, 3))
-    dotGeo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(dotAlpha, 1))
-
-    const dotMat = new THREE.ShaderMaterial({
-      uniforms: { uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) } },
-      vertexShader: /* glsl */ `
-        attribute float aAlpha;
-        varying float vAlpha;
-        uniform float uPixelRatio;
-        void main() {
-          vAlpha = aAlpha;
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          // 视图空间里相机朝 -Z 看，正半球的 z 为负，取反后才得到"越近越亮"
-          float facing = clamp(-normalize(mv.xyz).z * 0.5 + 0.5, 0.0, 1.0);
-          float edge = 1.0 - abs(normalize(mv.xyz).z);
-          vAlpha *= 0.32 + pow(edge, 1.25) * 0.95;
-          gl_PointSize = (1.45 + aAlpha * 0.9) * uPixelRatio;
-          gl_Position = projectionMatrix * mv;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        precision highp float;
-        varying float vAlpha;
-        void main() {
-          vec2 dp = gl_PointCoord - 0.5;
-          float mask = smoothstep(0.5, 0.38, length(dp));
-          gl_FragColor = vec4(vec3(0.94, 0.96, 0.98), vAlpha * mask);
-        }
-      `,
+    /* ---------- 菲涅尔球壳 ---------- */
+    const shellGeo = new THREE.SphereGeometry(BALL_RADIUS, 64, 40)
+    const shellMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uCool: { value: cool },
+        uSilver: { value: silver },
+        uWarm: { value: warm }
+      },
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending
-    })
-
-    globe.add(new THREE.Points(dotGeo, dotMat))
-
-    /* ---------- 大气辉光 ---------- */
-    const haloGeo = new THREE.SphereGeometry(BALL_RADIUS * 1.1, 48, 32)
-    const haloMat = new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: new THREE.Color('#9fc6d8') } },
       vertexShader: /* glsl */ `
-        varying vec3 vNormalW;
-        varying vec3 vViewDir;
+        varying vec3 vNormal;
+        varying vec3 vEye;
         void main() {
-          vec4 world = modelMatrix * vec4(position, 1.0);
-          vNormalW = normalize(mat3(modelMatrix) * normal);
-          vViewDir = normalize(cameraPosition - world.xyz);
-          gl_Position = projectionMatrix * viewMatrix * world;
+          vec4 p = modelViewMatrix * vec4(position, 1.0);
+          vNormal = normalize(normalMatrix * normal);
+          vEye = normalize(-p.xyz);
+          gl_Position = projectionMatrix * p;
         }
       `,
       fragmentShader: /* glsl */ `
         precision highp float;
-        varying vec3 vNormalW;
-        varying vec3 vViewDir;
-        uniform vec3 uColor;
+        varying vec3 vNormal;
+        varying vec3 vEye;
+        uniform vec3 uCool, uSilver, uWarm;
         void main() {
-          float rim = 1.0 - abs(dot(normalize(vNormalW), normalize(vViewDir)));
-          float a = pow(rim, 3.6) * 0.22;
-          gl_FragColor = vec4(uColor, a);
+          vec3 n = normalize(vNormal);
+          float f = 1.0 - abs(dot(n, normalize(vEye)));
+          float side = smoothstep(-0.3, 0.9, n.x - n.y * 0.7);
+          vec3 c = mix(uCool, uWarm, side);
+          c = mix(c, uSilver, pow(f, 10.0));
+          float sculpt = pow(max(0.0, dot(n, normalize(vec3(-0.7, 0.8, 0.1)))), 5.0);
+          float a = 0.68 * pow(f, 16.0) + 0.018 * pow(f, 3.0) + sculpt * 0.012;
+          gl_FragColor = vec4(c, a);
         }
-      `,
+      `
+    })
+    const shell = new THREE.Mesh(shellGeo, shellMat)
+    shell.renderOrder = 1
+    globe.add(shell)
+
+    /* ---------- 经纬线（极淡） ---------- */
+    const wireMat = new THREE.ShaderMaterial({
+      uniforms: { uCool: { value: cool }, uSilver: { value: silver } },
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      side: THREE.BackSide
+      depthTest: false,
+      vertexShader: /* glsl */ `
+        varying float vDepth;
+        void main() {
+          vDepth = normalize(normalMatrix * normalize(position)).z;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying float vDepth;
+        uniform vec3 uCool, uSilver;
+        void main() {
+          float a = mix(0.003, 0.04, smoothstep(-0.1, 0.9, vDepth));
+          gl_FragColor = vec4(mix(uCool, uSilver, 0.7), a);
+        }
+      `
     })
-    globe.add(new THREE.Mesh(haloGeo, haloMat))
 
-    /* ---------- 深度遮罩 ----------
-       只写深度不写颜色：球体后方的轨道线与图标被正确遮挡，球面点阵仍在球外绘制 */
-    const depthMaskGeo = new THREE.SphereGeometry(BALL_RADIUS * 0.94, 48, 32)
-    const depthMaskMat = new THREE.MeshBasicMaterial({
-      colorWrite: false,
-      depthWrite: true,
-      depthTest: true
-    })
-    globe.add(new THREE.Mesh(depthMaskGeo, depthMaskMat))
+    const wireGroup = new THREE.Group()
+    const SEG = 128
+    const wireRadius = BALL_RADIUS * 1.002
 
-    /* ---------- 轨道 ---------- */
-    function pointOnRing(spec: RingSpec, tt: number): InstanceType<typeof THREE.Vector3> {
-      const ex = Math.cos(tt) * spec.rx
-      const ey = Math.sin(tt) * spec.ry
-
-      const cx = Math.cos(spec.tiltX)
-      const sx = Math.sin(spec.tiltX)
-      const y1 = ey * cx
-      const z1 = ey * sx
-
-      const cz = Math.cos(spec.tiltZ)
-      const sz = Math.sin(spec.tiltZ)
-
-      return new THREE.Vector3(ex * cz - y1 * sz, ex * sz + y1 * cz, z1)
+    for (let m = -2; m <= 2; m++) {
+      const tilt = (m * Math.PI) / 7
+      const pts: InstanceType<typeof THREE.Vector3>[] = []
+      for (let i = 0; i < SEG; i++) {
+        const a = (i / SEG) * Math.PI * 2
+        pts.push(
+          new THREE.Vector3(
+            Math.cos(a) * Math.cos(tilt) * wireRadius,
+            Math.sin(tilt) * wireRadius,
+            Math.sin(a) * Math.cos(tilt) * wireRadius
+          )
+        )
+      }
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wireMat)
+      line.renderOrder = 2
+      wireGroup.add(line)
     }
 
-    const ringMats: InstanceType<typeof THREE.ShaderMaterial>[] = []
+    for (let p = 0; p < 6; p++) {
+      const lat = (p / 6) * Math.PI
+      const pts: InstanceType<typeof THREE.Vector3>[] = []
+      for (let i = 0; i < SEG; i++) {
+        const a = (i / SEG) * Math.PI * 2
+        pts.push(
+          new THREE.Vector3(
+            Math.cos(a) * Math.cos(lat) * wireRadius,
+            Math.sin(lat) * wireRadius,
+            Math.cos(a) * Math.sin(lat) * wireRadius
+          )
+        )
+      }
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wireMat)
+      line.renderOrder = 2
+      wireGroup.add(line)
+    }
+    globe.add(wireGroup)
 
-    for (const spec of RINGS) {
-      const SEGMENTS = 384
+    /* ---------- 陆地加权点阵 ---------- */
+    const POINT_COUNT = 42000
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
+    const positions: number[] = []
+    const weights: number[] = []
+
+
+    function isLand(x: number, y: number, z: number): boolean {
+      if (!landMask) return true
+      const lat = Math.asin(Math.max(-1, Math.min(1, y))) + (Math.random() - 0.5) * 0.02
+      const lon = Math.atan2(z, x) + (Math.random() - 0.5) * 0.02
+      const row = Math.min(
+        landMask.height - 1,
+        Math.max(0, Math.floor((0.5 - lat / Math.PI) * landMask.height))
+      )
+      const u = ((lon / (Math.PI * 2) + 0.5) % 1 + 1) % 1
+      const col = Math.min(landMask.width - 1, Math.floor(u * landMask.width))
+      return landMask.data[(row * landMask.width + col) * 4] > 127
+    }
+
+    for (let i = 0; i < POINT_COUNT; i++) {
+      const y = 1 - (2 * (i + 0.5)) / POINT_COUNT
+      const ring = Math.sqrt(Math.max(0, 1 - y * y))
+      const lon = GOLDEN_ANGLE * i
+      const x = Math.cos(lon) * ring
+      const z = Math.sin(lon) * ring
+      const land = isLand(x, y, z)
+
+      // 陆地全量保留，海洋每 19 个点保留一个
+      if (!land && i % 19 !== 0) continue
+
+      const r = BALL_RADIUS * 1.002
+      positions.push(x * r, y * r, z * r)
+      weights.push(land ? 1 : 0.13)
+    }
+
+    const pointGeo = new THREE.BufferGeometry()
+    pointGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    pointGeo.setAttribute('weight', new THREE.Float32BufferAttribute(weights, 1))
+
+    const pointMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+        uPointSize: { value: 2.8 },
+        uCool: { value: cool },
+        uSilver: { value: silver }
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      vertexShader: /* glsl */ `
+        attribute float weight;
+        uniform float uPixelRatio, uPointSize;
+        varying float vDepth, vWeight;
+        void main() {
+          vec4 p = modelViewMatrix * vec4(position, 1.0);
+          vDepth = normalize(normalMatrix * normalize(position)).z;
+          vWeight = weight;
+          gl_PointSize = uPointSize * uPixelRatio;
+          gl_Position = projectionMatrix * p;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying float vDepth, vWeight;
+        uniform vec3 uCool, uSilver;
+        void main() {
+          float mask = 1.0 - smoothstep(0.1, 0.5, length(gl_PointCoord - 0.5));
+          float a = mix(0.03, 0.9, smoothstep(-0.2, 0.9, vDepth)) * vWeight * mask;
+          gl_FragColor = vec4(mix(uCool, uSilver, 0.64), a);
+        }
+      `
+    })
+
+    const points = new THREE.Points(pointGeo, pointMat)
+    points.renderOrder = 3
+    globe.add(points)
+
+    /* ---------- 轨道与卫星 ---------- */
+    function orbitPoint(track: TrackSpec, phase: number, out: InstanceType<typeof THREE.Vector3>) {
+      const a = phase * Math.PI * 2
+      const px = Math.cos(a)
+      const py = Math.sin(a) * 0.36
+      const pz = Math.sin(a) * 0.93
+      const ca = Math.cos(track.angle)
+      const sa = Math.sin(track.angle)
+      const x = px * ca - py * sa
+      const y = px * sa + py * ca
+      return out.set(x * track.radius, y * track.radius, pz * track.radius)
+    }
+
+    const trackLines: InstanceType<typeof THREE.Line>[] = []
+    const trackMats: InstanceType<typeof THREE.ShaderMaterial>[] = []
+    const TRACK_SEG = 256
+
+    for (const track of TRACKS) {
       const pos: number[] = []
-      const phase: number[] = []
-
-      for (let i = 0; i <= SEGMENTS; i++) {
-        const tt = (i / SEGMENTS) * Math.PI * 2
-        const p = pointOnRing(spec, tt)
-        pos.push(p.x, p.y, p.z)
-        phase.push(i / SEGMENTS)
+      const phaseAttr: number[] = []
+      const tmp = new THREE.Vector3()
+      for (let i = 0; i <= TRACK_SEG; i++) {
+        const phase = i / TRACK_SEG
+        orbitPoint(track, phase, tmp)
+        pos.push(tmp.x, tmp.y, tmp.z)
+        phaseAttr.push(phase)
       }
 
       const geo = new THREE.BufferGeometry()
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
-      geo.setAttribute('aPhase', new THREE.Float32BufferAttribute(phase, 1))
+      geo.setAttribute('aPhase', new THREE.Float32BufferAttribute(phaseAttr, 1))
 
       const mat = new THREE.ShaderMaterial({
-        uniforms: { uTime: { value: 0 }, uBase: { value: spec.alpha } },
+        uniforms: {
+          uTime: { value: 0 },
+          uBase: { value: track.alpha },
+          uCool: { value: cool },
+          uSilver: { value: silver }
+        },
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
         vertexShader: /* glsl */ `
           attribute float aPhase;
           varying float vPhase;
@@ -417,28 +474,32 @@ export function useOrbitScene(
         fragmentShader: /* glsl */ `
           precision highp float;
           varying float vPhase;
-          uniform float uTime;
-          uniform float uBase;
+          uniform float uTime, uBase;
+          uniform vec3 uCool, uSilver;
           void main() {
-            float a = (vPhase - uTime * 0.06) * 6.28318530718;
-            float glow = pow(0.5 + 0.5 * cos(a), 9.0);
-            gl_FragColor = vec4(vec3(1.0), uBase * 0.68 + glow * 1.0);
+            float d = fract(vPhase - uTime * 0.06);
+            float trail = pow(1.0 - d, 18.0);
+            float a = uBase * (0.14 + trail * 0.86);
+            gl_FragColor = vec4(mix(uCool, uSilver, trail * 0.8), a);
           }
-        `,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
+        `
       })
 
-      ringMats.push(mat)
-      globe.add(new THREE.Line(geo, mat))
+      const line = new THREE.Line(geo, mat)
+      line.renderOrder = 4
+      root.add(line)
+      trackLines.push(line)
+      trackMats.push(mat)
     }
 
-    /* ---------- 轨道图标 ---------- */
-    const sprites: { node: InstanceType<typeof THREE.Sprite>; baseScale: number }[] = []
+    const satellites: {
+      node: InstanceType<typeof THREE.Sprite>
+      spec: SatelliteSpec
+      baseScale: number
+    }[] = []
     const spriteTextures: InstanceType<typeof THREE.Texture>[] = []
 
-    for (const spec of CHIPS) {
+    for (const spec of SATELLITES) {
       const texCanvas = bakeChipSprite(spec.model, spec.label)
       const tex = new THREE.CanvasTexture(texCanvas)
       tex.colorSpace = THREE.SRGBColorSpace
@@ -453,18 +514,17 @@ export function useOrbitScene(
       })
 
       const sprite = new THREE.Sprite(mat)
-      sprite.position.copy(pointOnRing(CHIP_RINGS[spec.ring], spec.angle))
+      const baseScale = 0.165 * spec.scale
+      sprite.scale.set(baseScale, baseScale * (SPRITE_H / SPRITE_W), 1)
+      sprite.renderOrder = 5
 
-      const scale = 0.33 * spec.scale
-      sprite.scale.set(scale, scale * (SPRITE_H / SPRITE_W), 1)
-
-      sprites.push({ node: sprite, baseScale: scale })
-      globe.add(sprite)
+      satellites.push({ node: sprite, spec, baseScale })
+      root.add(sprite)
     }
 
     /* ---------- 星空 ---------- */
+    const STAR_COUNT = mode === 'hero' ? 5200 : 2400
     const starGeo = new THREE.BufferGeometry()
-    const STAR_COUNT = STAR_COUNT_BY_MODE[mode]
     const starPos = new Float32Array(STAR_COUNT * 3)
     const starAlpha = new Float32Array(STAR_COUNT)
     const starSize = new Float32Array(STAR_COUNT)
@@ -472,7 +532,6 @@ export function useOrbitScene(
     for (let i = 0; i < STAR_COUNT; i++) {
       const layer = Math.random()
       const r = layer < 0.45 ? 6 + Math.random() * 4 : layer < 0.8 ? 11 + Math.random() * 6 : 18 + Math.random() * 10
-
       const u = Math.random() * 2 - 1
       const phi = Math.random() * Math.PI * 2
       const s = Math.sqrt(1 - u * u)
@@ -481,7 +540,6 @@ export function useOrbitScene(
       starPos[i * 3 + 1] = u * r
       starPos[i * 3 + 2] = Math.sin(phi) * s * r
 
-      // 每 22 颗挑一颗做亮星，补高光像素
       const isBright = i % 22 === 0
       starAlpha[i] = isBright ? 0.95 + Math.random() * 0.05 : 0.4 + Math.random() * 0.52
       starSize[i] = isBright ? 4.2 + Math.random() * 3.4 : 1.2 + Math.random() * 2.2
@@ -594,8 +652,9 @@ export function useOrbitScene(
 
     /* ---------- 渲染 ---------- */
     const clock = new THREE.Clock()
-    const forward = new THREE.Vector3(0, 0, 1)
+    const tmpPoint = new THREE.Vector3()
     const worldPos = new THREE.Vector3()
+    const forward = new THREE.Vector3(0, 0, 1)
     let rafId = 0
     let running = false
 
@@ -613,19 +672,27 @@ export function useOrbitScene(
       yaw += (tarYaw - yaw) * 0.08
       pitch += (tarPitch - pitch) * 0.08
 
-      const autoSpin = reduceMotion ? 0 : ((elapsed % CYCLE_SECONDS) / CYCLE_SECONDS) * Math.PI * 2
-      globe.rotation.set(BASE_TILT_X + pitch, -0.55 + yaw + autoSpin, BASE_TILT_Z)
+      const spin = reduceMotion ? 0 : elapsed * 0.055
+      globe.rotation.set(BASE_TILT_X + pitch, yaw + spin, BASE_TILT_Z)
       globe.updateMatrixWorld()
 
-      for (const m of ringMats) m.uniforms.uTime.value = elapsed
+      for (const mat of trackMats) mat.uniforms.uTime.value = elapsed
 
-      // 图标：按朝向收放，背面缩小变淡
-      for (const item of sprites) {
-        worldPos.copy(item.node.position).applyMatrix4(globe.matrixWorld).normalize()
+      // 卫星沿轨道运行，按朝向缩放与淡出
+      for (const item of satellites) {
+        const track = TRACKS[item.spec.track]
+        const phase = (item.spec.phase + elapsed * (reduceMotion ? 0 : 0.012)) % 1
+        orbitPoint(track, phase, tmpPoint)
+        item.node.position.copy(tmpPoint)
+        item.node.updateMatrixWorld()
+
+        worldPos.copy(item.node.position).normalize()
         const depth = (worldPos.dot(forward) + 1) / 2
-        const s = item.baseScale * (0.62 + depth * 0.55)
+        const taper = 0.28 + 0.72 * Math.pow(0.5 + 0.5 * Math.sin(phase * Math.PI * 2 + item.spec.track * 2), 2)
+        const s = item.baseScale * (0.66 + depth * 0.5)
         item.node.scale.set(s, s * (SPRITE_H / SPRITE_W), 1)
-        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity = 0.62 + depth * 0.38
+        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity =
+          (0.34 + depth * 0.66) * (0.55 + taper * 0.45)
       }
 
       stars.rotation.y = yaw * 0.06
@@ -714,18 +781,6 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
