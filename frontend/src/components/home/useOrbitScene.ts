@@ -376,7 +376,7 @@ export function useOrbitScene(
 
       const r = BALL_RADIUS * 1.002
       positions.push(x * r, y * r, z * r)
-      weights.push(land ? 1 : 0.13)
+      weights.push(land ? 1 : 0.18)
     }
 
     const pointGeo = new THREE.BufferGeometry()
@@ -386,7 +386,7 @@ export function useOrbitScene(
     const pointMat = new THREE.ShaderMaterial({
       uniforms: {
         uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        uPointSize: { value: 2.8 },
+        uPointSize: { value: 3.4 },
         uCool: { value: cool },
         uSilver: { value: silver }
       },
@@ -411,7 +411,7 @@ export function useOrbitScene(
         uniform vec3 uCool, uSilver;
         void main() {
           float mask = 1.0 - smoothstep(0.1, 0.5, length(gl_PointCoord - 0.5));
-          float a = mix(0.03, 0.9, smoothstep(-0.2, 0.9, vDepth)) * vWeight * mask;
+          float a = mix(0.04, 1.0, smoothstep(-0.25, 0.92, vDepth)) * vWeight * mask;
           gl_FragColor = vec4(mix(uCool, uSilver, 0.64), a);
         }
       `
@@ -781,6 +781,7 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
+
 
 
 

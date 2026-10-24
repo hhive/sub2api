@@ -375,7 +375,7 @@ onBeforeUnmount(() => {
   top: 50%;
   z-index: 2;
   display: flex;
-  width: 208px;
+  width: 190px;
   flex-direction: column;
   gap: 10px;
   transform: translateY(-50%);
@@ -467,3 +467,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
