@@ -255,6 +255,17 @@ export default {
 
   // Auth
   auth: {
+    // 认证页沉浸式首屏
+    hero: {
+      titlePrimary: '统一入口',
+      titleAccent: '连接所有 AI',
+      subtitle: '一个账户，接入 AI 工作台、算力资源与模型市场。',
+      proof: {
+        gateway: '主流大模型统一 API 网关',
+        billing: '按量计费 · 透明用量',
+        console: '可视化工作台与模型市场'
+      }
+    },
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',
     signIn: '登录',

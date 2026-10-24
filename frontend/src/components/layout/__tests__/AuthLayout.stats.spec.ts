@@ -22,7 +22,7 @@ vi.mock('@/api/publicStats', () => ({
 }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ locale: { value: 'zh-CN' } })
+  useI18n: () => ({ locale: { value: 'zh-CN' }, t: (key: string) => key })
 }))
 
 const realMatchMedia = window.matchMedia

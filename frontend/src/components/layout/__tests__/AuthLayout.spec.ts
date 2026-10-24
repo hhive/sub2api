@@ -12,6 +12,14 @@ vi.mock('@/stores', () => ({
   })
 }))
 
+vi.mock('vue-i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue-i18n')>()
+  return {
+    ...actual,
+    useI18n: () => ({ t: (key: string) => key })
+  }
+})
+
 const realMatchMedia = window.matchMedia
 
 function stubMatchMedia(matches: boolean) {
@@ -62,6 +70,18 @@ describe('AuthLayout tech backdrop', () => {
     expect(wrapper.text()).toContain('大模型、图片、视频顶级上游')
     expect(wrapper.text()).toContain(String(new Date().getFullYear()))
     expect(wrapper.find('img').attributes('src')).toContain('logo.svg')
+  })
+
+  it('renders the immersive hero column alongside the form slot', () => {
+    stubMatchMedia(false)
+    const wrapper = mountLayout()
+
+    expect(wrapper.find('[data-testid="auth-hero"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('auth.hero.titlePrimary')
+    expect(wrapper.text()).toContain('auth.hero.titleAccent')
+    expect(wrapper.find('[data-testid="hero-proof-strip"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="hero-proof-strip"]').findAll('li').length).toBe(3)
+    expect(wrapper.find('[data-testid="auth-form"]').exists()).toBe(true)
   })
 
   it('tracks pointer movement into the glow variables', async () => {

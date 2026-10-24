@@ -14,6 +14,20 @@ export default {
     login: '登录',
     getStarted: '立即开始',
     goToDashboard: '进入控制台',
+    // 沉浸式首屏
+    hero: {
+      titlePrimary: '统一入口',
+      titleAccent: '连接所有 AI',
+      subtitle: '一个密钥，接入 AI 工作台、算力资源与模型市场。无需在多个平台之间来回切换。',
+      primaryCta: '登录',
+      primaryCtaAuthed: '进入控制台',
+      secondaryCta: '先逛逛',
+      proof: {
+        gateway: '主流大模型统一 API 网关',
+        billing: '按量计费 · 透明用量',
+        console: '可视化工作台与模型市场'
+      }
+    },
     // 新增：面向用户的价值主张
     heroSubtitle: '一个密钥，畅用多个 AI 模型',
     heroDescription: '无需管理多个订阅账号，一站式接入 Claude、GPT、Gemini 等主流 AI 服务',

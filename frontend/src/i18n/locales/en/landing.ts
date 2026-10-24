@@ -14,6 +14,21 @@ export default {
     login: 'Login',
     getStarted: 'Get Started',
     goToDashboard: 'Go to Dashboard',
+    // Immersive hero
+    hero: {
+      titlePrimary: 'One gateway',
+      titleAccent: 'to every AI',
+      subtitle:
+        'A single key for your AI workspace, compute resources and model marketplace. No more switching between platforms.',
+      primaryCta: 'Sign in',
+      primaryCtaAuthed: 'Open dashboard',
+      secondaryCta: 'Take a look',
+      proof: {
+        gateway: 'Unified gateway for mainstream models',
+        billing: 'Pay as you go, transparent usage',
+        console: 'Visual console and model marketplace'
+      }
+    },
     // User-focused value proposition
     heroSubtitle: 'One Key, All AI Models',
     heroDescription: 'No need to manage multiple subscriptions. Access Claude, GPT, Gemini and more with a single API key',

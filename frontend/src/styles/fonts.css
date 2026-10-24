@@ -1,0 +1,17 @@
+/* 品牌字体：自托管 SIL OFL 字体，仅用于首页与认证页的展示型标题。
+   中文由系统衬线（宋体 / 思源宋体）承接，故 latin 子集足够。 */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-serif-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Lexend';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/lexend-wght.woff2') format('woff2');
+}

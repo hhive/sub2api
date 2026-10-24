@@ -62,7 +62,19 @@ export default {
           'Microsoft YaHei',
           'sans-serif'
         ],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        // 展示型衬线标题：首页与认证页的巨幅标题
+        display: [
+          'Instrument Serif',
+          'Songti SC',
+          'Noto Serif SC',
+          'Source Han Serif SC',
+          'Georgia',
+          'Times New Roman',
+          'serif'
+        ],
+        // 品牌无衬线：仅用于品牌名与按钮等展示位
+        brand: ['Lexend', 'system-ui', '-apple-system', 'PingFang SC', 'Microsoft YaHei', 'sans-serif']
       },
       boxShadow: {
         glass: '0 8px 32px rgba(0, 0, 0, 0.08)',
