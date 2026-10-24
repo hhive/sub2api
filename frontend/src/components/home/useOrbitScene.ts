@@ -65,16 +65,22 @@ const CHIPS: ChipSpec[] = [
   { model: 'openrouter', label: 'OpenRouter', ring: 0, angle: -1.46, scale: 0.52 },
   { model: 'ollama', label: 'Ollama', ring: 1, angle: -2.58, scale: 0.5 },
   { model: 'jina', label: 'Jina', ring: 2, angle: 2.58, scale: 0.46 },
-  { model: 'suno', label: 'Suno', ring: 0, angle: 1.08, scale: 0.46 }
+  { model: 'suno', label: 'Suno', ring: 0, angle: 1.08, scale: 0.46 },
+  { model: 'wenxin', label: 'ERNIE 5', ring: 2, angle: -0.95, scale: 0.62 },
+  { model: 'spark', label: 'Spark 5', ring: 0, angle: -1.72, scale: 0.58 },
+  { model: 'hunyuan', label: 'Hunyuan X', ring: 1, angle: 2.74, scale: 0.68 },
+  { model: 'midjourney', label: 'MJ v8', ring: 2, angle: 1.86, scale: 0.64 },
+  { model: 'perplexity', label: 'PPLX', ring: 0, angle: 0.3, scale: 0.58 },
+  { model: 'yi', label: 'Yi-Vision', ring: 2, angle: -1.9, scale: 0.56 }
 ]
 
 /* 只有少数厂商标是纯线条，其余保留品牌色 */
 const MONO_LOGOS = new Set(['openai', 'moonshot', 'xai', 'ollama', 'jina', 'suno'])
 
 const RINGS: RingSpec[] = [
-  { rx: BALL_RADIUS * 1.06, ry: BALL_RADIUS * 0.66, tiltX: 0.42, tiltZ: -0.16, alpha: 0.46 },
-  { rx: BALL_RADIUS * 1.12, ry: BALL_RADIUS * 0.78, tiltX: -0.32, tiltZ: 0.22, alpha: 0.3 },
-  { rx: BALL_RADIUS * 1.19, ry: BALL_RADIUS * 0.58, tiltX: 0.08, tiltZ: -0.4, alpha: 0.22 }
+  { rx: BALL_RADIUS * 1.16, ry: BALL_RADIUS * 0.34, tiltX: 0.72, tiltZ: -0.18, alpha: 0.42 },
+  { rx: BALL_RADIUS * 1.1, ry: BALL_RADIUS * 0.92, tiltX: -0.18, tiltZ: 0.34, alpha: 0.3 },
+  { rx: BALL_RADIUS * 1.24, ry: BALL_RADIUS * 0.62, tiltX: 0.22, tiltZ: -0.85, alpha: 0.24 }
 ]
 
 /* 图标轨道半径大于可见轨道，让图标散布在球体之外 */
@@ -262,30 +268,26 @@ export function useOrbitScene(
     })
     globe.add(new THREE.LineSegments(lineGeo, lineMat))
 
-    /* ---------- 球面点阵 ---------- */
-    const DOT_ROWS = 150
-    const DOT_COLS = 300
+    /* ---------- 球面点阵 ----------
+       Fibonacci 球面均匀采样：避免经纬网格在极点附近挤压成横杠与摩尔纹 */
+    const DOT_COUNT = 16000
+    const DOT_GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
     const dotPos: number[] = []
     const dotAlpha: number[] = []
 
-    for (let r = 0; r < DOT_ROWS; r++) {
-      const theta = ((r + 0.5) / DOT_ROWS) * Math.PI
-      const y = Math.cos(theta)
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const y = 1 - (i / (DOT_COUNT - 1)) * 2
+      const ringRadius = Math.sqrt(Math.max(0, 1 - y * y))
+      const lon = DOT_GOLDEN_ANGLE * i
+      const radius = BALL_RADIUS * 1.008
 
-      for (let c = 0; c < DOT_COLS; c++) {
-        const lon = (c / DOT_COLS) * Math.PI * 2
+      dotPos.push(
+        Math.cos(lon) * ringRadius * radius,
+        y * radius,
+        Math.sin(lon) * ringRadius * radius
+      )
 
-        const radius = BALL_RADIUS * 1.008
-
-        dotPos.push(
-          Math.sin(theta) * Math.cos(lon) * radius,
-          Math.cos(theta) * radius,
-          Math.sin(theta) * Math.sin(lon) * radius
-        )
-
-        const belt = 1 - Math.abs(y) * 0.5
-        dotAlpha.push((0.32 + Math.random() * 0.4) * belt)
-      }
+      dotAlpha.push(0.5 + Math.random() * 0.5)
     }
 
     const dotGeo = new THREE.BufferGeometry()
@@ -303,8 +305,9 @@ export function useOrbitScene(
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           // 视图空间里相机朝 -Z 看，正半球的 z 为负，取反后才得到"越近越亮"
           float facing = clamp(-normalize(mv.xyz).z * 0.5 + 0.5, 0.0, 1.0);
-          vAlpha *= 0.45 + facing * 1.05;
-          gl_PointSize = (1.4 + aAlpha * 1.2) * uPixelRatio;
+          float edge = 1.0 - abs(normalize(mv.xyz).z);
+          vAlpha *= 0.32 + pow(edge, 1.25) * 0.95;
+          gl_PointSize = (1.45 + aAlpha * 0.9) * uPixelRatio;
           gl_Position = projectionMatrix * mv;
         }
       `,
@@ -313,7 +316,7 @@ export function useOrbitScene(
         varying float vAlpha;
         void main() {
           vec2 dp = gl_PointCoord - 0.5;
-          float mask = smoothstep(0.5, 0.12, length(dp));
+          float mask = smoothstep(0.5, 0.38, length(dp));
           gl_FragColor = vec4(vec3(0.94, 0.96, 0.98), vAlpha * mask);
         }
       `,
@@ -346,7 +349,7 @@ export function useOrbitScene(
         uniform vec3 uColor;
         void main() {
           float rim = 1.0 - abs(dot(normalize(vNormalW), normalize(vViewDir)));
-          float a = pow(rim, 3.4) * 0.34;
+          float a = pow(rim, 3.6) * 0.22;
           gl_FragColor = vec4(uColor, a);
         }
       `,
@@ -622,7 +625,7 @@ export function useOrbitScene(
         const depth = (worldPos.dot(forward) + 1) / 2
         const s = item.baseScale * (0.62 + depth * 0.55)
         item.node.scale.set(s, s * (SPRITE_H / SPRITE_W), 1)
-        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity = 0.45 + depth * 0.55
+        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity = 0.62 + depth * 0.38
       }
 
       stars.rotation.y = yaw * 0.06
@@ -711,6 +714,12 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
+
+
+
+
+
+
 
 
 
