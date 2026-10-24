@@ -40,7 +40,7 @@ const CAM_FOV = 42
 const CYCLE_SECONDS = 42
 
 /* 相机距离决定球体在屏幕上的占比：hero 约 64% 视口高，auth 约 54% */
-const CAM_Z_BY_MODE: Record<OrbitSceneMode, number> = { hero: 5.15, auth: 5.75 }
+const CAM_Z_BY_MODE: Record<OrbitSceneMode, number> = { hero: 5.0, auth: 5.6 }
 const STAR_COUNT_BY_MODE: Record<OrbitSceneMode, number> = { hero: 6000, auth: 2600 }
 
 const INK = '#eef2f4'
@@ -72,14 +72,21 @@ const CHIPS: ChipSpec[] = [
 const MONO_LOGOS = new Set(['openai', 'moonshot', 'xai', 'ollama', 'jina', 'suno'])
 
 const RINGS: RingSpec[] = [
-  { rx: BALL_RADIUS * 1.34, ry: BALL_RADIUS * 0.7, tiltX: 0.42, tiltZ: -0.16, alpha: 0.26 },
-  { rx: BALL_RADIUS * 1.5, ry: BALL_RADIUS * 0.86, tiltX: -0.32, tiltZ: 0.22, alpha: 0.18 },
-  { rx: BALL_RADIUS * 1.14, ry: BALL_RADIUS * 0.52, tiltX: 0.08, tiltZ: -0.4, alpha: 0.14 }
+  { rx: BALL_RADIUS * 1.06, ry: BALL_RADIUS * 0.66, tiltX: 0.42, tiltZ: -0.16, alpha: 0.46 },
+  { rx: BALL_RADIUS * 1.12, ry: BALL_RADIUS * 0.78, tiltX: -0.32, tiltZ: 0.22, alpha: 0.3 },
+  { rx: BALL_RADIUS * 1.19, ry: BALL_RADIUS * 0.58, tiltX: 0.08, tiltZ: -0.4, alpha: 0.22 }
 ]
 
-const SPRITE_W = 160
-const SPRITE_H = 200
-const SPRITE_TILE = 116
+/* 图标轨道半径大于可见轨道，让图标散布在球体之外 */
+const CHIP_RINGS: RingSpec[] = [
+  { rx: BALL_RADIUS * 1.46, ry: BALL_RADIUS * 0.8, tiltX: 0.42, tiltZ: -0.16, alpha: 0 },
+  { rx: BALL_RADIUS * 1.6, ry: BALL_RADIUS * 0.98, tiltX: -0.32, tiltZ: 0.22, alpha: 0 },
+  { rx: BALL_RADIUS * 1.7, ry: BALL_RADIUS * 0.66, tiltX: 0.08, tiltZ: -0.4, alpha: 0 }
+]
+
+const SPRITE_W = 176
+const SPRITE_H = 224
+const SPRITE_TILE = 132
 
 function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   const cv = document.createElement('canvas')
@@ -88,32 +95,48 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
   const ctx = cv.getContext('2d')
   if (!ctx) return cv
 
-  const pad = 10
+  const pad = 12
   const tile = SPRITE_TILE
-  const radius = tile * 0.26
+  const radius = tile * 0.28
+  const icon = getModelIcon(model)
+  const brand = icon?.color || '#7c8cff'
 
-  // 底板：深色玻璃，保留图标原色所需的对比度
+  // 外发光：让图标从深色背景里浮起来
+  const glow = ctx.createRadialGradient(
+    SPRITE_W / 2, pad + tile / 2, tile * 0.32,
+    SPRITE_W / 2, pad + tile / 2, tile * 0.86
+  )
+  glow.addColorStop(0, `${brand}66`)
+  glow.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, SPRITE_W, SPRITE_H)
+
+  // 底板：品牌色渐变玻璃片
+  const base = ctx.createLinearGradient(pad, pad, pad + tile, pad + tile)
+  base.addColorStop(0, `${brand}59`)
+  base.addColorStop(0.55, 'rgba(14,17,24,0.94)')
+  base.addColorStop(1, 'rgba(10,12,18,0.98)')
   ctx.beginPath()
   ctx.roundRect(pad, pad, tile, tile, radius)
-  ctx.fillStyle = 'rgba(10,12,16,0.9)'
+  ctx.fillStyle = base
   ctx.fill()
-  ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(255,255,255,0.16)'
+
+  ctx.lineWidth = 2.4
+  ctx.strokeStyle = `${brand}aa`
   ctx.stroke()
 
-  // 顶部高光，制造玻璃质感
-  const sheen = ctx.createLinearGradient(pad, pad, pad, pad + tile * 0.62)
-  sheen.addColorStop(0, 'rgba(255,255,255,0.16)')
-  sheen.addColorStop(0.5, 'rgba(255,255,255,0.03)')
+  // 顶部高光
+  const sheen = ctx.createLinearGradient(pad, pad, pad, pad + tile * 0.66)
+  sheen.addColorStop(0, 'rgba(255,255,255,0.22)')
+  sheen.addColorStop(0.6, 'rgba(255,255,255,0.04)')
   sheen.addColorStop(1, 'rgba(255,255,255,0)')
   ctx.beginPath()
-  ctx.roundRect(pad + 1, pad + 1, tile - 2, tile - 2, radius)
+  ctx.roundRect(pad + 1.5, pad + 1.5, tile - 3, tile - 3, radius)
   ctx.fillStyle = sheen
   ctx.fill()
 
-  const icon = getModelIcon(model)
   if (icon) {
-    const inner = tile * 0.58
+    const inner = tile * 0.62
     const scale = inner / 24
     ctx.save()
     ctx.translate(pad + (tile - inner) / 2, pad + (tile - inner) / 2)
@@ -128,11 +151,11 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
       }
     }
 
-    ctx.fillStyle = MONO_LOGOS.has(model) ? '#e8ecf0' : icon.color
+    // 图标本体用亮色填充，底色已由品牌渐变承担
+    ctx.fillStyle = MONO_LOGOS.has(model) ? '#ffffff' : brand
     for (const path of paths) ctx.fill(path)
 
-    // 品牌色之上叠一层低透明度白，提亮边缘而不洗白整块
-    ctx.globalAlpha = 0.18
+    ctx.globalAlpha = 0.55
     ctx.fillStyle = '#ffffff'
     for (const path of paths) ctx.fill(path)
     ctx.globalAlpha = 1
@@ -140,11 +163,11 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
     ctx.restore()
   }
 
-  ctx.font = '600 21px Lexend, system-ui, -apple-system, sans-serif'
+  ctx.font = '600 22px Lexend, system-ui, -apple-system, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  ctx.fillStyle = 'rgba(255,255,255,0.94)'
-  ctx.fillText(label, SPRITE_W / 2, pad + tile + 14)
+  ctx.fillStyle = 'rgba(255,255,255,0.96)'
+  ctx.fillText(label, SPRITE_W / 2, pad + tile + 16)
 
   return cv
 }
@@ -240,8 +263,8 @@ export function useOrbitScene(
     globe.add(new THREE.LineSegments(lineGeo, lineMat))
 
     /* ---------- 球面点阵 ---------- */
-    const DOT_ROWS = 120
-    const DOT_COLS = 240
+    const DOT_ROWS = 150
+    const DOT_COLS = 300
     const dotPos: number[] = []
     const dotAlpha: number[] = []
 
@@ -261,7 +284,7 @@ export function useOrbitScene(
         )
 
         const belt = 1 - Math.abs(y) * 0.5
-        dotAlpha.push((0.14 + Math.random() * 0.3) * belt)
+        dotAlpha.push((0.32 + Math.random() * 0.4) * belt)
       }
     }
 
@@ -280,8 +303,8 @@ export function useOrbitScene(
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           // 视图空间里相机朝 -Z 看，正半球的 z 为负，取反后才得到"越近越亮"
           float facing = clamp(-normalize(mv.xyz).z * 0.5 + 0.5, 0.0, 1.0);
-          vAlpha *= 1.0 + facing * 0.9;
-          gl_PointSize = (1.0 + aAlpha * 1.7) * uPixelRatio;
+          vAlpha *= 0.45 + facing * 1.05;
+          gl_PointSize = (1.4 + aAlpha * 1.2) * uPixelRatio;
           gl_Position = projectionMatrix * mv;
         }
       `,
@@ -296,6 +319,7 @@ export function useOrbitScene(
       `,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       blending: THREE.AdditiveBlending
     })
 
@@ -335,7 +359,7 @@ export function useOrbitScene(
 
     /* ---------- 深度遮罩 ----------
        只写深度不写颜色：球体后方的轨道线与图标被正确遮挡，球面点阵仍在球外绘制 */
-    const depthMaskGeo = new THREE.SphereGeometry(BALL_RADIUS * 0.985, 48, 32)
+    const depthMaskGeo = new THREE.SphereGeometry(BALL_RADIUS * 0.94, 48, 32)
     const depthMaskMat = new THREE.MeshBasicMaterial({
       colorWrite: false,
       depthWrite: true,
@@ -426,9 +450,9 @@ export function useOrbitScene(
       })
 
       const sprite = new THREE.Sprite(mat)
-      sprite.position.copy(pointOnRing(RINGS[spec.ring], spec.angle))
+      sprite.position.copy(pointOnRing(CHIP_RINGS[spec.ring], spec.angle))
 
-      const scale = 0.196 * spec.scale
+      const scale = 0.33 * spec.scale
       sprite.scale.set(scale, scale * (SPRITE_H / SPRITE_W), 1)
 
       sprites.push({ node: sprite, baseScale: scale })
@@ -598,7 +622,7 @@ export function useOrbitScene(
         const depth = (worldPos.dot(forward) + 1) / 2
         const s = item.baseScale * (0.62 + depth * 0.55)
         item.node.scale.set(s, s * (SPRITE_H / SPRITE_W), 1)
-        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity = 0.58 + depth * 0.42
+        ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity = 0.45 + depth * 0.55
       }
 
       stars.rotation.y = yaw * 0.06
@@ -687,4 +711,12 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
+
+
+
+
+
+
+
+
 
