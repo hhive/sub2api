@@ -479,7 +479,7 @@ export function useOrbitScene(
           void main() {
             float d = fract(vPhase - uTime * 0.06);
             float trail = pow(1.0 - d, 18.0);
-            float a = uBase * (0.14 + trail * 0.86);
+            float a = uBase * (0.35 + trail * 0.65);
             gl_FragColor = vec4(mix(uCool, uSilver, trail * 0.8), a);
           }
         `
@@ -781,6 +781,7 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
+
 
 
 
