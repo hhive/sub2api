@@ -120,9 +120,9 @@ const prefixState = useTypewriter(() => activeSlide.value.prefix, {
 const prefixVisible = prefixState.visible
 const prefixDone = prefixState.done
 
-const verbState = useTypewriter(() => activeSlide.value.verb, {
+const verbState = useTypewriter(() => (prefixDone.value ? activeSlide.value.verb : ''), {
   charDelayMs: VERB_CHAR_MS,
-  enabled: computed(() => animate.value && prefixDone.value)
+  enabled: animate
 })
 const verbVisible = verbState.visible
 const verbDone = verbState.done
@@ -176,7 +176,7 @@ function onVisibilityChange(): void {
 }
 
 watch(verbDone, (done) => {
-  if (done) scheduleAdvance()
+  if (done && prefixDone.value) scheduleAdvance()
 })
 
 watch(slideIndex, (index) => {
@@ -467,4 +467,5 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
 

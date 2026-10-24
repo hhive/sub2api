@@ -306,34 +306,32 @@ export function useOrbitScene(
     const SEG = 128
     const wireRadius = BALL_RADIUS * 1.002
 
-    for (let m = -2; m <= 2; m++) {
-      const tilt = (m * Math.PI) / 7
+    // 5 条纬线：固定纬度，半径随纬度收缩
+    for (let p = 1; p <= 5; p++) {
+      const theta = (p / 6) * Math.PI
+      const y = Math.cos(theta) * wireRadius
+      const ring = Math.sin(theta) * wireRadius
       const pts: InstanceType<typeof THREE.Vector3>[] = []
       for (let i = 0; i < SEG; i++) {
         const a = (i / SEG) * Math.PI * 2
-        pts.push(
-          new THREE.Vector3(
-            Math.cos(a) * Math.cos(tilt) * wireRadius,
-            Math.sin(tilt) * wireRadius,
-            Math.sin(a) * Math.cos(tilt) * wireRadius
-          )
-        )
+        pts.push(new THREE.Vector3(Math.cos(a) * ring, y, Math.sin(a) * ring))
       }
       const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wireMat)
       line.renderOrder = 2
       wireGroup.add(line)
     }
 
-    for (let p = 0; p < 6; p++) {
-      const lat = (p / 6) * Math.PI
+    // 6 条经线：固定经度，沿纬度方向跨两个极点的圆
+    for (let m = 0; m < 6; m++) {
+      const lon = (m / 6) * Math.PI
       const pts: InstanceType<typeof THREE.Vector3>[] = []
       for (let i = 0; i < SEG; i++) {
-        const a = (i / SEG) * Math.PI * 2
+        const phi = (i / SEG) * Math.PI * 2
         pts.push(
           new THREE.Vector3(
-            Math.cos(a) * Math.cos(lat) * wireRadius,
-            Math.sin(lat) * wireRadius,
-            Math.cos(a) * Math.sin(lat) * wireRadius
+            Math.cos(phi) * Math.cos(lon) * wireRadius,
+            Math.sin(phi) * wireRadius,
+            Math.cos(phi) * Math.sin(lon) * wireRadius
           )
         )
       }
@@ -344,7 +342,7 @@ export function useOrbitScene(
     globe.add(wireGroup)
 
     /* ---------- 陆地加权点阵 ---------- */
-    const POINT_COUNT = 42000
+    const POINT_COUNT = 28000
     const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
     const positions: number[] = []
     const weights: number[] = []
@@ -376,7 +374,7 @@ export function useOrbitScene(
 
       const r = BALL_RADIUS * 1.002
       positions.push(x * r, y * r, z * r)
-      weights.push(land ? 1 : 0.18)
+      weights.push(land ? 1 : 0.13)
     }
 
     const pointGeo = new THREE.BufferGeometry()
@@ -386,7 +384,7 @@ export function useOrbitScene(
     const pointMat = new THREE.ShaderMaterial({
       uniforms: {
         uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        uPointSize: { value: 3.4 },
+        uPointSize: { value: 2.4 },
         uCool: { value: cool },
         uSilver: { value: silver }
       },
@@ -411,7 +409,7 @@ export function useOrbitScene(
         uniform vec3 uCool, uSilver;
         void main() {
           float mask = 1.0 - smoothstep(0.1, 0.5, length(gl_PointCoord - 0.5));
-          float a = mix(0.04, 1.0, smoothstep(-0.25, 0.92, vDepth)) * vWeight * mask;
+          float a = mix(0.02, 0.72, smoothstep(-0.2, 0.88, vDepth)) * vWeight * mask;
           gl_FragColor = vec4(mix(uCool, uSilver, 0.64), a);
         }
       `
@@ -781,6 +779,7 @@ export function useOrbitScene(
 
   return { start, resize, dispose }
 }
+
 
 
 
