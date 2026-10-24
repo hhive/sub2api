@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
@@ -33,7 +33,11 @@ vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
     ...actual,
-    useI18n: () => ({ t: (key: string) => key }),
+    useI18n: () => ({
+      t: (key: string) => key,
+      tm: () => [],
+      rt: (value: unknown) => value,
+    }),
   }
 })
 
@@ -75,6 +79,12 @@ describe('HomeView compact mode', () => {
     appStore.fetchPublicSettings.mockClear()
     localStorage.clear()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+    // jsdom 没有 Canvas 2D 上下文，返回 null 让组件走无画布分支
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders custom HTML ahead of compact mode', () => {
@@ -109,7 +119,8 @@ describe('HomeView compact mode', () => {
 
     expect(wrapper.find('[data-testid="compact-home"]').exists()).toBe(false)
     expect(wrapper.find('.terminal-container').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="hero-proof-strip"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="home-orbit-hero"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="orbit-stage"]').exists()).toBe(true)
   })
 
   it('links unauthenticated visitors to login', () => {

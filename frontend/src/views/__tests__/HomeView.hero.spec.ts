@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
+import HomeOrbitHero from '@/components/home/HomeOrbitHero.vue'
 
 const { appStore, authStore } = vi.hoisted(() => ({
   appStore: {
@@ -11,29 +13,52 @@ const { appStore, authStore } = vi.hoisted(() => ({
     docUrl: '',
     publicSettingsLoaded: true,
     fetchPublicSettings: vi.fn(),
+    showSuccess: vi.fn(),
+    showWarning: vi.fn()
   },
   authStore: {
     isAuthenticated: false,
     isAdmin: false,
     user: null as { email?: string } | null,
-    checkAuth: vi.fn(),
-  },
+    checkAuth: vi.fn()
+  }
 }))
 
 vi.mock('@/stores', () => ({
   useAppStore: () => appStore,
-  useAuthStore: () => authStore,
+  useAuthStore: () => authStore
 }))
 
 vi.mock('@/stores/app', () => ({
-  useAppStore: () => appStore,
+  useAppStore: () => appStore
 }))
+
+const SLIDES = {
+  s1: {
+    prefix: 'One key',
+    verb: 'to every AI',
+    subtitle: 'first subtitle',
+    left: { kicker: 'Access', title: 'Left one', desc: 'left desc one' },
+    right: { kicker: 'Billing', title: 'Right one', desc: 'right desc one' }
+  },
+  s2: {
+    prefix: 'Model plaza',
+    verb: 'prices at a glance',
+    subtitle: 'second subtitle',
+    left: { kicker: 'Catalog', title: 'Left two', desc: 'left desc two' },
+    right: { kicker: 'Pricing', title: 'Right two', desc: 'right desc two' }
+  }
+}
 
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
     ...actual,
-    useI18n: () => ({ t: (key: string) => key }),
+    useI18n: () => ({
+      t: (key: string) => key,
+      tm: (key: string) => (key === 'home.hero.slides' ? SLIDES : []),
+      rt: (value: unknown) => value
+    })
   }
 })
 
@@ -41,7 +66,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
   appStore.cachedPublicSettings = {
     site_name: 'Test site',
     site_subtitle: 'Test subtitle',
-    ...settings,
+    ...settings
   }
 
   return mount(HomeView, {
@@ -49,9 +74,9 @@ function mountHome(settings: Record<string, unknown> = {}) {
       stubs: {
         RouterLink: RouterLinkStub,
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
-        Icon: { template: '<span data-testid="icon" />' },
-      },
-    },
+        Icon: { template: '<span data-testid="icon" />' }
+      }
+    }
   })
 }
 
@@ -61,6 +86,44 @@ function ctaDestination(wrapper: ReturnType<typeof mountHome>, testId: string) {
   return link.findComponent(RouterLinkStub).props('to')
 }
 
+function defaultMatchMedia(matches = false) {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }) as unknown as MediaQueryList
+  )
+}
+
+function mountHero(intervalMs = 6200) {
+  const slides = Object.keys(SLIDES)
+    .sort()
+    .map((key) => SLIDES[key as keyof typeof SLIDES])
+
+  return mount(HomeOrbitHero, {
+    props: {
+      slides,
+      isAuthenticated: false,
+      dashboardPath: '/dashboard',
+      showModelPlazaEntry: false,
+      intervalMs
+    },
+    global: {
+      stubs: {
+        RouterLink: RouterLinkStub,
+        transition: { template: '<div><slot /></div>' }
+      }
+    }
+  })
+}
+
 describe('HomeView immersive hero', () => {
   beforeEach(() => {
     authStore.isAuthenticated = false
@@ -68,24 +131,87 @@ describe('HomeView immersive hero', () => {
     authStore.user = null
     authStore.checkAuth.mockClear()
     appStore.fetchPublicSettings.mockClear()
+    appStore.showSuccess.mockClear()
+    appStore.showWarning.mockClear()
     localStorage.clear()
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+    defaultMatchMedia(false)
+    // jsdom 没有 WebGL/Canvas 上下文，OrbitStage 走静态降级
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   })
 
-  it('renders the hero headline, subtitle and three proof items', () => {
-    const wrapper = mountHome()
-
-    expect(wrapper.text()).toContain('home.hero.titlePrimary')
-    expect(wrapper.text()).toContain('home.hero.titleAccent')
-    expect(wrapper.text()).toContain('home.hero.subtitle')
-    expect(wrapper.get('[data-testid="hero-proof-strip"]').findAll('li').length).toBe(3)
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('renders the aurora backdrop instead of the terminal mock', () => {
+  it('renders the orbit hero stage instead of the legacy terminal hero', () => {
     const wrapper = mountHome()
 
-    expect(wrapper.find('[data-testid="auth-tech-bg"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="home-orbit-hero"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="orbit-stage"]').exists()).toBe(true)
     expect(wrapper.find('.terminal-container').exists()).toBe(false)
+  })
+
+  it('exposes the full first headline through the accessible label', () => {
+    const wrapper = mountHome()
+
+    expect(wrapper.get('[data-testid="orbit-title"]').attributes('aria-label')).toBe(
+      'One key to every AI'
+    )
+  })
+
+  it('numbers the carousel and follows the hero slide changes', async () => {
+    const wrapper = mountHome()
+    const counter = () => wrapper.get('[data-testid="home-slide-counter"]').text().replace(/\s+/g, ' ')
+
+    expect(counter()).toBe('01/ 02')
+
+    wrapper.findComponent(HomeOrbitHero).vm.$emit('slide-change', 1)
+    await nextTick()
+
+    expect(counter()).toBe('02/ 02')
+  })
+
+  it('rotates the carousel to the next slide and swaps the focus cards', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountHero()
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left one')
+    expect(wrapper.get('[data-testid="orbit-focus-right"]').text()).toContain('Right one')
+
+    await vi.advanceTimersByTimeAsync(8000)
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
+    expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left two')
+    expect(wrapper.get('[data-testid="orbit-focus-right"]').text()).toContain('Right two')
+
+    vi.useRealTimers()
+  })
+
+  it('reveals the whole headline immediately when reduced motion is preferred', async () => {
+    vi.restoreAllMocks()
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes('prefers-reduced-motion'),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn()
+        }) as unknown as MediaQueryList
+    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+
+    const wrapper = mountHome()
+    await nextTick()
+
+    const titleText = wrapper.get('[data-testid="orbit-title"]').text()
+    expect(titleText).toContain('One key')
+    expect(titleText).toContain('to every AI')
   })
 
   it('points the primary call to action at login for anonymous visitors', () => {
@@ -115,6 +241,13 @@ describe('HomeView immersive hero', () => {
     const wrapper = mountHome({ model_plaza_enabled: false, model_plaza_require_auth: false })
 
     expect(wrapper.find('[data-testid="home-secondary-cta"]').exists()).toBe(false)
+  })
+
+  it('offers the contact entry only when a contact channel is configured', () => {
+    expect(mountHome().find('[data-testid="home-contact-cta"]').exists()).toBe(false)
+
+    const withContact = mountHome({ contact_info: 'support@example.com' })
+    expect(withContact.find('[data-testid="home-contact-cta"]').exists()).toBe(true)
   })
 
   it('keeps custom home content ahead of the immersive hero', () => {

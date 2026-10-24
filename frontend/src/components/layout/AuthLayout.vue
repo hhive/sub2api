@@ -1,77 +1,51 @@
 <template>
-  <div class="auth-shell relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-    <!-- 深色科技背景：极光 / 网格 / 扫描线 / 指针光斑，所有认证页共用 -->
-    <AuroraBackdrop variant="auth" pointer-glow />
+  <div class="auth-shell dark">
+    <!-- 认证页固定深色，与首页同一套轨道地球口径 -->
+    <OrbitStage mode="auth" />
 
-    <div
-      class="relative z-10 grid w-full max-w-6xl items-center gap-10 py-10 lg:grid-cols-[1.05fr_minmax(0,420px)] lg:gap-16"
-    >
-      <!-- 左栏：品牌与沉浸式标题 -->
-      <div data-testid="auth-hero" class="text-center lg:text-left">
-        <div class="flex items-center justify-center gap-3 lg:justify-start">
-          <div
-            class="auth-logo inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl"
-          >
-            <img
-              v-if="settingsLoaded"
-              :src="siteLogo || '/logo.svg'"
-              alt="Logo"
-              class="h-full w-full object-contain"
-            />
-          </div>
-          <span class="auth-brand-title truncate font-brand text-lg font-semibold tracking-tight">
-            {{ siteName }}
-          </span>
-        </div>
-
-        <h1 class="auth-hero-title mt-8 font-display">
-          <span class="block">{{ t('auth.hero.titlePrimary') }}</span>
-          <span class="auth-hero-title-accent block">{{ t('auth.hero.titleAccent') }}</span>
-        </h1>
-
-        <p v-if="settingsLoaded" class="auth-subtitle mt-5 text-sm sm:text-base">
-          {{ siteSubtitle }}
-        </p>
-
-        <HeroProofStrip class="mt-8 lg:justify-start" :items="proofItems" />
+    <header class="auth-topbar">
+      <div class="auth-brand">
+        <img
+          v-if="settingsLoaded"
+          :src="siteLogo || '/logo.svg'"
+          alt="Logo"
+          class="auth-brand-logo"
+        />
+        <span class="auth-brand-name">{{ siteName }}</span>
       </div>
 
-      <!-- 右栏：表单卡片 -->
-      <div class="w-full max-w-md justify-self-center lg:justify-self-end">
-        <div class="auth-card-shell">
-          <div class="card-glass rounded-2xl p-8 shadow-glass">
-            <slot />
-          </div>
-        </div>
+      <LocaleSwitcher class="auth-locale" />
+    </header>
 
-        <!-- 公开可靠性指标：仅登录/注册页展示，数据失败时组件自行隐藏 -->
-        <PublicStatsStrip v-if="showAuthStats" />
-
-        <!-- Footer Links -->
-        <div class="auth-footer-links mt-6 text-center text-sm">
-          <slot name="footer" />
-        </div>
-
-        <!-- Copyright -->
-        <div class="auth-copyright mt-8 text-center text-xs">
-          &copy; {{ currentYear }} {{ siteName }}. All rights reserved.
-        </div>
+    <main class="auth-main">
+      <div class="auth-card" data-testid="auth-card">
+        <slot />
       </div>
-    </div>
+
+      <!-- 公开可靠性指标：仅登录/注册页展示，数据失败时组件自行隐藏 -->
+      <PublicStatsStrip v-if="showAuthStats" class="auth-stats" />
+
+      <!-- Footer Links -->
+      <div class="auth-footer-links">
+        <slot name="footer" />
+      </div>
+
+      <!-- Copyright -->
+      <div class="auth-copyright">
+        &copy; {{ currentYear }} {{ siteName }}. All rights reserved.
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, onMounted } from 'vue'
 import { routeLocationKey } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
-import AuroraBackdrop from '@/components/common/AuroraBackdrop.vue'
-import HeroProofStrip from '@/components/common/HeroProofStrip.vue'
+import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import PublicStatsStrip from '@/components/common/PublicStatsStrip.vue'
-
-const { t } = useI18n()
+import OrbitStage from '@/components/home/OrbitStage.vue'
 
 const appStore = useAppStore()
 
@@ -81,17 +55,9 @@ const showAuthStats = route?.name === 'Login' || route?.name === 'Register'
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
-const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
 const currentYear = computed(() => new Date().getFullYear())
-
-// 首屏三条证明文案
-const proofItems = computed(() => [
-  t('auth.hero.proof.gateway'),
-  t('auth.hero.proof.billing'),
-  t('auth.hero.proof.console'),
-])
 
 onMounted(() => {
   appStore.fetchPublicSettings()
@@ -100,124 +66,319 @@ onMounted(() => {
 
 <style scoped>
 .auth-shell {
-  --auth-text: #0f172a;
-  --auth-text-dim: #475569;
-  --auth-accent: #7c3aed;
-  --auth-accent-soft: #a78bfa;
-  background: #f5f4fb;
+  --auth-text: #f1f4f2;
+  --auth-dim: rgba(255, 255, 255, 0.62);
+  --auth-faint: rgba(255, 255, 255, 0.42);
+  --auth-line: rgba(255, 255, 255, 0.12);
+  --auth-hover: rgba(255, 255, 255, 0.08);
+
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 100vh;
+  min-height: 100svh;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #08090b;
+  color: var(--auth-text);
+  color-scheme: dark;
 }
 
-html.dark .auth-shell {
-  --auth-text: #ffffff;
-  --auth-text-dim: #a9b8d4;
-  --auth-accent: #c4b5fd;
-  --auth-accent-soft: #8b5cf6;
-  background: #000000;
+/* 地球背景固定铺满视口，卡片区域独立滚动 */
+.auth-shell :deep(.orbit-stage) {
+  position: fixed;
 }
 
-.auth-logo {
-  background: linear-gradient(150deg, rgba(123, 57, 237, 0.28), rgba(90, 32, 190, 0.22));
-  border: 1px solid rgba(167, 139, 250, 0.4);
-  box-shadow: 0 0 30px rgba(123, 57, 237, 0.28), 0 10px 30px rgba(90, 32, 190, 0.24);
+/* ---------- 顶栏 ---------- */
+.auth-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
 }
 
-.auth-brand-title {
+@media (min-width: 640px) {
+  .auth-topbar {
+    padding: 26px 40px;
+  }
+}
+
+.auth-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-brand-logo {
+  height: 33px;
+  width: 33px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(123, 57, 237, 0.55));
+}
+
+.auth-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Lexend, system-ui, -apple-system, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--auth-text);
 }
 
-.auth-hero-title {
-  font-size: clamp(2.25rem, 6vw, 4.5rem);
+/* 语言切换器收进顶栏的细边圆角口径，只留旗帜 */
+.auth-locale :deep(> button) {
+  height: 36px;
+  width: 36px;
+  justify-content: center;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid var(--auth-line);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0;
+  color: var(--auth-dim);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.auth-locale :deep(> button:hover) {
+  color: var(--auth-text);
+  border-color: rgba(255, 255, 255, 0.26);
+  background: var(--auth-hover);
+}
+
+.auth-locale :deep(> button > span:nth-child(2)),
+.auth-locale :deep(> button > svg) {
+  display: none;
+}
+
+/* ---------- 主体 ---------- */
+.auth-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 18px 56px;
+}
+
+.auth-card {
+  width: min(411px, 92vw);
+  border-radius: 24px;
+  border: 1px solid var(--auth-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    rgba(11, 12, 15, 0.78);
+  padding: 28px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  animation: auth-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- 卡片内表单口径 ---------- */
+.auth-card :deep(h2) {
+  font-family: 'Instrument Serif', 'Songti SC', 'Noto Serif SC', Georgia, serif;
+  font-size: 44px;
   font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-  color: var(--auth-text);
-}
-
-.auth-hero-title-accent {
-  background-image: linear-gradient(100deg, #111827 0%, #4c1d95 52%, #7b39ed 100%);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 12%, rgba(214, 224, 255, 0.72) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-html.dark .auth-hero-title-accent {
-  background-image: linear-gradient(100deg, #ffffff 0%, #ded2ff 48%, #a78bfa 100%);
+.auth-card :deep(.input-label) {
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--auth-dim);
 }
 
-.auth-subtitle {
-  color: var(--auth-text-dim);
-}
-
-.auth-card-shell {
-  padding: 1px;
-  border-radius: 18px;
-  background: linear-gradient(
-    150deg,
-    rgba(123, 57, 237, 0.55),
-    rgba(139, 92, 246, 0.42) 46%,
-    rgba(255, 255, 255, 0.08)
-  );
-  box-shadow: 0 24px 70px rgba(26, 12, 56, 0.35), 0 0 40px rgba(123, 57, 237, 0.14);
-  animation: auth-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-html.dark .auth-card-shell {
-  box-shadow: 0 24px 70px rgba(3, 8, 24, 0.65), 0 0 40px rgba(123, 57, 237, 0.16);
-}
-
-.auth-card-shell > .card-glass {
-  border-radius: 17px;
-  background-color: rgba(255, 255, 255, 0.86);
-}
-
-/* 认证页统一强调色：卡片标题与主按钮跟随落地页的紫色口径 */
-.auth-card-shell :deep(h2) {
-  background-image: linear-gradient(100deg, #4c1d95, #7b39ed 42%, #a78bfa 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.auth-card-shell :deep(.btn.btn-primary) {
-  background-image: linear-gradient(112deg, #a78bfa, #7b39ed 52%, #5a20be);
-  border: 1px solid rgba(167, 139, 250, 0.45);
+.auth-card :deep(.input) {
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--auth-line);
+  background: linear-gradient(180deg, rgba(33, 33, 33, 0.38), rgba(7, 7, 7, 0.54));
+  padding: 0 16px;
+  font-size: 14px;
   color: #ffffff;
-  box-shadow: 0 10px 30px rgba(123, 57, 237, 0.3), 0 8px 28px rgba(90, 32, 190, 0.26);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.auth-card-shell :deep(.btn.btn-primary:hover:not(:disabled)) {
-  background-image: linear-gradient(112deg, #bda4ff, #8b5cf6 52%, #6d28d9);
-  box-shadow: 0 14px 38px rgba(123, 57, 237, 0.4), 0 10px 34px rgba(90, 32, 190, 0.32);
+.auth-card :deep(.input::placeholder) {
+  color: rgba(255, 255, 255, 0.36);
 }
 
-.auth-card-shell :deep(.btn.btn-primary svg) {
-  color: inherit;
+.auth-card :deep(.input:focus) {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  outline: none;
 }
 
-html.dark .auth-card-shell > .card-glass {
-  background-color: rgba(15, 23, 42, 0.8);
+.auth-card :deep(.input:disabled) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.auth-card :deep(.input-error) {
+  border-color: rgba(248, 113, 113, 0.7);
+}
+
+.auth-card :deep(.input-hint) {
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--auth-faint);
+}
+
+.auth-card :deep(.input-error-text) {
+  color: #fca5a5;
+}
+
+.auth-card :deep(.btn) {
+  min-height: 42px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.auth-card :deep(.btn.btn-primary) {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.11));
+  background-color: transparent;
+  color: #ffffff;
+  box-shadow:
+    0 10px 26px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.auth-card :deep(.btn.btn-primary:hover:not(:disabled)) {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.27), rgba(255, 255, 255, 0.15));
+  box-shadow:
+    0 12px 30px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+.auth-card :deep(.btn.btn-secondary) {
+  border: 1px solid var(--auth-line);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.84);
+  box-shadow: none;
+}
+
+.auth-card :deep(.btn.btn-secondary:hover:not(:disabled)) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* 卡片内的说明文字与分割线统一到深色口径 */
+.auth-card :deep(.text-gray-500),
+.auth-card :deep(.text-gray-600),
+.auth-card :deep(.text-dark-400),
+.auth-card :deep(.text-dark-300) {
+  color: var(--auth-dim);
+}
+
+.auth-card :deep(.text-gray-900),
+.auth-card :deep(.text-gray-700) {
+  color: var(--auth-text);
+}
+
+/* 输入框内前缀/后缀图标 */
+.auth-card :deep(.text-gray-400),
+.auth-card :deep(.text-dark-500) {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.auth-card :deep(.bg-gray-200),
+.auth-card :deep(.bg-dark-700) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.auth-card :deep(.auth-accent-link) {
+  color: #d6e9fb;
+}
+
+.auth-card :deep(.auth-accent-link:hover) {
+  color: #ffffff;
+}
+
+/* ---------- 卡片下方信息 ---------- */
+.auth-stats {
+  width: min(411px, 92vw);
 }
 
 .auth-footer-links {
-  color: var(--auth-text-dim);
+  width: min(411px, 92vw);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--auth-dim);
 }
 
 .auth-footer-links :deep(a) {
-  color: var(--auth-accent);
+  color: #d6e9fb;
+}
+
+.auth-footer-links :deep(a:hover) {
+  color: #ffffff;
 }
 
 .auth-copyright {
-  color: var(--auth-text-dim);
-  opacity: 0.72;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--auth-faint);
 }
 
-@keyframes auth-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+@media (max-width: 640px) {
+  .auth-card {
+    padding: 22px;
+  }
+
+  .auth-card :deep(h2) {
+    font-size: 34px;
+  }
+
+  /* 窄屏只留球体轮廓，网格与噪点收起，避免压住表单 */
+  .auth-shell :deep(.orbit-stage-grid),
+  .auth-shell :deep(.orbit-stage-grain) {
+    display: none;
+  }
+
+  .auth-shell :deep(.orbit-stage-canvas) {
+    opacity: 0.45;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-card-shell {
+  .auth-card {
     animation: none !important;
   }
 }

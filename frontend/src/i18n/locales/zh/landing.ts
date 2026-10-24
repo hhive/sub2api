@@ -16,16 +16,90 @@ export default {
     goToDashboard: '进入控制台',
     // 沉浸式首屏
     hero: {
-      titlePrimary: '统一入口',
-      titleAccent: '连接所有 AI',
-      subtitle: '一个密钥，接入 AI 工作台、算力资源与模型市场。无需在多个平台之间来回切换。',
       primaryCta: '登录',
       primaryCtaAuthed: '进入控制台',
       secondaryCta: '先逛逛',
-      proof: {
-        gateway: '主流大模型统一 API 网关',
-        billing: '按量计费 · 透明用量',
-        console: '可视化工作台与模型市场'
+      moreMenu: '更多',
+      reelLabel: '模型广场',
+      contact: '商务合作',
+      contactCopied: '联系方式已复制',
+      contactCopyFailed: '复制失败，请手动选择联系方式',
+      slides: {
+        s1: {
+          prefix: '一个密钥',
+          verb: '连接所有 AI',
+          subtitle: '从一句需求到一次调用。\n工作台、算力与模型市场，同一入口。',
+          left: {
+            kicker: '接入 / 模型',
+            title: 'Claude · GPT · Gemini',
+            desc: '一个密钥打通主流厂商，切换只改模型名。'
+          },
+          right: {
+            kicker: '计费 / 用量',
+            title: '按量计费 · 透明',
+            desc: '用多少算多少，配额上限随手设。'
+          }
+        },
+        s2: {
+          prefix: '订阅转 API',
+          verb: '一个账号通行',
+          subtitle: '订阅额度不再闲置。\n转成 API Key，接入你自己的工具。',
+          left: {
+            kicker: '账号 / 迁移',
+            title: '订阅额度转 Key',
+            desc: '已有订阅直接折算，不必重复付费。'
+          },
+          right: {
+            kicker: '会话 / 稳定',
+            title: '粘性会话',
+            desc: '长上下文不断线，多轮任务一路到底。'
+          }
+        },
+        s3: {
+          prefix: '模型广场',
+          verb: '价格一目了然',
+          subtitle: '图片、视频、对话模型同台比较。\n分档定价写在页面上，不用问人。',
+          left: {
+            kicker: '目录 / 模型',
+            title: '一个目录全站共用',
+            desc: '图片按尺寸与质量、视频按秒或按条。'
+          },
+          right: {
+            kicker: '价格 / 透明',
+            title: '售价与成本分开',
+            desc: '每次调价都留痕，历史可查。'
+          }
+        },
+        s4: {
+          prefix: '控制台',
+          verb: '用量随时对账',
+          subtitle: '余额、配额、调用明细实时刷新。\n花在哪、还剩多少，一眼看清。',
+          left: {
+            kicker: '看板 / 用量',
+            title: '余额与配额实时',
+            desc: '按 Key、按模型拆分，逐条可下钻。'
+          },
+          right: {
+            kicker: '密钥 / 管理',
+            title: '分组与上限自助',
+            desc: '一个 Key 一个额度，超限自动拦截。'
+          }
+        },
+        s5: {
+          prefix: '团队协作',
+          verb: '多人分权管理',
+          subtitle: '成员、密钥、额度分层管理。\n谁在用、用了多少，都有记录。',
+          left: {
+            kicker: '成员 / 权限',
+            title: '角色按需授权',
+            desc: '管理员、运营、普通用户各司其职。'
+          },
+          right: {
+            kicker: '审计 / 日志',
+            title: '每次调用可追溯',
+            desc: '登录、改密、调用全留审计记录。'
+          }
+        }
       }
     },
     // 新增：面向用户的价值主张

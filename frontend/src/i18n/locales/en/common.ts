@@ -255,17 +255,6 @@ export default {
 
   // Auth
   auth: {
-    // Immersive hero on auth pages
-    hero: {
-      titlePrimary: 'One gateway',
-      titleAccent: 'to every AI',
-      subtitle: 'One account for the AI workspace, compute resources and model marketplace.',
-      proof: {
-        gateway: 'Unified gateway for mainstream models',
-        billing: 'Pay as you go, transparent usage',
-        console: 'Visual console and model marketplace'
-      }
-    },
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
     signIn: 'Sign In',

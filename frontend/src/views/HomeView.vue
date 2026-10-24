@@ -90,116 +90,113 @@
     </footer>
   </div>
 
-  <!-- Immersive Home Page -->
-  <div
-    v-else
-    class="relative flex min-h-screen flex-col overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-white"
-  >
-    <AuroraBackdrop />
-
+  <!-- Immersive Home Page: 轨道地球主视觉 -->
+  <div v-else class="home-page">
     <!-- Header -->
-    <header class="relative z-20 px-5 py-5 sm:px-8">
-      <nav class="mx-auto flex max-w-6xl items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-2.5">
-          <img
-            :src="siteLogo || '/logo.svg'"
-            alt="Logo"
-            class="h-9 w-9 shrink-0 rounded-xl object-contain"
-          />
-          <span class="min-w-0 truncate font-brand text-base font-semibold tracking-tight">{{
-            siteName
-          }}</span>
+    <header class="home-header">
+      <nav class="home-header-nav">
+        <div class="home-brand">
+          <img :src="siteLogo || '/logo.svg'" alt="Logo" class="home-brand-logo" />
+          <span class="home-brand-name">{{ siteName }}</span>
         </div>
 
-        <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <LocaleSwitcher />
+        <div class="home-header-actions">
+          <LocaleSwitcher class="home-locale" />
 
-          <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="home-header-link"
-            :title="t('home.viewDocs')"
-          >
-            <Icon name="book" size="md" />
-          </a>
+          <div ref="moreRef" class="home-more">
+            <button
+              type="button"
+              class="home-icon-btn"
+              data-testid="home-more-button"
+              :title="t('home.hero.moreMenu')"
+              aria-haspopup="menu"
+              :aria-expanded="moreOpen"
+              @click="moreOpen = !moreOpen"
+            >
+              <Icon name="more" size="md" />
+            </button>
 
-          <router-link v-if="showModelPlazaEntry" to="/model-plaza" class="home-header-link" :title="t('nav.modelPlaza')">
-            <Icon name="grid" size="md" />
-            <span class="hidden sm:inline">{{ t('nav.modelPlaza') }}</span>
-          </router-link>
+            <div v-if="moreOpen" class="home-more-panel" role="menu" data-testid="home-more-panel">
+              <a
+                v-if="docUrl"
+                :href="docUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="home-more-item"
+                role="menuitem"
+                @click="moreOpen = false"
+              >
+                <Icon name="book" size="sm" />
+                <span>{{ t('home.viewDocs') }}</span>
+              </a>
 
-          <button
-            class="home-header-link"
-            :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
-            @click="toggleTheme"
-          >
-            <Icon v-if="isDark" name="sun" size="md" />
-            <Icon v-else name="moon" size="md" />
-          </button>
+              <router-link
+                v-if="showModelPlazaEntry"
+                to="/model-plaza"
+                class="home-more-item"
+                role="menuitem"
+                @click="moreOpen = false"
+              >
+                <Icon name="grid" size="sm" />
+                <span>{{ t('nav.modelPlaza') }}</span>
+              </router-link>
 
-          <router-link v-if="isAuthenticated" :to="dashboardPath" class="home-dashboard-pill">
-            <span class="home-dashboard-avatar">{{ userInitial }}</span>
+              <button type="button" class="home-more-item" role="menuitem" @click="onToggleTheme">
+                <Icon :name="isDark ? 'sun' : 'moon'" size="sm" />
+                <span>{{ isDark ? t('home.switchToLight') : t('home.switchToDark') }}</span>
+              </button>
+            </div>
+          </div>
+
+          <router-link v-if="isAuthenticated" :to="dashboardPath" class="home-account-btn">
+            <span class="home-account-avatar">{{ userInitial }}</span>
             <span>{{ t('home.dashboard') }}</span>
           </router-link>
-          <router-link v-else to="/login" class="home-login-pill">{{ t('home.login') }}</router-link>
+          <router-link v-else to="/login" class="home-login-btn">{{ t('home.login') }}</router-link>
         </div>
       </nav>
     </header>
 
-    <!-- Hero -->
-    <main
-      class="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-16 text-center sm:px-8 sm:py-20"
-    >
-      <h1 class="home-hero-title font-display">
-        <span class="block">{{ t('home.hero.titlePrimary') }}</span>
-        <span class="home-hero-title-accent block">{{ t('home.hero.titleAccent') }}</span>
-      </h1>
-
-      <p class="home-hero-subtitle">{{ t('home.hero.subtitle') }}</p>
-
-      <div class="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <router-link
-          :to="isAuthenticated ? dashboardPath : '/login'"
-          data-testid="home-primary-cta"
-          class="home-cta-primary"
-        >
-          {{ isAuthenticated ? t('home.hero.primaryCtaAuthed') : t('home.hero.primaryCta') }}
-          <Icon name="arrowRight" size="sm" class="ml-1.5" :stroke-width="2" />
-        </router-link>
-        <router-link
-          v-if="showModelPlazaEntry"
-          to="/model-plaza"
-          data-testid="home-secondary-cta"
-          class="home-cta-secondary"
-        >
-          {{ t('home.hero.secondaryCta') }}
-        </router-link>
-      </div>
-
-      <HeroProofStrip class="mt-14" :items="proofItems" />
-    </main>
+    <HomeOrbitHero
+      :slides="heroSlides"
+      :is-authenticated="isAuthenticated"
+      :dashboard-path="dashboardPath"
+      :show-model-plaza-entry="showModelPlazaEntry"
+      :contact-info="contactInfo"
+      @slide-change="onSlideChange"
+      @contact-click="onContactClick"
+    />
 
     <!-- Footer -->
-    <footer class="relative z-10 px-5 py-6 text-center text-xs text-gray-400 sm:px-8 dark:text-white/35">
-      &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
+    <footer class="home-footer">
+      <span>&copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}</span>
     </footer>
+
+    <div class="home-transport">
+      <span class="home-counter" data-testid="home-slide-counter">
+        <b>{{ slideLabel }}</b>
+        <span class="home-counter-total">/ {{ slideTotalLabel }}</span>
+      </span>
+      <router-link v-if="showModelPlazaEntry" to="/model-plaza" class="home-plaza-link">
+        <Icon name="grid" size="sm" />
+        <span>{{ t('home.hero.reelLabel') }}</span>
+      </router-link>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import AuroraBackdrop from '@/components/common/AuroraBackdrop.vue'
-import HeroProofStrip from '@/components/common/HeroProofStrip.vue'
+import HomeOrbitHero from '@/components/home/HomeOrbitHero.vue'
+import type { HeroSlide } from '@/components/home/types'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
-const { t } = useI18n()
+const { t, tm, rt } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
@@ -209,6 +206,7 @@ const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appS
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
+const contactInfo = computed(() => (appStore.cachedPublicSettings?.contact_info || '').trim())
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 const hasHomeContent = computed(() => homeContent.value.trim().length > 0)
 const compactHomeEnabled = computed(() => appStore.cachedPublicSettings?.compact_home_enabled === true)
@@ -222,6 +220,10 @@ const isHomeContentUrl = computed(() => {
 
 // Theme
 const isDark = ref(document.documentElement.classList.contains('dark'))
+
+// 二级菜单
+const moreOpen = ref(false)
+const moreRef = ref<HTMLElement | null>(null)
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
@@ -239,15 +241,97 @@ const userInitial = computed(() => {
   return user.email.charAt(0).toUpperCase()
 })
 
-// 首屏三条证明文案
-const proofItems = computed(() => [
-  t('home.hero.proof.gateway'),
-  t('home.hero.proof.billing'),
-  t('home.hero.proof.console'),
-])
+// 首屏轮播文案
+const slideIndex = ref(0)
+
+// vue-i18n 的消息返回值类型递归很深，这里只当作结构未知的数据处理
+function readMessage(key: string): unknown {
+  return (tm as unknown as (messageKey: string) => unknown)(key)
+}
+
+function field(source: unknown, key: string): unknown {
+  if (!source || typeof source !== 'object') return undefined
+  return (source as Record<string, unknown>)[key]
+}
+
+function asText(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value === undefined || value === null) return ''
+  return String(rt(value as never))
+}
+
+const heroSlides = computed<HeroSlide[]>(() => {
+  const raw = readMessage('home.hero.slides')
+  if (!raw || typeof raw !== 'object') return []
+
+  // i18n 叶子只能是字符串，故轮播文案以 s1..s5 键对象存放，按序号排序取用
+  const entries = raw as Record<string, unknown>
+
+  return Object.keys(entries)
+    .sort()
+    .map((key) => {
+      const item = entries[key]
+      const left = field(item, 'left')
+      const right = field(item, 'right')
+
+      return {
+        prefix: asText(field(item, 'prefix')),
+        verb: asText(field(item, 'verb')),
+        subtitle: asText(field(item, 'subtitle')),
+        left: {
+          kicker: asText(field(left, 'kicker')),
+          title: asText(field(left, 'title')),
+          desc: asText(field(left, 'desc'))
+        },
+        right: {
+          kicker: asText(field(right, 'kicker')),
+          title: asText(field(right, 'title')),
+          desc: asText(field(right, 'desc'))
+        }
+      }
+    })
+})
+
+const slideTotal = computed(() => heroSlides.value.length)
+const slideTotalLabel = computed(() => String(slideTotal.value).padStart(2, '0'))
+const slideLabel = computed(() => String(slideIndex.value + 1).padStart(2, '0'))
 
 // Current year for footer
 const currentYear = computed(() => new Date().getFullYear())
+
+function onSlideChange(index: number): void {
+  slideIndex.value = index
+}
+
+async function onContactClick(): Promise<void> {
+  const value = contactInfo.value
+  if (!value) return
+
+  try {
+    await navigator.clipboard.writeText(value)
+    appStore.showSuccess(t('home.hero.contactCopied'))
+  } catch {
+    appStore.showWarning(t('home.hero.contactCopyFailed'))
+  }
+}
+
+function onToggleTheme(): void {
+  moreOpen.value = false
+  toggleTheme()
+}
+
+function onDocumentPointerDown(event: PointerEvent): void {
+  if (!moreOpen.value) return
+  const root = moreRef.value
+  if (root && event.target instanceof Node && root.contains(event.target)) return
+  moreOpen.value = false
+}
+
+function onDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && moreOpen.value) {
+    moreOpen.value = false
+  }
+}
 
 // Toggle theme
 function toggleTheme() {
@@ -278,177 +362,322 @@ onMounted(() => {
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
+
+  document.addEventListener('pointerdown', onDocumentPointerDown)
+  document.addEventListener('keydown', onDocumentKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  document.removeEventListener('keydown', onDocumentKeydown)
 })
 </script>
 
 <style scoped>
-.home-header-link {
-  display: inline-flex;
+.home-page {
+  --pg-bg: #0a0a0c;
+  --pg-text: #f4f3f7;
+  --pg-dim: rgba(255, 255, 255, 0.56);
+  --pg-faint: rgba(255, 255, 255, 0.38);
+  --pg-line: rgba(255, 255, 255, 0.12);
+  --pg-hover: rgba(255, 255, 255, 0.08);
+
+  position: relative;
+  min-height: 100vh;
+  background: var(--pg-bg);
+  color-scheme: dark;
+  color: var(--pg-text);
+}
+
+/* ---------- Header ---------- */
+.home-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  padding: 18px 22px;
+}
+
+@media (min-width: 640px) {
+  .home-header {
+    padding: 26px 40px;
+  }
+}
+
+.home-header-nav {
+  display: flex;
   align-items: center;
-  gap: 0.375rem;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 auto;
+  max-width: 1560px;
 }
 
-.home-header-link:hover {
-  color: #111827;
-  background-color: rgba(17, 24, 39, 0.06);
-}
-
-html.dark .home-header-link {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-html.dark .home-header-link:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.home-login-pill,
-.home-dashboard-pill {
-  display: inline-flex;
+.home-brand {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 0.375rem;
+  gap: 12px;
+}
+
+.home-brand-logo {
+  height: 33px;
+  width: 33px;
+  flex-shrink: 0;
   border-radius: 9999px;
-  padding: 0.4rem 0.9rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(123, 57, 237, 0.55));
+}
+
+.home-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: Lexend, system-ui, -apple-system, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  background-color: #111827;
-  color: #ffffff;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--pg-text);
 }
 
-.home-login-pill:hover,
-.home-dashboard-pill:hover {
-  background-color: #1f2937;
-  transform: translateY(-1px);
+.home-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
 }
 
-html.dark .home-login-pill,
-html.dark .home-dashboard-pill {
-  background-color: #ffffff;
-  color: #000000;
-}
-
-html.dark .home-login-pill:hover,
-html.dark .home-dashboard-pill:hover {
-  background-color: #ede9fe;
-}
-
-.home-dashboard-pill {
-  padding-left: 0.3rem;
-}
-
-.home-dashboard-avatar {
+/* 顶栏图标按钮：细边圆形，对齐目标站的地球按钮口径 */
+.home-icon-btn {
   display: inline-flex;
-  height: 1.25rem;
-  width: 1.25rem;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--pg-line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--pg-dim);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.home-icon-btn:hover,
+.home-icon-btn[aria-expanded='true'] {
+  color: var(--pg-text);
+  border-color: rgba(255, 255, 255, 0.26);
+  background: var(--pg-hover);
+}
+
+/* 语言切换器：把它自带的那套浅色控件拉进本页的圆形细边口径 */
+.home-locale :deep(> button) {
+  height: 36px;
+  width: 36px;
+  justify-content: center;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid var(--pg-line);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0;
+  color: var(--pg-dim);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.home-locale :deep(> button:hover) {
+  color: var(--pg-text);
+  border-color: rgba(255, 255, 255, 0.26);
+  background: var(--pg-hover);
+}
+
+/* 圆形按钮里塞不下语言代码与箭头，只保留旗帜 */
+.home-locale :deep(> button > span:nth-child(2)),
+.home-locale :deep(> button > svg) {
+  display: none;
+}
+
+/* ---------- 二级菜单 ---------- */
+.home-more {
+  position: relative;
+}
+
+.home-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  min-width: 168px;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  border: 1px solid var(--pg-line);
+  background: rgba(14, 16, 20, 0.94);
+  padding: 6px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+}
+
+.home-more-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 8px 10px;
+  font-family: Lexend, system-ui, -apple-system, sans-serif;
+  font-size: 12.5px;
+  color: var(--pg-dim);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.home-more-item:hover {
+  color: var(--pg-text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.home-login-btn,
+.home-account-btn {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 2px;
+  padding: 0 18px;
+  font-family: Lexend, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.home-login-btn {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--pg-text);
+}
+
+.home-login-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-account-btn {
+  padding-left: 5px;
+  border: 1px solid var(--pg-line);
+  color: var(--pg-text);
+}
+
+.home-account-btn:hover {
+  background: var(--pg-hover);
+}
+
+.home-account-avatar {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background-image: linear-gradient(135deg, #a78bfa, #7b39ed);
-  font-size: 0.625rem;
+  background-image: linear-gradient(135deg, #a78bfa, #7c3aed);
+  font-size: 11px;
   font-weight: 700;
   color: #ffffff;
 }
 
-.home-hero-title {
-  font-size: clamp(2.75rem, 9vw, 6.75rem);
-  font-weight: 400;
-  line-height: 0.98;
-  letter-spacing: -0.02em;
-}
-
-.home-hero-title-accent {
-  background-image: linear-gradient(100deg, #111827 0%, #4c1d95 52%, #7b39ed 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-html.dark .home-hero-title-accent {
-  background-image: linear-gradient(100deg, #ffffff 0%, #ded2ff 48%, #a78bfa 100%);
-}
-
-.home-hero-subtitle {
-  margin-top: 1.5rem;
-  max-width: 34rem;
-  font-size: 1rem;
-  line-height: 1.7;
-  color: #4b5563;
-}
-
-html.dark .home-hero-subtitle {
-  color: rgba(255, 255, 255, 0.62);
+/* ---------- Footer ---------- */
+.home-footer {
+  position: absolute;
+  left: 22px;
+  bottom: 18px;
+  z-index: 12;
+  font-size: 11.5px;
+  color: var(--pg-faint);
 }
 
 @media (min-width: 640px) {
-  .home-hero-subtitle {
-    font-size: 1.125rem;
+  .home-footer {
+    left: 40px;
+    bottom: 44px;
   }
 }
 
-.home-cta-primary,
-.home-cta-secondary {
-  display: inline-flex;
-  min-height: 3rem;
+/* ---------- 右下：轮播计数与模型广场入口 ---------- */
+.home-transport {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  z-index: 12;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  padding: 0 1.75rem;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .home-transport {
+    right: 40px;
+    bottom: 44px;
+  }
+}
+
+.home-counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.42);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-counter b {
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home-counter-total {
+  font-size: 12px;
+}
+
+@media (max-width: 639px) {
+  .home-counter {
+    display: none;
+  }
+}
+
+.home-plaza-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  padding: 8px 14px;
   font-family: Lexend, system-ui, -apple-system, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease,
-    border-color 0.2s ease;
+  font-size: 12px;
+  color: #b7bdc5;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
-.home-cta-primary {
-  background-color: #111827;
-  color: #ffffff;
-  box-shadow: 0 14px 38px rgba(123, 57, 237, 0.24);
-}
-
-.home-cta-primary:hover {
-  background-color: #1f2937;
-  transform: translateY(-1px);
-  box-shadow: 0 18px 44px rgba(123, 57, 237, 0.32);
-}
-
-html.dark .home-cta-primary {
-  background-color: #ffffff;
-  color: #000000;
-  box-shadow: 0 14px 38px rgba(123, 57, 237, 0.35);
-}
-
-html.dark .home-cta-primary:hover {
-  background-color: #ede9fe;
-  box-shadow: 0 18px 44px rgba(123, 57, 237, 0.45);
-}
-
-.home-cta-secondary {
-  border: 1px solid rgba(123, 57, 237, 0.32);
-  color: #4c1d95;
-  background-color: transparent;
-}
-
-.home-cta-secondary:hover {
-  border-color: rgba(123, 57, 237, 0.55);
-  background-color: rgba(123, 57, 237, 0.08);
-  transform: translateY(-1px);
-}
-
-html.dark .home-cta-secondary {
-  border-color: rgba(255, 255, 255, 0.24);
-  color: rgba(255, 255, 255, 0.88);
-}
-
-html.dark .home-cta-secondary:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background-color: rgba(255, 255, 255, 0.1);
+.home-plaza-link:hover {
+  color: var(--pg-text);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
 }
 </style>

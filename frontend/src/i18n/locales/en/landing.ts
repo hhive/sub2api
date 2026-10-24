@@ -16,17 +16,90 @@ export default {
     goToDashboard: 'Go to Dashboard',
     // Immersive hero
     hero: {
-      titlePrimary: 'One gateway',
-      titleAccent: 'to every AI',
-      subtitle:
-        'A single key for your AI workspace, compute resources and model marketplace. No more switching between platforms.',
       primaryCta: 'Sign in',
       primaryCtaAuthed: 'Open dashboard',
       secondaryCta: 'Take a look',
-      proof: {
-        gateway: 'Unified gateway for mainstream models',
-        billing: 'Pay as you go, transparent usage',
-        console: 'Visual console and model marketplace'
+      moreMenu: 'More',
+      reelLabel: 'Model plaza',
+      contact: 'Contact sales',
+      contactCopied: 'Contact copied',
+      contactCopyFailed: 'Copy failed, please select the contact manually',
+      slides: {
+        s1: {
+          prefix: 'One key',
+          verb: 'to every AI',
+          subtitle: 'From a prompt to a call.\nWorkbench, compute and model market in one place.',
+          left: {
+            kicker: 'Access / Models',
+            title: 'Claude · GPT · Gemini',
+            desc: 'One key covers the major vendors. Switching is just a model name.'
+          },
+          right: {
+            kicker: 'Billing / Usage',
+            title: 'Metered and clear',
+            desc: 'Pay for what you use, set quota caps as you like.'
+          }
+        },
+        s2: {
+          prefix: 'Subscribe to API',
+          verb: 'one account goes far',
+          subtitle: 'Your subscription stops idling.\nTurn it into API keys and plug in your own tools.',
+          left: {
+            kicker: 'Account / Migration',
+            title: 'Plans become keys',
+            desc: 'Existing subscriptions convert directly, no double billing.'
+          },
+          right: {
+            kicker: 'Session / Stability',
+            title: 'Sticky sessions',
+            desc: 'Long contexts stay alive across multi-turn work.'
+          }
+        },
+        s3: {
+          prefix: 'Model plaza',
+          verb: 'prices at a glance',
+          subtitle: 'Image, video and chat models side by side.\nTiered pricing lives on the page.',
+          left: {
+            kicker: 'Catalog / Models',
+            title: 'One catalog, everywhere',
+            desc: 'Images by size and quality, video by second or by clip.'
+          },
+          right: {
+            kicker: 'Pricing / Transparent',
+            title: 'Cost and price kept apart',
+            desc: 'Every price change leaves a trace.'
+          }
+        },
+        s4: {
+          prefix: 'Console',
+          verb: 'usage you can reconcile',
+          subtitle: 'Balance, quota and call history refresh live.\nSee where it went and what is left.',
+          left: {
+            kicker: 'Board / Usage',
+            title: 'Live balance and quota',
+            desc: 'Broken down by key and model, drillable to each call.'
+          },
+          right: {
+            kicker: 'Keys / Control',
+            title: 'Groups and caps, self-served',
+            desc: 'One key, one ceiling, blocked automatically beyond it.'
+          }
+        },
+        s5: {
+          prefix: 'Team',
+          verb: 'multi-user with clear roles',
+          subtitle: 'Members, keys and quota in layers.\nWho used what stays on record.',
+          left: {
+            kicker: 'Members / Roles',
+            title: 'Grant only what is needed',
+            desc: 'Admins, operators and users each see their own scope.'
+          },
+          right: {
+            kicker: 'Audit / Logs',
+            title: 'Every call traceable',
+            desc: 'Logins, password changes and calls all audited.'
+          }
+        }
       }
     },
     // User-focused value proposition
