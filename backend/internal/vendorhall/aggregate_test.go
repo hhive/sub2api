@@ -44,14 +44,14 @@ func TestHistogramAverageReturnsNilForEmptySamples(t *testing.T) {
 	require.Nil(t, histogramAverage(map[string]int64{"-1": 2, "bad": 1, "10": 0}))
 }
 
-func TestAggregateMetricsUsesLatestBalanceWithoutBackfillingNull(t *testing.T) {
+func TestAggregateMetricsLeavesSnapshotValuesToLastKnownLookup(t *testing.T) {
 	start := time.Date(2026, 8, 17, 0, 0, 0, 0, time.UTC)
 	metrics := aggregateMinutes([]MinuteMetric{
-		{BucketStart: start, BalanceUSD: ptrFloat(12.34)},
-		{BucketStart: start.Add(time.Minute), BalanceUSD: nil},
-	}, start, start.Add(2*time.Minute), 48)
+		{BucketStart: start, BalanceUSD: ptrFloat(12.34), UpstreamMultiplier: ptrFloat(1.5)},
+	}, start, start.Add(time.Minute), 48)
 
 	require.Nil(t, metrics.BalanceUSD)
+	require.Nil(t, metrics.UpstreamMultiplier)
 }
 
 func TestAggregateMetricsBoundsTrendAndKeepsEmptyValuesNull(t *testing.T) {

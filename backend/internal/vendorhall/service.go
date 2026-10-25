@@ -65,6 +65,36 @@ type rawAccount struct {
 	lastSynced                          sql.NullTime
 }
 
+// 供应商大厅的上游余额与倍率取账号历史上最近一次非空快照，与所选窗口无关。
+const (
+	latestBalanceSQL    = `SELECT DISTINCT ON ("accountId") "accountId", "balanceUsd" FROM "AccountMetricMinute" WHERE "accountId" = ANY($1) AND "balanceUsd" IS NOT NULL ORDER BY "accountId", "bucketStart" DESC`
+	latestMultiplierSQL = `SELECT DISTINCT ON ("accountId") "accountId", "upstreamRateMultiplier" FROM "AccountMetricMinute" WHERE "accountId" = ANY($1) AND "upstreamRateMultiplier" IS NOT NULL ORDER BY "accountId", "bucketStart" DESC`
+)
+
+// latestSnapshotValues 返回每个账号最近一次非空的快照值，查询走 (accountId, bucketStart) 唯一索引反向扫描。
+func latestSnapshotValues(ctx context.Context, db *sql.DB, query string, monitorIDs []int64) (map[int]float64, error) {
+	rows, err := db.QueryContext(ctx, query, pq.Array(monitorIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	values := make(map[int]float64, len(monitorIDs))
+	for rows.Next() {
+		var accountID int
+		var value sql.NullFloat64
+		if err := rows.Scan(&accountID, &value); err != nil {
+			return nil, err
+		}
+		if value.Valid {
+			values[accountID] = value.Float64
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
 func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, error) {
 	db, err := s.database(ctx)
 	if err != nil {
@@ -174,8 +204,27 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 			return nil, fmt.Errorf("%w: metric rows failed", ErrUnavailable)
 		}
 	}
+	latestBalance := map[int]float64{}
+	latestMultiplier := map[int]float64{}
+	if len(monitorIDs) > 0 {
+		latestBalance, err = latestSnapshotValues(queryCtx, db, latestBalanceSQL, monitorIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: latest balance query failed", ErrUnavailable)
+		}
+		latestMultiplier, err = latestSnapshotValues(queryCtx, db, latestMultiplierSQL, monitorIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: latest rate query failed", ErrUnavailable)
+		}
+	}
 	for monitorID, index := range monitorToIndex {
-		accounts[index].metrics = aggregateMinutes(minutesByAccount[monitorID], start, end, 48)
+		metrics := aggregateMinutes(minutesByAccount[monitorID], start, end, 48)
+		if value, ok := latestBalance[monitorID]; ok {
+			metrics.BalanceUSD = ptrFloat(value)
+		}
+		if value, ok := latestMultiplier[monitorID]; ok {
+			metrics.UpstreamMultiplier = ptrFloat(value)
+		}
+		accounts[index].metrics = metrics
 		applyMetrics(&accounts[index], now)
 	}
 	sortAccounts(accounts, params)

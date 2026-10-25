@@ -35,6 +35,10 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
 	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
 		AddRow(1, windowEnd.Add(-time.Minute), 9, 1, 10, 10, 2000, `{"200":9,"1000":1}`, `{"40":9,"500":1}`, 50, 50, 0, 1.5, 12.34))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "balanceUsd"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "balanceUsd"}).AddRow(1, 12.34))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "upstreamRateMultiplier"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "upstreamRateMultiplier"}).AddRow(1, 1.5))
 	service := NewServiceWithDB(db)
 	service.now = func() time.Time { return now }
 	params, err := ParseListParams(nil)
@@ -62,6 +66,44 @@ func TestServiceMapsPositiveSourceIDAndAggregatesMonitorRows(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestServiceUsesLatestKnownSnapshotValuesOutsideWindow(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	now := time.Date(2026, 8, 17, 12, 0, 45, 0, time.UTC)
+	windowEnd := now.Truncate(time.Minute)
+	accountColumns := []string{"id", "sourceAccountId", "name", "platform", "type", "remoteStatus", "schedulable", "priority", "groupProjection", "tempUnschedulableUntil", "tempUnschedulableReason", "lastSyncedAt"}
+	mock.ExpectQuery(`SELECT "id", "sourceAccountId"`).WillReturnRows(sqlmock.NewRows(accountColumns).
+		AddRow(1, "7", "Alpha", "openai", "apikey", "active", true, 50, `[]`, nil, nil, now).
+		AddRow(2, "9", "Beta", "openai", "apikey", "active", true, 50, `[]`, nil, nil, now))
+	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
+	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
+		AddRow(1, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil).
+		AddRow(2, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "balanceUsd"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "balanceUsd"}).AddRow(1, 7.75).AddRow(2, 4.5))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "upstreamRateMultiplier"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "upstreamRateMultiplier"}).AddRow(1, 1.25))
+	service := NewServiceWithDB(db)
+	service.now = func() time.Time { return now }
+	params, err := ParseListParams(nil)
+	require.NoError(t, err)
+
+	result, err := service.List(context.Background(), params)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, result.Total)
+	require.NotNil(t, result.Items[0].BalanceUSD)
+	require.InDelta(t, 7.75, *result.Items[0].BalanceUSD, .0001)
+	require.NotNil(t, result.Items[0].RateMultiplier)
+	require.InDelta(t, 1.25, *result.Items[0].RateMultiplier, .0001)
+	require.Equal(t, windowEnd.Add(-time.Minute), *result.Items[0].CollectedAt)
+	require.NotNil(t, result.Items[1].BalanceUSD)
+	require.InDelta(t, 4.5, *result.Items[1].BalanceUSD, .0001)
+	require.Nil(t, result.Items[1].RateMultiplier)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestServiceFacetsCoverEveryVisibleAccountBeforeFilters(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
 	require.NoError(t, err)
@@ -77,6 +119,10 @@ func TestServiceFacetsCoverEveryVisibleAccountBeforeFilters(t *testing.T) {
 	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
 	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
 		AddRow(1, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "balanceUsd"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "balanceUsd"}))
+	mock.ExpectQuery(`SELECT DISTINCT ON \("accountId"\) "accountId", "upstreamRateMultiplier"`).WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "upstreamRateMultiplier"}))
 	service := NewServiceWithDB(db)
 	service.now = func() time.Time { return now }
 	params, err := ParseListParams(url.Values{"account_id": {"7"}})
