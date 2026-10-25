@@ -201,7 +201,7 @@ function goNext(): void {
   slideIndex.value = (slideIndex.value + 1) % slideCount.value
 }
 
-// 手动切换一组文案，环形取模；自动推进由动词收尾后的排程重新接管
+// 手动切换一组文案，环形取模；未暂停时自动推进由动词收尾后的排程重新接管
 function goTo(index: number): void {
   if (slideCount.value === 0) return
   clearAdvance()

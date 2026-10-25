@@ -105,11 +105,38 @@ function defaultMatchMedia(matches = false) {
   )
 }
 
-function mountHero(intervalMs = 6200) {
-  const slides = Object.keys(SLIDES)
-    .sort()
-    .map((key) => SLIDES[key as keyof typeof SLIDES])
+function reducedMotionMatchMedia(): void {
+  vi.restoreAllMocks()
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }) as unknown as MediaQueryList
+  )
+  // jsdom 没有 WebGL/Canvas 上下文，OrbitStage 走静态降级
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+}
 
+const HERO_SLIDES = Object.keys(SLIDES)
+  .sort()
+  .map((key) => SLIDES[key as keyof typeof SLIDES])
+
+const FIVE_SLIDES = [1, 2, 3, 4, 5].map((n) => ({
+  prefix: `Prefix ${n}`,
+  verb: `Verb ${n}`,
+  subtitle: `Subtitle ${n}`,
+  left: { kicker: `Kicker ${n}`, title: `Left ${n}`, desc: `Left desc ${n}` },
+  right: { kicker: `Kicker ${n}`, title: `Right ${n}`, desc: `Right desc ${n}` }
+}))
+
+function mountHero(intervalMs = 6200, slides = HERO_SLIDES) {
   return mount(HomeOrbitHero, {
     props: {
       slides,
@@ -193,21 +220,7 @@ describe('HomeView immersive hero', () => {
   })
 
   it('reveals the whole headline immediately when reduced motion is preferred', async () => {
-    vi.restoreAllMocks()
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) =>
-        ({
-          matches: query.includes('prefers-reduced-motion'),
-          media: query,
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          dispatchEvent: vi.fn()
-        }) as unknown as MediaQueryList
-    )
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    reducedMotionMatchMedia()
 
     const wrapper = mountHome()
     await nextTick()
@@ -240,21 +253,7 @@ describe('HomeView immersive hero', () => {
   })
 
   it('moves to the next headline manually when reduced motion is preferred', async () => {
-    vi.restoreAllMocks()
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) =>
-        ({
-          matches: query.includes('prefers-reduced-motion'),
-          media: query,
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          dispatchEvent: vi.fn()
-        }) as unknown as MediaQueryList
-    )
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    reducedMotionMatchMedia()
     vi.useFakeTimers()
 
     const wrapper = mountHero()
@@ -288,6 +287,31 @@ describe('HomeView immersive hero', () => {
 
     expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
     expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left two')
+  })
+
+  it('reaches all five headlines with the manual controls when reduced motion is preferred', async () => {
+    reducedMotionMatchMedia()
+    vi.useFakeTimers()
+
+    const wrapper = mountHero(6200, FIVE_SLIDES)
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(false)
+
+    for (let step = 0; step < 4; step++) {
+      await wrapper.get('[data-testid="hero-carousel-next"]').trigger('click')
+      await nextTick()
+    }
+
+    expect(wrapper.emitted('slide-change')?.map((event) => event[0])).toEqual([0, 1, 2, 3, 4])
+    expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left 5')
+
+    await vi.advanceTimersByTimeAsync(20000)
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([4])
+
+    vi.useRealTimers()
   })
 
   it('points the primary call to action at login for anonymous visitors', () => {
