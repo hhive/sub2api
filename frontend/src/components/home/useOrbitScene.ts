@@ -1,5 +1,12 @@
 import { getModelIcon } from '@/constants/modelIconPaths'
 import { normalizeOrbitModels, type OrbitModelSpec } from '@/constants/orbitModels'
+import {
+  ORBIT_ROOT_TILT,
+  ORBIT_TRACKS,
+  buildOrbitPlacements,
+  orbitPointOn,
+  type OrbitTrackSpec
+} from './orbitLayout'
 
 export type { OrbitModelSpec } from '@/constants/orbitModels'
 
@@ -33,11 +40,7 @@ interface SatelliteSpec {
   scale: number
 }
 
-interface TrackSpec {
-  angle: number
-  radius: number
-  alpha: number
-}
+type TrackSpec = OrbitTrackSpec
 
 const BALL_RADIUS = 1.284
 const CAM_FOV = 42
@@ -47,30 +50,18 @@ const COOL = '#93aec7'
 const SILVER = '#e9f1f8'
 const WARM = '#cbb8a6'
 
-const TRACKS: TrackSpec[] = [
-  { angle: -0.27, radius: 1.52, alpha: 0.5 },
-  { angle: 0.54, radius: 1.68, alpha: 0.34 }
-]
+const TRACKS: readonly TrackSpec[] = ORBIT_TRACKS
 
-/* 卫星按名单均匀铺在两条轨道上 */
+/* 卫星按求解出的布点铺在两条轨道上，名单顺序与布点一一对应 */
 function buildSatellites(models: OrbitModelSpec[]): SatelliteSpec[] {
-  const trackTotals: [number, number] = [0, 0]
-  for (let i = 0; i < models.length; i++) trackTotals[i % 2] += 1
-
-  const trackSeen: [number, number] = [0, 0]
-  return models.map((model, index) => {
-    const track = (index % 2) as 0 | 1
-    const ordinal = trackSeen[track]
-    trackSeen[track] += 1
-
-    return {
-      model: model.vendor,
-      label: model.label,
-      track,
-      phase: (ordinal + 0.5) / trackTotals[track],
-      scale: 1 - 0.06 * (index % 4)
-    }
-  })
+  const placements = buildOrbitPlacements(models.length)
+  return models.map((model, index) => ({
+    model: model.vendor,
+    label: model.label,
+    track: placements[index].track,
+    phase: placements[index].phase,
+    scale: placements[index].scale
+  }))
 }
 
 const MONO_LOGOS = new Set(['openai', 'moonshot', 'xai', 'ollama', 'jina', 'suno'])
@@ -444,15 +435,8 @@ export function useOrbitScene(
 
     /* ---------- 轨道与卫星 ---------- */
     function orbitPoint(track: TrackSpec, phase: number, out: InstanceType<typeof THREE.Vector3>) {
-      const a = phase * Math.PI * 2
-      const px = Math.cos(a)
-      const py = Math.sin(a) * 0.36
-      const pz = Math.sin(a) * 0.93
-      const ca = Math.cos(track.angle)
-      const sa = Math.sin(track.angle)
-      const x = px * ca - py * sa
-      const y = px * sa + py * ca
-      return out.set(x * track.radius, y * track.radius, pz * track.radius)
+      const [x, y, z] = orbitPointOn(track, phase)
+      return out.set(x, y, z)
     }
 
     const trackLines: InstanceType<typeof THREE.Line>[] = []
@@ -618,8 +602,8 @@ export function useOrbitScene(
     let lastX = 0
     let lastY = 0
 
-    const BASE_TILT_X = 0.07
-    const BASE_TILT_Z = -0.17
+    const BASE_TILT_X = ORBIT_ROOT_TILT.x
+    const BASE_TILT_Z = ORBIT_ROOT_TILT.z
 
     const onPointerDown = (e: PointerEvent) => {
       dragging = true
