@@ -115,4 +115,13 @@ describe('LoginView registration entry', () => {
 
     expect(wrapper.text()).not.toContain('auth.signUp')
   })
+
+  it('renders the page title as the only top-level heading', async () => {
+    const wrapper = mountLogin()
+    await flushPromises()
+
+    const headings = wrapper.findAll('h1')
+    expect(headings).toHaveLength(1)
+    expect(headings[0].text()).toBe('auth.welcomeBack')
+  })
 })

@@ -446,7 +446,7 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-/* 顶栏图标按钮：细边圆形，对齐目标站的地球按钮口径 */
+/* 顶栏图标按钮：细边圆角、半透明底色 */
 .home-icon-btn {
   display: inline-flex;
   height: 36px;

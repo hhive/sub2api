@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { enableAutoUnmount, mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
+
+enableAutoUnmount(afterEach)
 
 const { appStore, authStore } = vi.hoisted(() => ({
   appStore: {
@@ -34,6 +36,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
   return {
     ...actual,
     useI18n: () => ({
+      locale: { value: 'en' },
       t: (key: string) => key,
       tm: () => [],
       rt: (value: unknown) => value,

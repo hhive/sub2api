@@ -13,7 +13,7 @@ vi.mock('@/i18n', () => ({
   ]
 }))
 
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: { value: 'zh' } }) }))
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ locale: { value: 'zh' }, t: (key: string) => key }) }))
 
 const reload = vi.fn()
 
@@ -56,5 +56,13 @@ describe('LocaleSwitcher', () => {
 
     expect(setLocale).not.toHaveBeenCalled()
     expect(reload).not.toHaveBeenCalled()
+  })
+
+  // 触发按钮在首页/认证页只显示旗帜，可访问名由 aria-label 提供
+  it('names the trigger button for assistive technology', () => {
+    const wrapper = mountSwitcher()
+
+    expect(wrapper.get('button').attributes('aria-label')).toBe('common.languageSwitcher')
+    expect(wrapper.get('button').attributes('aria-expanded')).toBe('false')
   })
 })

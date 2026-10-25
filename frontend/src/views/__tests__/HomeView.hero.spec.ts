@@ -1,9 +1,11 @@
 import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { enableAutoUnmount, mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
 import HomeOrbitHero from '@/components/home/HomeOrbitHero.vue'
+
+enableAutoUnmount(afterEach)
 
 const { appStore, authStore } = vi.hoisted(() => ({
   appStore: {
@@ -55,6 +57,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
   return {
     ...actual,
     useI18n: () => ({
+      locale: { value: 'en' },
       t: (key: string) => key,
       tm: (key: string) => (key === 'home.hero.slides' ? SLIDES : []),
       rt: (value: unknown) => value
@@ -212,6 +215,79 @@ describe('HomeView immersive hero', () => {
     const titleText = wrapper.get('[data-testid="orbit-title"]').text()
     expect(titleText).toContain('One key')
     expect(titleText).toContain('to every AI')
+  })
+
+  it('pauses the carousel on demand and resumes it afterwards', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountHero()
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="hero-carousel-toggle"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(20000)
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')).toHaveLength(1)
+
+    await wrapper.get('[data-testid="hero-carousel-toggle"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(8000)
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
+
+    vi.useRealTimers()
+  })
+
+  it('moves to the next headline manually when reduced motion is preferred', async () => {
+    vi.restoreAllMocks()
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes('prefers-reduced-motion'),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn()
+        }) as unknown as MediaQueryList
+    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    vi.useFakeTimers()
+
+    const wrapper = mountHero()
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="orbit-title"]').attributes('aria-label')).toBe(
+      'One key to every AI'
+    )
+    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="hero-carousel-next"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
+    expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left two')
+
+    await vi.advanceTimersByTimeAsync(20000)
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
+
+    vi.useRealTimers()
+  })
+
+  it('wraps to the last headline when stepping back from the first', async () => {
+    const wrapper = mountHero()
+    await nextTick()
+
+    await wrapper.get('[data-testid="hero-carousel-prev"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.emitted('slide-change')?.at(-1)).toEqual([1])
+    expect(wrapper.get('[data-testid="orbit-focus-left"]').text()).toContain('Left two')
   })
 
   it('points the primary call to action at login for anonymous visitors', () => {

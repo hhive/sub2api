@@ -35,6 +35,40 @@
         </router-link>
       </div>
 
+      <div v-if="carouselAvailable" class="orbit-carousel" data-testid="home-carousel">
+        <button
+          type="button"
+          class="orbit-carousel-btn"
+          data-testid="hero-carousel-prev"
+          :aria-label="t('home.hero.carouselPrev')"
+          :title="t('home.hero.carouselPrev')"
+          @click="goTo(slideIndex - 1)"
+        >
+          <Icon name="chevronLeft" size="sm" />
+        </button>
+        <button
+          v-if="autoRotating"
+          type="button"
+          class="orbit-carousel-btn"
+          data-testid="hero-carousel-toggle"
+          :aria-label="paused ? t('home.hero.carouselPlay') : t('home.hero.carouselPause')"
+          :title="paused ? t('home.hero.carouselPlay') : t('home.hero.carouselPause')"
+          @click="togglePause"
+        >
+          <Icon :name="paused ? 'play' : 'pause'" size="sm" />
+        </button>
+        <button
+          type="button"
+          class="orbit-carousel-btn"
+          data-testid="hero-carousel-next"
+          :aria-label="t('home.hero.carouselNext')"
+          :title="t('home.hero.carouselNext')"
+          @click="goTo(slideIndex + 1)"
+        >
+          <Icon name="chevronRight" size="sm" />
+        </button>
+      </div>
+
       <div v-if="contactInfo" class="orbit-links">
         <button
           type="button"
@@ -70,6 +104,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import OrbitStage from './OrbitStage.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { useTypewriter } from './useTypewriter'
 import type { HeroSlide } from './types'
 
@@ -103,15 +138,18 @@ const EMPTY_SLIDE: HeroSlide = {
 
 const slideIndex = ref(0)
 const reduceMotion = ref(false)
+const paused = ref(false)
 
 const slideCount = computed(() => props.slides.length)
+const carouselAvailable = computed(() => slideCount.value > 1)
 const activeSlide = computed<HeroSlide>(() => props.slides[slideIndex.value] ?? EMPTY_SLIDE)
 const headlineLabel = computed(() =>
   [activeSlide.value.prefix, activeSlide.value.verb].filter(Boolean).join(' ')
 )
 
-// 减弱动效时直接展示整句，不再逐字推进
+// 减弱动效时直接展示整句，自动推进同时停用
 const animate = computed(() => !reduceMotion.value)
+const autoRotating = computed(() => animate.value && carouselAvailable.value)
 
 const prefixState = useTypewriter(() => activeSlide.value.prefix, {
   charDelayMs: PREFIX_CHAR_MS,
@@ -150,7 +188,7 @@ function holdDuration(): number {
 function scheduleAdvance(delay = holdDuration()): void {
   clearAdvance()
   pendingRemaining = 0
-  if (!animate.value || slideCount.value < 2) return
+  if (!autoRotating.value || paused.value) return
   advanceDeadline = Date.now() + delay
   advanceTimer = setTimeout(() => {
     advanceTimer = null
@@ -163,9 +201,25 @@ function goNext(): void {
   slideIndex.value = (slideIndex.value + 1) % slideCount.value
 }
 
+// 手动切换一组文案，环形取模；自动推进由动词收尾后的排程重新接管
+function goTo(index: number): void {
+  if (slideCount.value === 0) return
+  clearAdvance()
+  slideIndex.value = ((index % slideCount.value) + slideCount.value) % slideCount.value
+}
+
+function togglePause(): void {
+  paused.value = !paused.value
+  if (paused.value) {
+    clearAdvance()
+    return
+  }
+  if (prefixDone.value && verbDone.value) scheduleAdvance()
+}
+
 function onVisibilityChange(): void {
   if (document.visibilityState === 'hidden') {
-    pendingRemaining = Math.max(0, advanceDeadline - Date.now())
+    if (advanceTimer !== null) pendingRemaining = Math.max(0, advanceDeadline - Date.now())
     clearAdvance()
     return
   }
@@ -292,6 +346,37 @@ onBeforeUnmount(() => {
   line-height: 1.71;
   color: #b7bdc5;
   text-shadow: 0 1px 20px rgba(0, 0, 0, 0.94);
+}
+
+/* ---------- 轮播控件 ---------- */
+.orbit-carousel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.orbit-carousel-btn {
+  display: inline-flex;
+  height: 30px;
+  width: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(11, 13, 14, 0.42);
+  color: #b7bdc5;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.orbit-carousel-btn:hover {
+  color: #f1f4f2;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ---------- 按钮 ---------- */
@@ -467,5 +552,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-
-

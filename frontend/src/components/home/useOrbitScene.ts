@@ -2,9 +2,9 @@ import { getModelIcon } from '@/constants/modelIconPaths'
 
 /**
  * 着陆页/认证页共用的轨道地球场景。
- * three 在 start() 内动态加载，避免进入首屏主包。
+ * three 在 start() 内动态加载；场景资源在 dispose() 内释放。
  *
- * 结构参照目标站：菲涅尔球壳 + 陆地加权点阵 + 极淡经纬线 + 两条轨道与卫星。
+ * 结构：菲涅尔球壳 + 陆地加权点阵 + 极淡经纬线 + 两条轨道与卫星。
  */
 
 export type OrbitSceneMode = 'hero' | 'auth'
@@ -17,7 +17,6 @@ export interface OrbitSceneOptions {
 
 export interface OrbitSceneHandle {
   start: () => Promise<void>
-  resize: () => void
   dispose: () => void
 }
 
@@ -190,13 +189,8 @@ export function useOrbitScene(
   const interactive = options.interactive ?? mode === 'hero'
 
   let disposed = false
-  let applySizeFn: (() => void) | null = null
   let cleanupFn: (() => void) | null = null
   let pendingRenderer: { forceContextLoss: () => void; dispose: () => void } | null = null
-
-  function resize(): void {
-    applySizeFn?.()
-  }
 
   async function start(): Promise<void> {
     if (disposed) return
@@ -342,7 +336,8 @@ export function useOrbitScene(
     globe.add(wireGroup)
 
     /* ---------- 陆地加权点阵 ---------- */
-    const POINT_COUNT = 28000
+    // 候选点数：陆地全量保留、海洋每 19 个候选留 1 个，实际渲染约 2.8 万点
+    const POINT_COUNT = 80000
     const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
     const positions: number[] = []
     const weights: number[] = []
@@ -384,7 +379,7 @@ export function useOrbitScene(
     const pointMat = new THREE.ShaderMaterial({
       uniforms: {
         uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        uPointSize: { value: 2.4 },
+        uPointSize: { value: 2.8 },
         uCool: { value: cool },
         uSilver: { value: silver }
       },
@@ -409,7 +404,7 @@ export function useOrbitScene(
         uniform vec3 uCool, uSilver;
         void main() {
           float mask = 1.0 - smoothstep(0.1, 0.5, length(gl_PointCoord - 0.5));
-          float a = mix(0.02, 0.72, smoothstep(-0.2, 0.88, vDepth)) * vWeight * mask;
+          float a = mix(0.30, 0.95, smoothstep(-0.4, 0.85, vDepth)) * vWeight * mask;
           gl_FragColor = vec4(mix(uCool, uSilver, 0.64), a);
         }
       `
@@ -760,7 +755,6 @@ export function useOrbitScene(
       pendingRenderer = null
     }
 
-    applySizeFn = applySize
     cleanupFn = cleanup
   }
 
@@ -768,7 +762,6 @@ export function useOrbitScene(
     disposed = true
     cleanupFn?.()
     cleanupFn = null
-    applySizeFn = null
 
     if (pendingRenderer) {
       pendingRenderer.forceContextLoss()
@@ -777,11 +770,5 @@ export function useOrbitScene(
     }
   }
 
-  return { start, resize, dispose }
+  return { start, dispose }
 }
-
-
-
-
-
-

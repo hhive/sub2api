@@ -202,7 +202,7 @@ onMounted(() => {
 }
 
 /* ---------- 卡片内表单口径 ---------- */
-.auth-card :deep(h2) {
+.auth-card :deep(h1) {
   font-family: 'Instrument Serif', 'Songti SC', 'Noto Serif SC', Georgia, serif;
   font-size: 44px;
   font-weight: 400;
@@ -362,7 +362,7 @@ onMounted(() => {
     padding: 22px;
   }
 
-  .auth-card :deep(h2) {
+  .auth-card :deep(h1) {
     font-size: 34px;
   }
 
