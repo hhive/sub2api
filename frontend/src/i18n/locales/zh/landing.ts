@@ -24,8 +24,6 @@ export default {
       contactCopyFailed: '复制失败，请手动选择联系方式',
       carouselPrev: '上一组文案',
       carouselNext: '下一组文案',
-      carouselPause: '暂停轮播',
-      carouselPlay: '继续轮播',
       slides: {
         s1: {
           prefix: '一个密钥',

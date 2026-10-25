@@ -230,20 +230,14 @@ describe('HomeView immersive hero', () => {
     expect(titleText).toContain('to every AI')
   })
 
-  it('pauses the carousel on demand and resumes it afterwards', async () => {
+  it('advances the carousel after the hold duration', async () => {
     vi.useFakeTimers()
     const wrapper = mountHero()
     await nextTick()
 
-    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hero-carousel-prev"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hero-carousel-next"]').exists()).toBe(true)
 
-    await wrapper.get('[data-testid="hero-carousel-toggle"]').trigger('click')
-    await vi.advanceTimersByTimeAsync(20000)
-    await nextTick()
-
-    expect(wrapper.emitted('slide-change')).toHaveLength(1)
-
-    await wrapper.get('[data-testid="hero-carousel-toggle"]').trigger('click')
     await vi.advanceTimersByTimeAsync(8000)
     await nextTick()
 
@@ -262,7 +256,6 @@ describe('HomeView immersive hero', () => {
     expect(wrapper.get('[data-testid="orbit-title"]').attributes('aria-label')).toBe(
       'One key to every AI'
     )
-    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="hero-carousel-next"]').trigger('click')
     await nextTick()
@@ -295,8 +288,6 @@ describe('HomeView immersive hero', () => {
 
     const wrapper = mountHero(6200, FIVE_SLIDES)
     await nextTick()
-
-    expect(wrapper.find('[data-testid="hero-carousel-toggle"]').exists()).toBe(false)
 
     for (let step = 0; step < 4; step++) {
       await wrapper.get('[data-testid="hero-carousel-next"]').trigger('click')

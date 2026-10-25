@@ -696,7 +696,10 @@ export function useOrbitScene(
       pitch += (tarPitch - pitch) * 0.08
 
       const spin = reduceMotion ? 0 : elapsed * 0.055
-      globe.rotation.set(BASE_TILT_X + pitch, yaw + spin, BASE_TILT_Z)
+      // 拖拽旋转整组（球体 + 轨道 + 卫星），卫星才会跟着指针一起转
+      root.rotation.set(BASE_TILT_X + pitch, yaw, BASE_TILT_Z)
+      root.updateMatrixWorld(true)
+      globe.rotation.set(0, spin, 0)
       globe.updateMatrixWorld()
 
       for (const mat of trackMats) mat.uniforms.uTime.value = elapsed
@@ -708,8 +711,8 @@ export function useOrbitScene(
         orbitPoint(track, phase, tmpPoint)
         item.node.position.copy(tmpPoint)
         item.node.updateMatrixWorld()
-
-        worldPos.copy(item.node.position).normalize()
+        item.node.getWorldPosition(worldPos)
+        worldPos.normalize()
         const depth = (worldPos.dot(forward) + 1) / 2
         const taper = 0.28 + 0.72 * Math.pow(0.5 + 0.5 * Math.sin(phase * Math.PI * 2 + item.spec.track * 2), 2)
         const s = item.baseScale * (0.66 + depth * 0.5)

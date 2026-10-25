@@ -47,17 +47,6 @@
           <Icon name="chevronLeft" size="sm" />
         </button>
         <button
-          v-if="autoRotating"
-          type="button"
-          class="orbit-carousel-btn"
-          data-testid="hero-carousel-toggle"
-          :aria-label="paused ? t('home.hero.carouselPlay') : t('home.hero.carouselPause')"
-          :title="paused ? t('home.hero.carouselPlay') : t('home.hero.carouselPause')"
-          @click="togglePause"
-        >
-          <Icon :name="paused ? 'play' : 'pause'" size="sm" />
-        </button>
-        <button
           type="button"
           class="orbit-carousel-btn"
           data-testid="hero-carousel-next"
@@ -138,7 +127,6 @@ const EMPTY_SLIDE: HeroSlide = {
 
 const slideIndex = ref(0)
 const reduceMotion = ref(false)
-const paused = ref(false)
 
 const slideCount = computed(() => props.slides.length)
 const carouselAvailable = computed(() => slideCount.value > 1)
@@ -188,7 +176,7 @@ function holdDuration(): number {
 function scheduleAdvance(delay = holdDuration()): void {
   clearAdvance()
   pendingRemaining = 0
-  if (!autoRotating.value || paused.value) return
+  if (!autoRotating.value) return
   advanceDeadline = Date.now() + delay
   advanceTimer = setTimeout(() => {
     advanceTimer = null
@@ -201,20 +189,11 @@ function goNext(): void {
   slideIndex.value = (slideIndex.value + 1) % slideCount.value
 }
 
-// 手动切换一组文案，环形取模；未暂停时自动推进由动词收尾后的排程重新接管
+// 手动切换一组文案，环形取模；自动推进由动词收尾后的排程重新接管
 function goTo(index: number): void {
   if (slideCount.value === 0) return
   clearAdvance()
   slideIndex.value = ((index % slideCount.value) + slideCount.value) % slideCount.value
-}
-
-function togglePause(): void {
-  paused.value = !paused.value
-  if (paused.value) {
-    clearAdvance()
-    return
-  }
-  if (prefixDone.value && verbDone.value) scheduleAdvance()
 }
 
 function onVisibilityChange(): void {

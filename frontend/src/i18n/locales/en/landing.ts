@@ -24,8 +24,6 @@ export default {
       contactCopyFailed: 'Copy failed, please select the contact manually',
       carouselPrev: 'Previous headline',
       carouselNext: 'Next headline',
-      carouselPause: 'Pause carousel',
-      carouselPlay: 'Resume carousel',
       slides: {
         s1: {
           prefix: 'One key',
