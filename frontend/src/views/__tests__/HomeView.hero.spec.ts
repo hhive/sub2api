@@ -136,13 +136,14 @@ const FIVE_SLIDES = [1, 2, 3, 4, 5].map((n) => ({
   right: { kicker: `Kicker ${n}`, title: `Right ${n}`, desc: `Right desc ${n}` }
 }))
 
-function mountHero(intervalMs = 6200, slides = HERO_SLIDES) {
+function mountHero(intervalMs = 6200, slides = HERO_SLIDES, siteSubtitle = '') {
   return mount(HomeOrbitHero, {
     props: {
       slides,
       isAuthenticated: false,
       dashboardPath: '/dashboard',
       showModelPlazaEntry: false,
+      siteSubtitle,
       intervalMs
     },
     global: {
@@ -346,5 +347,18 @@ describe('HomeView immersive hero', () => {
 
     expect(wrapper.get('#custom-home').text()).toBe('Custom home')
     expect(wrapper.find('[data-testid="home-primary-cta"]').exists()).toBe(false)
+  })
+
+  it('renders the configured site subtitle under the hero headline', () => {
+    const wrapper = mountHome()
+
+    expect(wrapper.find('[data-testid="home-orbit-hero"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="orbit-site-subtitle"]').text()).toBe('Test subtitle')
+  })
+
+  it('hides the site subtitle when the setting is empty', () => {
+    const wrapper = mountHome({ site_subtitle: '' })
+
+    expect(wrapper.find('[data-testid="orbit-site-subtitle"]').exists()).toBe(false)
   })
 })

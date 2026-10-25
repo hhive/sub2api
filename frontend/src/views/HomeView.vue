@@ -163,6 +163,7 @@
       :dashboard-path="dashboardPath"
       :show-model-plaza-entry="showModelPlazaEntry"
       :contact-info="contactInfo"
+      :site-subtitle="heroSubtitle"
       @slide-change="onSlideChange"
       @contact-click="onContactClick"
     />
@@ -205,6 +206,8 @@ const appStore = useAppStore()
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
+// 球体首屏只展示后台配置的副标题，未配置时留空，避免覆盖运营文案
+const heroSubtitle = computed(() => (appStore.cachedPublicSettings?.site_subtitle || '').trim())
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const contactInfo = computed(() => (appStore.cachedPublicSettings?.contact_info || '').trim())
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')

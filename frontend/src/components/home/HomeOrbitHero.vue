@@ -17,6 +17,10 @@
 
       <p class="orbit-subtitle" data-testid="orbit-subtitle">{{ activeSlide.subtitle }}</p>
 
+      <p v-if="siteSubtitle" class="orbit-site-subtitle" data-testid="orbit-site-subtitle">
+        {{ siteSubtitle }}
+      </p>
+
       <div class="orbit-actions">
         <router-link
           :to="isAuthenticated ? dashboardPath : '/login'"
@@ -104,9 +108,10 @@ const props = withDefaults(
     dashboardPath: string
     showModelPlazaEntry: boolean
     contactInfo?: string
+    siteSubtitle?: string
     intervalMs?: number
   }>(),
-  { contactInfo: '', intervalMs: 6200 }
+  { contactInfo: '', siteSubtitle: '', intervalMs: 6200 }
 )
 
 const emit = defineEmits<{ 'slide-change': [index: number]; 'contact-click': [] }>()
@@ -324,6 +329,17 @@ onBeforeUnmount(() => {
   font-size: 14px;
   line-height: 1.71;
   color: #b7bdc5;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.94);
+}
+
+.orbit-site-subtitle {
+  margin-top: 10px;
+  max-width: 24rem;
+  white-space: pre-line;
+  font-family: Lexend, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #8f979f;
   text-shadow: 0 1px 20px rgba(0, 0, 0, 0.94);
 }
 
