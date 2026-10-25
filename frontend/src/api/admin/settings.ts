@@ -9,6 +9,7 @@ import type {
   AccountPlatform,
   CustomEndpoint,
   CustomMenuItem,
+  HomeOrbitModel,
   LoginAgreementDocument,
   NotifyEmailEntry,
   UseKeyConfig,
@@ -527,6 +528,7 @@ export interface SystemSettings {
   backend_mode_enabled: boolean;
   custom_menu_items: CustomMenuItem[];
   victory_menu_items: VictoryMenuItem[];
+  home_orbit_models: HomeOrbitModel[];
   custom_endpoints: CustomEndpoint[];
   // SMTP settings
   smtp_host: string;
@@ -909,6 +911,7 @@ export interface UpdateSettingsRequest {
   backend_mode_enabled?: boolean;
   custom_menu_items?: CustomMenuItem[];
   victory_menu_items?: VictoryMenuItem[];
+  home_orbit_models?: HomeOrbitModel[];
   custom_endpoints?: CustomEndpoint[];
   smtp_host?: string;
   smtp_port?: number;

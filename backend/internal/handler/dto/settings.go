@@ -29,6 +29,12 @@ type VictoryMenuItem struct {
 	SortOrder   int    `json:"sort_order"`
 }
 
+// HomeOrbitModel is one model card shown on the home/auth orbit stage.
+type HomeOrbitModel struct {
+	Vendor string `json:"vendor"`
+	Label  string `json:"label"`
+}
+
 // CustomEndpoint represents an admin-configured API endpoint for quick copy.
 type CustomEndpoint struct {
 	Name        string `json:"name"`
@@ -211,6 +217,7 @@ type SystemSettings struct {
 	TablePageSizeOptions            []int             `json:"table_page_size_options"`
 	CustomMenuItems                 []CustomMenuItem  `json:"custom_menu_items"`
 	VictoryMenuItems                []VictoryMenuItem `json:"victory_menu_items"`
+	HomeOrbitModels                 []HomeOrbitModel  `json:"home_orbit_models"`
 	CustomEndpoints                 []CustomEndpoint  `json:"custom_endpoints"`
 	UseKeyConfig                    *UseKeyConfig     `json:"use_key_config"`
 	UseKeyConfigInvalid             bool              `json:"use_key_config_invalid"` // 库中存有但不可用（JSON 不可解析或 version 不受支持）时为 true；未配置为 false
@@ -487,6 +494,7 @@ type PublicSettings struct {
 	TablePageSizeOptions                []int                    `json:"table_page_size_options"`
 	CustomMenuItems                     []CustomMenuItem         `json:"custom_menu_items"`
 	VictoryMenuItems                    []VictoryMenuItem        `json:"victory_menu_items"`
+	HomeOrbitModels                     []HomeOrbitModel         `json:"home_orbit_models"`
 	CustomEndpoints                     []CustomEndpoint         `json:"custom_endpoints"`
 	UseKeyConfig                        json.RawMessage          `json:"use_key_config"`
 	LobeHubEnabled                      bool                     `json:"lobehub_enabled"`
@@ -724,6 +732,20 @@ func ParseVictoryMenuItems(raw string) []VictoryMenuItem {
 		return []VictoryMenuItem{}
 	}
 	return items
+}
+
+// ParseHomeOrbitModels parses a JSON string into a slice of HomeOrbitModel.
+// Returns empty slice on empty/invalid input.
+func ParseHomeOrbitModels(raw string) []HomeOrbitModel {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return []HomeOrbitModel{}
+	}
+	var models []HomeOrbitModel
+	if err := json.Unmarshal([]byte(raw), &models); err != nil {
+		return []HomeOrbitModel{}
+	}
+	return models
 }
 
 // ParseCustomEndpoints parses a JSON string into a slice of CustomEndpoint.

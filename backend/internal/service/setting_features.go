@@ -16,6 +16,8 @@ import (
 
 const defaultVictoryMenuItemsValue = `[]`
 
+const defaultHomeOrbitModelsValue = `[]`
+
 // IsRegistrationEnabled 检查是否开放注册
 func (s *SettingService) IsRegistrationEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEnabled)

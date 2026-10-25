@@ -204,6 +204,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyTablePageSizeOptions,
 		SettingKeyCustomMenuItems,
 		SettingKeyVictoryMenuItems,
+		SettingKeyHomeOrbitModels,
 		SettingKeyCustomEndpoints,
 		SettingKeyUseKeyConfig,
 		SettingKeyLobeHubEnabled,
@@ -367,6 +368,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		TablePageSizeOptions:                tablePageSizeOptions,
 		CustomMenuItems:                     settings[SettingKeyCustomMenuItems],
 		VictoryMenuItems:                    string(filterEnabledVictoryMenuItems(victoryMenuItemsRaw)),
+		HomeOrbitModels:                     s.getStringOrDefault(settings, SettingKeyHomeOrbitModels, defaultHomeOrbitModelsValue),
 		CustomEndpoints:                     settings[SettingKeyCustomEndpoints],
 		UseKeyConfig:                        parseUseKeyConfigJSON(settings[SettingKeyUseKeyConfig]),
 		LobeHubEnabled:                      settings[SettingKeyLobeHubEnabled] == "true",
@@ -647,6 +649,7 @@ type PublicSettingsInjectionPayload struct {
 	TablePageSizeOptions                []int                    `json:"table_page_size_options"`
 	CustomMenuItems                     json.RawMessage          `json:"custom_menu_items"`
 	VictoryMenuItems                    json.RawMessage          `json:"victory_menu_items"`
+	HomeOrbitModels                     json.RawMessage          `json:"home_orbit_models"`
 	CustomEndpoints                     json.RawMessage          `json:"custom_endpoints"`
 	UseKeyConfig                        json.RawMessage          `json:"use_key_config"`
 	LobeHubEnabled                      bool                     `json:"lobehub_enabled"`
@@ -763,6 +766,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		TablePageSizeOptions:                settings.TablePageSizeOptions,
 		CustomMenuItems:                     filterUserVisibleMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                    filterEnabledVictoryMenuItems(settings.VictoryMenuItems),
+		HomeOrbitModels:                     safeRawJSONArray(settings.HomeOrbitModels),
 		CustomEndpoints:                     safeRawJSONArray(settings.CustomEndpoints),
 		UseKeyConfig:                        settings.UseKeyConfig,
 		LobeHubEnabled:                      settings.LobeHubEnabled,

@@ -368,6 +368,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyTablePageSizeOptions] = string(tablePageSizeOptionsJSON)
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
 	updates[SettingKeyVictoryMenuItems] = settings.VictoryMenuItems
+	updates[SettingKeyHomeOrbitModels] = settings.HomeOrbitModels
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
 	updates[SettingKeyUseKeyConfig] = settings.UseKeyConfig
 	if settings.LaunchTokenTTLSeconds <= 0 {

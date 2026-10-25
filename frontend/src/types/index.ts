@@ -208,6 +208,12 @@ export interface CustomMenuItem {
   sort_order: number
 }
 
+/** 首页/认证页主视觉模型卡：vendor 取自模型图标表的 key */
+export interface HomeOrbitModel {
+  vendor: string
+  label: string
+}
+
 export interface VictoryMenuItem {
   id: string
   label: string
@@ -305,6 +311,8 @@ export interface PublicSettings {
   table_page_size_options: number[]
   custom_menu_items: CustomMenuItem[]
   victory_menu_items: VictoryMenuItem[]
+  /** 首页/认证页主视觉模型卡名单；缺省或空数组时前端使用内置默认名单 */
+  home_orbit_models?: HomeOrbitModel[]
   custom_endpoints: CustomEndpoint[]
   linuxdo_oauth_enabled: boolean
   dingtalk_oauth_enabled?: boolean

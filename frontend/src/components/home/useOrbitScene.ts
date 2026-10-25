@@ -1,4 +1,7 @@
 import { getModelIcon } from '@/constants/modelIconPaths'
+import { normalizeOrbitModels, type OrbitModelSpec } from '@/constants/orbitModels'
+
+export type { OrbitModelSpec } from '@/constants/orbitModels'
 
 /**
  * 着陆页/认证页共用的轨道地球场景。
@@ -13,6 +16,8 @@ export interface OrbitSceneOptions {
   mode?: OrbitSceneMode
   /** 允许指针拖拽旋转；认证页保持关闭，避免与表单输入抢事件 */
   interactive?: boolean
+  /** 主视觉模型卡名单；为空或未传时使用默认名单 */
+  models?: OrbitModelSpec[]
 }
 
 export interface OrbitSceneHandle {
@@ -47,21 +52,26 @@ const TRACKS: TrackSpec[] = [
   { angle: 0.54, radius: 1.68, alpha: 0.34 }
 ]
 
-/* 12 颗卫星，沿两条轨道分布 */
-const SATELLITES: SatelliteSpec[] = [
-  { model: 'gemini', label: 'GM-3.6 Flash', track: 0, phase: 0.02, scale: 1.0 },
-  { model: 'openai', label: 'GPT-5.6', track: 0, phase: 0.2, scale: 1.1 },
-  { model: 'claude', label: 'CL-Fable 5.1', track: 0, phase: 0.38, scale: 1.02 },
-  { model: 'deepseek', label: 'DeepSeek V4', track: 0, phase: 0.56, scale: 0.92 },
-  { model: 'qwen', label: 'Qwen3-Max', track: 0, phase: 0.74, scale: 0.88 },
-  { model: 'zhipu', label: 'GLM-5.3', track: 0, phase: 0.9, scale: 0.84 },
-  { model: 'minimax', label: 'MiniMax M2', track: 1, phase: 0.08, scale: 0.9 },
-  { model: 'doubao', label: 'Doubao Pro', track: 1, phase: 0.24, scale: 0.86 },
-  { model: 'moonshot', label: 'Kimi K3', track: 1, phase: 0.42, scale: 0.82 },
-  { model: 'xai', label: 'Grok 4', track: 1, phase: 0.6, scale: 0.88 },
-  { model: 'mistral', label: 'Mistral L', track: 1, phase: 0.76, scale: 0.8 },
-  { model: 'meta', label: 'Llama 5', track: 1, phase: 0.92, scale: 0.78 }
-]
+/* 卫星按名单均匀铺在两条轨道上 */
+function buildSatellites(models: OrbitModelSpec[]): SatelliteSpec[] {
+  const trackTotals: [number, number] = [0, 0]
+  for (let i = 0; i < models.length; i++) trackTotals[i % 2] += 1
+
+  const trackSeen: [number, number] = [0, 0]
+  return models.map((model, index) => {
+    const track = (index % 2) as 0 | 1
+    const ordinal = trackSeen[track]
+    trackSeen[track] += 1
+
+    return {
+      model: model.vendor,
+      label: model.label,
+      track,
+      phase: (ordinal + 0.5) / trackTotals[track],
+      scale: 1 - 0.06 * (index % 4)
+    }
+  })
+}
 
 const MONO_LOGOS = new Set(['openai', 'moonshot', 'xai', 'ollama', 'jina', 'suno'])
 
@@ -142,11 +152,29 @@ function bakeChipSprite(model: string, label: string): HTMLCanvasElement {
     ctx.restore()
   }
 
-  ctx.font = '600 22px Lexend, system-ui, -apple-system, sans-serif'
+  const labelText = label.trim()
+  const labelFamily = 'Lexend, system-ui, -apple-system, sans-serif'
+  const maxLabelWidth = SPRITE_W - pad * 2
+  let labelSize = 22
+  ctx.font = `600 ${labelSize}px ${labelFamily}`
+  while (labelSize > 13 && ctx.measureText(labelText).width > maxLabelWidth) {
+    labelSize -= 1
+    ctx.font = `600 ${labelSize}px ${labelFamily}`
+  }
+
+  // 最小字号仍放不下时才截断加省略号
+  let fittedLabel = labelText
+  if (ctx.measureText(fittedLabel).width > maxLabelWidth) {
+    while (fittedLabel.length > 1 && ctx.measureText(`${fittedLabel}…`).width > maxLabelWidth) {
+      fittedLabel = fittedLabel.slice(0, -1)
+    }
+    fittedLabel = `${fittedLabel}…`
+  }
+
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
   ctx.fillStyle = 'rgba(255,255,255,0.96)'
-  ctx.fillText(label, SPRITE_W / 2, pad + tile + 16)
+  ctx.fillText(fittedLabel, SPRITE_W / 2, pad + tile + 16)
 
   return cv
 }
@@ -492,7 +520,9 @@ export function useOrbitScene(
     }[] = []
     const spriteTextures: InstanceType<typeof THREE.Texture>[] = []
 
-    for (const spec of SATELLITES) {
+    const satelliteSpecs = buildSatellites(normalizeOrbitModels(options.models))
+
+    for (const spec of satelliteSpecs) {
       const texCanvas = bakeChipSprite(spec.model, spec.label)
       const tex = new THREE.CanvasTexture(texCanvas)
       tex.colorSpace = THREE.SRGBColorSpace
@@ -507,7 +537,7 @@ export function useOrbitScene(
       })
 
       const sprite = new THREE.Sprite(mat)
-      const baseScale = 0.165 * spec.scale
+      const baseScale = 0.22 * spec.scale
       sprite.scale.set(baseScale, baseScale * (SPRITE_H / SPRITE_W), 1)
       sprite.renderOrder = 5
 
@@ -685,7 +715,7 @@ export function useOrbitScene(
         const s = item.baseScale * (0.66 + depth * 0.5)
         item.node.scale.set(s, s * (SPRITE_H / SPRITE_W), 1)
         ;(item.node.material as InstanceType<typeof THREE.SpriteMaterial>).opacity =
-          (0.34 + depth * 0.66) * (0.55 + taper * 0.45)
+          (0.5 + depth * 0.5) * (0.62 + taper * 0.38)
       }
 
       stars.rotation.y = yaw * 0.06

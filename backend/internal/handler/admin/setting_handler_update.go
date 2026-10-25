@@ -179,6 +179,7 @@ type UpdateSettingsRequest struct {
 	TablePageSizeOptions        []int                  `json:"table_page_size_options"`
 	CustomMenuItems             *[]dto.CustomMenuItem  `json:"custom_menu_items"`
 	VictoryMenuItems            *[]dto.VictoryMenuItem `json:"victory_menu_items"`
+	HomeOrbitModels             *[]dto.HomeOrbitModel  `json:"home_orbit_models"`
 	CustomEndpoints             *[]dto.CustomEndpoint  `json:"custom_endpoints"`
 	// UseKeyConfig 为原始 JSON：null 表示清空该设置，对象表示整体覆盖，缺省表示保持现值。
 	UseKeyConfig          json.RawMessage `json:"use_key_config"`
@@ -1711,6 +1712,50 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		victoryMenuJSON = string(menuBytes)
 	}
 
+	// 首页主视觉模型卡验证
+	const (
+		maxHomeOrbitModels        = 24
+		maxHomeOrbitVendorLen     = 32
+		maxHomeOrbitModelLabelLen = 28
+	)
+
+	homeOrbitModelsJSON := previousSettings.HomeOrbitModels
+	if req.HomeOrbitModels != nil {
+		models := *req.HomeOrbitModels
+		if len(models) > maxHomeOrbitModels {
+			response.BadRequest(c, "Too many home orbit models (max 24)")
+			return
+		}
+		for i, model := range models {
+			vendor := strings.TrimSpace(model.Vendor)
+			if vendor == "" {
+				response.BadRequest(c, "Home orbit model vendor is required")
+				return
+			}
+			if len(vendor) > maxHomeOrbitVendorLen {
+				response.BadRequest(c, "Home orbit model vendor is too long (max 32 characters)")
+				return
+			}
+			label := strings.TrimSpace(model.Label)
+			if label == "" {
+				response.BadRequest(c, "Home orbit model label is required")
+				return
+			}
+			if len(label) > maxHomeOrbitModelLabelLen {
+				response.BadRequest(c, "Home orbit model label is too long (max 28 characters)")
+				return
+			}
+			models[i].Vendor = vendor
+			models[i].Label = label
+		}
+		modelBytes, err := json.Marshal(models)
+		if err != nil {
+			response.BadRequest(c, "Failed to serialize home orbit models")
+			return
+		}
+		homeOrbitModelsJSON = string(modelBytes)
+	}
+
 	// 自定义端点验证
 	const (
 		maxCustomEndpoints        = 10
@@ -2034,6 +2079,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TablePageSizeOptions:                   req.TablePageSizeOptions,
 		CustomMenuItems:                        customMenuJSON,
 		VictoryMenuItems:                       victoryMenuJSON,
+		HomeOrbitModels:                        homeOrbitModelsJSON,
 		CustomEndpoints:                        customEndpointsJSON,
 		UseKeyConfig:                           useKeyConfigJSON,
 		LaunchTokenTTLSeconds:                  launchTokenTTLSeconds,
@@ -2749,6 +2795,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TablePageSizeOptions:                                   updatedSettings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
 		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(updatedSettings.VictoryMenuItems),
+		HomeOrbitModels:                                        dto.ParseHomeOrbitModels(updatedSettings.HomeOrbitModels),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
 		UseKeyConfig:                                           useKeyConfig,
 		UseKeyConfigInvalid:                                    useKeyConfigInvalid,

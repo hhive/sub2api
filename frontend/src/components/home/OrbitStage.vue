@@ -16,7 +16,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-import { useOrbitScene, type OrbitSceneHandle, type OrbitSceneMode } from './useOrbitScene'
+import { useAppStore } from '@/stores'
+import { normalizeOrbitModels } from '@/constants/orbitModels'
+import {
+  useOrbitScene,
+  type OrbitSceneHandle,
+  type OrbitSceneMode
+} from './useOrbitScene'
 
 const props = withDefaults(
   defineProps<{
@@ -50,7 +56,8 @@ onMounted(async () => {
   }
 
   const interactive = props.interactive ?? props.mode === 'hero'
-  scene = useOrbitScene(canvas, { mode: props.mode, interactive })
+  const models = normalizeOrbitModels(useAppStore().cachedPublicSettings?.home_orbit_models)
+  scene = useOrbitScene(canvas, { mode: props.mode, interactive, models })
 
   try {
     await scene.start()

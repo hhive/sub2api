@@ -423,6 +423,7 @@ const (
 	SettingKeyTablePageSizeOptions        = "table_page_size_options"       // 表格可选每页条数（JSON 数组）
 	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
 	SettingKeyVictoryMenuItems            = "victory_menu_items"            // 旗开得胜子菜单项（JSON 数组）
+	SettingKeyHomeOrbitModels             = "home_orbit_models"             // 首页主视觉模型卡（JSON 数组）
 	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
 	SettingKeyUseKeyConfig                = "use_key_config"                // 「使用密钥」弹窗配置（JSON 对象）
 	SettingKeyLaunchTokenTTLSeconds       = "launch_token_ttl_seconds"      // 通用跳转 token 有效期（秒）

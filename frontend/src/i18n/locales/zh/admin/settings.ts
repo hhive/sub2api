@@ -782,6 +782,15 @@ export default {
           '⚠️ iframe 模式提示：部分网站设置了 X-Frame-Options 或 CSP 安全策略，禁止被嵌入到 iframe 中。如果页面显示空白或报错，请确认目标网站允许被嵌入，或考虑使用 HTML 模式自行构建页面内容。',
         compactHome: '简洁首页',
         compactHomeHint: '未设置自定义首页内容时，展示简洁的站点信息页面。',
+        homeOrbitModels: '首屏模型卡',
+        homeOrbitModelsHint:
+          '首页与登录页地球周围展示的模型卡。留空时使用内置默认名单；最多 24 项，展示名最多 28 个字符。',
+        homeOrbitModelsAdd: '添加模型卡',
+        homeOrbitModelsEmpty: '当前使用内置默认名单，添加任意一项后改为按此列表展示。',
+        homeOrbitModelsLabelPlaceholder: '展示名，例如 GPT-6 Astra',
+        homeOrbitModelsMoveUp: '上移',
+        homeOrbitModelsMoveDown: '下移',
+        homeOrbitModelsRemove: '删除',
         hideCcsImportButton: '隐藏 CCS 导入按钮',
         hideCcsImportButtonHint: '启用后将在 API Keys 页面隐藏"导入 CCS"按钮'
       },

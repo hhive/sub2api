@@ -6872,6 +6872,81 @@
                 <Toggle v-model="form.compact_home_enabled" data-testid="compact-home-toggle" />
               </div>
 
+              <!-- Home Orbit Models -->
+              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <label class="font-medium text-gray-900 dark:text-white">
+                      {{ t("admin.settings.site.homeOrbitModels") }}
+                    </label>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.site.homeOrbitModelsHint") }}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm shrink-0"
+                    data-testid="home-orbit-model-add"
+                    :disabled="form.home_orbit_models.length >= homeOrbitModelLimit"
+                    @click="addHomeOrbitModel"
+                  >
+                    {{ t("admin.settings.site.homeOrbitModelsAdd") }}
+                  </button>
+                </div>
+
+                <p
+                  v-if="form.home_orbit_models.length === 0"
+                  class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+                  data-testid="home-orbit-models-empty"
+                >
+                  {{ t("admin.settings.site.homeOrbitModelsEmpty") }}
+                </p>
+
+                <div v-else class="mt-3 space-y-2">
+                  <div
+                    v-for="(model, index) in form.home_orbit_models"
+                    :key="index"
+                    class="flex items-center gap-2"
+                    :data-testid="`home-orbit-model-row-${index}`"
+                  >
+                    <select v-model="model.vendor" class="input w-40 shrink-0 text-sm">
+                      <option v-for="vendor in homeOrbitVendorOptions" :key="vendor" :value="vendor">
+                        {{ vendor }}
+                      </option>
+                    </select>
+                    <input
+                      v-model="model.label"
+                      class="input flex-1 text-sm"
+                      :maxlength="homeOrbitModelLabelLimit"
+                      :placeholder="t('admin.settings.site.homeOrbitModelsLabelPlaceholder')"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      :disabled="index === 0"
+                      @click="moveHomeOrbitModel(index, -1)"
+                    >
+                      {{ t("admin.settings.site.homeOrbitModelsMoveUp") }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      :disabled="index === form.home_orbit_models.length - 1"
+                      @click="moveHomeOrbitModel(index, 1)"
+                    >
+                      {{ t("admin.settings.site.homeOrbitModelsMoveDown") }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      @click="removeHomeOrbitModel(index)"
+                    >
+                      {{ t("admin.settings.site.homeOrbitModelsRemove") }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- Hide CCS Import Button -->
               <div
                 class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -9770,6 +9845,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { listPlatformIds } from "@/constants/platformCatalog";
+import { MODEL_ICON_DATA } from "@/constants/modelIconPaths";
+import {
+  EXCLUDED_ORBIT_VENDORS,
+  MAX_ORBIT_MODEL_LABEL_LENGTH,
+  MAX_ORBIT_MODELS,
+} from "@/constants/orbitModels";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import {
@@ -10641,6 +10722,7 @@ const form = reactive<SettingsForm>({
   purchase_subscription_url: "",
   home_content: "",
   compact_home_enabled: false,
+  home_orbit_models: [] as Array<{ vendor: string; label: string }>,
   backend_mode_enabled: false,
   hide_ccs_import_button: false,
   payment_enabled: false,
@@ -10908,6 +10990,32 @@ const form = reactive<SettingsForm>({
   // Allow user view error requests
   allow_user_view_error_requests: false,
 });
+
+// 首页主视觉模型卡：vendor 只能从图标表里挑，四个不上的厂商在这里过滤掉
+const homeOrbitVendorOptions = Object.keys(MODEL_ICON_DATA)
+  .filter((vendor) => !EXCLUDED_ORBIT_VENDORS.includes(vendor))
+  .sort();
+const homeOrbitModelLimit = MAX_ORBIT_MODELS;
+const homeOrbitModelLabelLimit = MAX_ORBIT_MODEL_LABEL_LENGTH;
+
+function addHomeOrbitModel(): void {
+  if (form.home_orbit_models.length >= homeOrbitModelLimit) return;
+  form.home_orbit_models.push({
+    vendor: homeOrbitVendorOptions[0] ?? "openai",
+    label: "",
+  });
+}
+
+function removeHomeOrbitModel(index: number): void {
+  form.home_orbit_models.splice(index, 1);
+}
+
+function moveHomeOrbitModel(index: number, delta: number): void {
+  const target = index + delta;
+  if (target < 0 || target >= form.home_orbit_models.length) return;
+  const [item] = form.home_orbit_models.splice(index, 1);
+  form.home_orbit_models.splice(target, 0, item);
+}
 
 // 人机验证 UI 状态：单卡片「总开关 + 服务商单选」，落库仍是三个独立
 // enabled 键（与上游一致），由下面的映射保证同一时间至多一家启用。
@@ -12763,6 +12871,10 @@ async function saveSettings() {
       purchase_subscription_url: form.purchase_subscription_url,
       home_content: form.home_content,
       compact_home_enabled: form.compact_home_enabled,
+      home_orbit_models: form.home_orbit_models.map((model) => ({
+        vendor: model.vendor,
+        label: (model.label || model.vendor).trim().slice(0, homeOrbitModelLabelLimit),
+      })),
       backend_mode_enabled: form.backend_mode_enabled,
       hide_ccs_import_button: form.hide_ccs_import_button,
       table_default_page_size: form.table_default_page_size,

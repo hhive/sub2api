@@ -92,6 +92,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		TablePageSizeOptions:                settings.TablePageSizeOptions,
 		CustomMenuItems:                     dto.ParseUserVisibleMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                    dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
+		HomeOrbitModels:                     dto.ParseHomeOrbitModels(settings.HomeOrbitModels),
 		CustomEndpoints:                     dto.ParseCustomEndpoints(settings.CustomEndpoints),
 		UseKeyConfig:                        settings.UseKeyConfig,
 		LobeHubEnabled:                      settings.LobeHubEnabled,

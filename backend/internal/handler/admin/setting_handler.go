@@ -295,6 +295,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TablePageSizeOptions:                                   settings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
 		VictoryMenuItems:                                       dto.ParseVictoryMenuItems(settings.VictoryMenuItems),
+		HomeOrbitModels:                                        dto.ParseHomeOrbitModels(settings.HomeOrbitModels),
 		CustomEndpoints:                                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
 		UseKeyConfig:                                           useKeyConfig,
 		UseKeyConfigInvalid:                                    useKeyConfigInvalid,

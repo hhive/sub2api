@@ -176,6 +176,7 @@ type SystemSettings struct {
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
 	VictoryMenuItems            string // JSON array of victory menu items
+	HomeOrbitModels             string // JSON array of home orbit model cards
 	CustomEndpoints             string // JSON array of custom endpoints
 	UseKeyConfig                string // JSON object of the use-key modal config
 	LaunchTokenTTLSeconds       int
@@ -427,6 +428,7 @@ type PublicSettings struct {
 	TablePageSizeOptions                []int
 	CustomMenuItems                     string          // JSON array of custom menu items
 	VictoryMenuItems                    string          // JSON array of victory menu items
+	HomeOrbitModels                     string          // JSON array of home orbit model cards
 	CustomEndpoints                     string          // JSON array of custom endpoints
 	UseKeyConfig                        json.RawMessage // parsed use_key_config object; JSON null when unset or invalid
 	LobeHubEnabled                      bool

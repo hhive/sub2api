@@ -739,6 +739,31 @@ describe("admin SettingsView payment visible method controls", () => {
     );
   });
 
+  it("adds a hero model card and submits it", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="home-orbit-models-empty"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="home-orbit-model-add"]').trigger("click");
+    const row = wrapper.get('[data-testid="home-orbit-model-row-0"]');
+
+    const vendorOptions = row.findAll("option").map((option) => option.attributes("value"));
+    expect(vendorOptions).toContain("openai");
+    expect(vendorOptions).not.toContain("hunyuan");
+
+    await row.get("input").setValue("GPT-6 Astra");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        home_orbit_models: [expect.objectContaining({ label: "GPT-6 Astra" })],
+      }),
+    );
+    wrapper.unmount();
+  });
+
   it("renders panel rate limit card and saves settings", async () => {
     getPanelRateLimitSettings.mockClear();
     updatePanelRateLimitSettings.mockClear();
