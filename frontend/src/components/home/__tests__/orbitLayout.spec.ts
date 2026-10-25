@@ -4,11 +4,16 @@ import {
   ORBIT_TRACKS,
   buildOrbitPlacements,
   orbitPlacementGap,
+  orbitPlacementRestGap,
   orbitPointOn
 } from '@/components/home/orbitLayout'
 
-/** 卡面基准宽 0.22，留出叠压余量后要求的最小中心距 */
-const MIN_GAP = 0.13
+/**
+ * 间距按「屏幕中心距 ÷ 两颗卡的平均屏幕宽度」度量：
+ * 1 表示刚好相切，小于 1 即画面上的卡面范围相交。
+ */
+const MIN_REST_GAP = 1.1
+const MIN_ANY_GAP = 0.15
 
 describe('orbit layout', () => {
   it('places one card per model, alternating tracks', () => {
@@ -36,17 +41,25 @@ describe('orbit layout', () => {
     }
   })
 
-  it('keeps cards apart across the drag angles for every roster size', () => {
+  it('leaves a visible gap between cards at rest for every roster size', () => {
+    for (let count = 2; count <= 24; count++) {
+      const restGap = orbitPlacementRestGap(buildOrbitPlacements(count))
+      expect(restGap, `count=${count}`).toBeGreaterThan(MIN_REST_GAP)
+    }
+  })
+
+  it('never lets two cards collapse onto each other while dragging', () => {
     for (let count = 2; count <= 24; count++) {
       const gap = orbitPlacementGap(buildOrbitPlacements(count))
-      expect(gap, `count=${count}`).toBeGreaterThanOrEqual(MIN_GAP)
+      expect(gap, `count=${count}`).toBeGreaterThanOrEqual(MIN_ANY_GAP)
     }
   })
 
   it('spreads the dense counts that used to stack in projection', () => {
-    // 19/20/21/23 是旧「按轨道等分相位」时投影最挤的几档
+    // 旧「按轨道等分相位」在 19/20/21/23 档的静止间距低到 0.038 世界单位，
+    // 折合归一化间距约 0.2，画面上两颗卡几乎完全重合。
     for (const count of [19, 20, 21, 23]) {
-      expect(orbitPlacementGap(buildOrbitPlacements(count))).toBeGreaterThan(0.12)
+      expect(orbitPlacementRestGap(buildOrbitPlacements(count))).toBeGreaterThan(1.5)
     }
   })
 
