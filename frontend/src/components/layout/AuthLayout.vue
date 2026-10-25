@@ -227,7 +227,8 @@ onMounted(() => {
   border-radius: 14px;
   border: 1px solid var(--auth-line);
   background: linear-gradient(180deg, rgba(33, 33, 33, 0.38), rgba(7, 7, 7, 0.54));
-  padding: 0 16px;
+  /* 横向内边距沿用 .input 的 px-4，图标留白由 pl-* / pr-* 工具类决定 */
+  padding-block: 0;
   font-size: 14px;
   color: #ffffff;
   transition:
