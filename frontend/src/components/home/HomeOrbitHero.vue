@@ -339,8 +339,12 @@ onBeforeUnmount(() => {
   font-family: Lexend, system-ui, -apple-system, sans-serif;
   font-size: 13px;
   line-height: 1.6;
-  color: #8f979f;
-  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.94);
+  color: #c3c9cf;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: rgba(11, 13, 14, 0.55);
+  backdrop-filter: blur(3px);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
 }
 
 /* ---------- 轮播控件 ---------- */
