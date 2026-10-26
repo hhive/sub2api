@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/mail"
 	"strings"
 
@@ -158,11 +159,8 @@ func (s *AuthService) createEmailOAuthUser(ctx context.Context, email, username,
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return nil, ErrRegDisabled
 	}
-	invitationRedeemCode, err := s.validateOAuthRegistrationInvitation(ctx, invitationCode)
+	invite, err := s.resolveRegistrationInvite(ctx, invitationCode)
 	if err != nil {
-		if errors.Is(err, ErrInvitationCodeRequired) {
-			return nil, ErrOAuthInvitationRequired
-		}
 		return nil, err
 	}
 
@@ -204,11 +202,19 @@ func (s *AuthService) createEmailOAuthUser(ctx context.Context, email, username,
 	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 	// snapshot user × platform quota（fail-open）
 	_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
+	affiliateCode = strings.TrimSpace(affiliateCode)
+	if affiliateCode == "" {
+		affiliateCode = invite.AffiliateCode
+	}
 	s.bindOAuthAffiliate(ctx, user.ID, affiliateCode)
-	if invitationRedeemCode != nil {
-		if err := s.useOAuthRegistrationInvitation(ctx, invitationRedeemCode.ID, user.ID); err != nil {
-			_ = s.RollbackOAuthEmailAccountCreation(ctx, user.ID, invitationCode)
-			return nil, ErrInvitationCodeInvalid
+	if invite.Redeem != nil {
+		if err := s.useOAuthRegistrationInvitation(ctx, invite.Redeem.ID, user.ID); err != nil {
+			// 并发下兑换码已被占用：不阻断注册，仅记录。
+			if !errors.Is(err, ErrRedeemCodeUsed) {
+				_ = s.RollbackOAuthEmailAccountCreation(ctx, user.ID, invitationCode)
+				return nil, err
+			}
+			slog.Warn("email oauth signup: invitation already claimed, continuing registration", "user_id", user.ID, "error", err.Error())
 		}
 	}
 	return user, nil

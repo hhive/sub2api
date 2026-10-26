@@ -340,6 +340,13 @@ export default {
     invitationCodeInvalid: '邀请码无效或已被使用',
     invitationCodeValidating: '正在验证邀请码...',
     invitationCodeInvalidCannotRegister: '邀请码无效，请检查后重试',
+    invitationCodeOptionalHint: '可填好友的邀请码（返利码）或邀请型兑换码，也可以留空。',
+    invitationCodeAffiliateHint: '将作为好友返利邀请码提交，可直接注册。',
+    invitationCodeInvalidHint: '该码未作为邀请码使用，可直接注册。',
+    invitationCodeUsedHint: '该邀请码已被使用，仍可直接注册。',
+    invitationCodeExpiredHint: '该邀请码已过期，仍可直接注册。',
+    invitationCodeDisabledHint: '站点未启用邀请码校验，可直接注册。',
+    invitationCodeCheckFailed: '邀请码校验未完成，可直接注册。',
     oauthOrContinue: '或使用其他继续',
     linuxdo: {
       signIn: '使用 Linux.do 登录',
@@ -349,11 +356,11 @@ export default {
       callbackHint: '如果页面未自动跳转，请返回登录页重试。',
       callbackMissingToken: '登录信息缺失，请返回重试。',
       backToLogin: '返回登录',
-      invitationRequired: '该 Linux.do 账号尚未注册，站点已开启邀请码注册，请输入邀请码以完成注册。',
+      invitationRequired: '该 Linux.do 账号尚未注册，可填好友邀请码（返利码）完成注册，也可留空。',
       invalidPendingToken: '注册凭证已失效，请重新使用 Linux.do 登录。',
       completeRegistration: '完成注册',
       completing: '正在完成注册...',
-      completeRegistrationFailed: '注册失败，请检查邀请码后重试。'
+      completeRegistrationFailed: '注册失败，请重试。'
     },
     dingtalk: {
       signIn: '钉钉登录',
@@ -362,11 +369,11 @@ export default {
       callbackHint: '如果页面未自动跳转，请返回登录页重试。',
       callbackMissingToken: '登录信息缺失，请返回重试。',
       backToLogin: '返回登录',
-      invitationRequired: '该钉钉账号尚未注册，站点已开启邀请码注册，请输入邀请码以完成注册。',
+      invitationRequired: '该钉钉账号尚未注册，可填好友邀请码（返利码）完成注册，也可留空。',
       invalidPendingToken: '注册凭证已失效，请重新使用钉钉登录。',
       completeRegistration: '完成注册',
       completing: '正在完成注册...',
-      completeRegistrationFailed: '注册失败，请检查邀请码后重试。',
+      completeRegistrationFailed: '注册失败，请重试。',
       createAccountTitle: '创建钉钉账户',
       registrationDisabledRedirectToBind: '当前已禁止注册新账户，请使用已有账户邮箱和密码绑定钉钉登录',
       error: {
@@ -393,11 +400,11 @@ export default {
       callbackHint: '如果页面未自动跳转，请返回登录页重试。',
       callbackMissingToken: '登录信息缺失，请返回重试。',
       backToLogin: '返回登录',
-      invitationRequired: '该 {providerName} 账号尚未注册，站点已开启邀请码注册，请输入邀请码以完成注册。',
+      invitationRequired: '该 {providerName} 账号尚未注册，可填好友邀请码（返利码）完成注册，也可留空。',
       invalidPendingToken: '注册凭证已失效，请重新登录。',
       completeRegistration: '完成注册',
       completing: '正在完成注册...',
-      completeRegistrationFailed: '注册失败，请检查邀请码后重试。'
+      completeRegistrationFailed: '注册失败，请重试。'
     },
     oauthFlow: {
       profileDetailsTitle: '使用 {providerName} 资料',

@@ -54,8 +54,11 @@
               @keyup.enter="handleSubmitRegistration"
             />
           </div>
-          <div v-if="invitationRequired">
-            <label class="input-label">{{ t('auth.invitationCodeLabel') }}</label>
+          <div>
+            <label class="input-label">
+              {{ t('auth.invitationCodeLabel') }}
+              <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
+            </label>
             <input
               v-model="invitationCode"
               type="text"
@@ -64,6 +67,9 @@
               :disabled="isSubmitting"
               @keyup.enter="handleSubmitRegistration"
             />
+            <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
+              {{ t('auth.invitationCodeOptionalHint') }}
+            </p>
           </div>
           <p v-if="registrationError" class="text-sm text-red-600 dark:text-red-400">
             {{ registrationError }}
@@ -215,7 +221,6 @@ const canSubmitRegistration = computed(() => {
   if (!registrationEmail.value.trim()) return false
   if (password.value.length < 6) return false
   if (password.value !== confirmPassword.value) return false
-  if (invitationRequired.value && !invitationCode.value.trim()) return false
   return true
 })
 

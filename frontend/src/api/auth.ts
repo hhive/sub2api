@@ -512,6 +512,7 @@ export async function validatePromoCode(code: string): Promise<ValidatePromoCode
  */
 export interface ValidateInvitationCodeResponse {
   valid: boolean
+  kind?: 'invitation' | 'affiliate_candidate'
   error_code?: string
 }
 

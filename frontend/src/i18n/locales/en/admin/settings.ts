@@ -193,7 +193,7 @@ export default {
         promoCode: 'Promo Code',
         promoCodeHint: 'Allow users to use promo codes during registration',
         invitationCode: 'Invitation Code Registration',
-        invitationCodeHint: 'When enabled, users must enter a valid invitation code to register',
+        invitationCodeHint: 'When enabled, the registration page shows an invitation code field that accepts invitation redeem codes or friend referral codes; registration is never blocked',
         passwordReset: 'Password Reset',
         passwordResetHint: 'Allow users to reset their password via email',
         frontendUrl: 'Frontend URL',

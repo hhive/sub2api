@@ -76,11 +76,14 @@
       :placeholder="t('auth.invitationCodePlaceholder')"
       :disabled="isSubmitting"
     />
+    <p v-if="invitationCodeEnabled" class="text-xs text-gray-500 dark:text-dark-400">
+      {{ t('auth.invitationCodeOptionalHint') }}
+    </p>
     <button
       :data-testid="`${testIdPrefix}-create-account-submit`"
       type="button"
       class="btn btn-primary w-full"
-      :disabled="isSubmitting || !email.trim() || password.length < 6 || (invitationCodeEnabled && !invitationCode.trim()) || (turnstileEnabled && !turnstileToken)"
+      :disabled="isSubmitting || !email.trim() || password.length < 6 || (turnstileEnabled && !turnstileToken)"
       @click="handleSubmit"
     >
       {{ isSubmitting ? t('common.processing') : t('auth.createAccount') }}

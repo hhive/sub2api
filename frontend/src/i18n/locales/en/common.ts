@@ -341,6 +341,13 @@ export default {
     invitationCodeInvalid: 'Invalid or used invitation code',
     invitationCodeValidating: 'Validating invitation code...',
     invitationCodeInvalidCannotRegister: 'Invalid invitation code. Please check and try again',
+    invitationCodeOptionalHint: 'You can enter a friend referral code (affiliate code) or an invitation redeem code, or leave it empty.',
+    invitationCodeAffiliateHint: 'This will be submitted as a friend referral code; registration can continue.',
+    invitationCodeInvalidHint: 'This code was not used as an invitation code; registration can continue.',
+    invitationCodeUsedHint: 'This invitation code was already used; registration can continue.',
+    invitationCodeExpiredHint: 'This invitation code has expired; registration can continue.',
+    invitationCodeDisabledHint: 'Invitation code validation is disabled; registration can continue.',
+    invitationCodeCheckFailed: 'Invitation code check did not finish; registration can continue.',
     oauthOrContinue: 'or continue with others',
     linuxdo: {
       signIn: 'Continue with Linux.do',
@@ -350,11 +357,11 @@ export default {
       callbackHint: 'If you are not redirected automatically, go back to the login page and try again.',
       callbackMissingToken: 'Missing login token, please try again.',
       backToLogin: 'Back to Login',
-      invitationRequired: 'This Linux.do account is not yet registered. The site requires an invitation code — please enter one to complete registration.',
+      invitationRequired: 'This Linux.do account is not yet registered. You can enter a friend referral code (affiliate code) to complete registration, or leave it empty.',
       invalidPendingToken: 'The registration token has expired. Please sign in with Linux.do again.',
       completeRegistration: 'Complete Registration',
       completing: 'Completing registration…',
-      completeRegistrationFailed: 'Registration failed. Please check your invitation code and try again.'
+      completeRegistrationFailed: 'Registration failed. Please try again.'
     },
     dingtalk: {
       signIn: 'Continue with DingTalk',
@@ -363,11 +370,11 @@ export default {
       callbackHint: 'If you are not redirected automatically, go back to the login page and try again.',
       callbackMissingToken: 'Missing login token, please try again.',
       backToLogin: 'Back to Login',
-      invitationRequired: 'This DingTalk account is not yet registered. The site requires an invitation code — please enter one to complete registration.',
+      invitationRequired: 'This DingTalk account is not yet registered. You can enter a friend referral code (affiliate code) to complete registration, or leave it empty.',
       invalidPendingToken: 'The registration token has expired. Please sign in with DingTalk again.',
       completeRegistration: 'Complete Registration',
       completing: 'Completing registration…',
-      completeRegistrationFailed: 'Registration failed. Please check your invitation code and try again.',
+      completeRegistrationFailed: 'Registration failed. Please try again.',
       createAccountTitle: 'Create DingTalk Account',
       registrationDisabledRedirectToBind: 'New account registration is currently disabled. Please bind to your existing account with its email and password.',
       error: {
@@ -395,11 +402,11 @@ export default {
       callbackMissingToken: 'Missing login token, please try again.',
       backToLogin: 'Back to Login',
       invitationRequired:
-        'This {providerName} account is not yet registered. The site requires an invitation code — please enter one to complete registration.',
+        'This {providerName} account is not yet registered. You can enter a friend referral code (affiliate code) to complete registration, or leave it empty.',
       invalidPendingToken: 'The registration token has expired. Please sign in again.',
       completeRegistration: 'Complete Registration',
       completing: 'Completing registration…',
-      completeRegistrationFailed: 'Registration failed. Please check your invitation code and try again.'
+      completeRegistrationFailed: 'Registration failed. Please try again.'
     },
     oauthFlow: {
       profileDetailsTitle: 'Use {providerName} profile details',

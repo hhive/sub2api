@@ -137,7 +137,7 @@
               class="input pl-11 pr-10"
               :class="{
                 'border-green-500 focus:border-green-500 focus:ring-green-500': invitationValidation.valid,
-                'border-red-500 focus:border-red-500 focus:ring-red-500': invitationValidation.invalid || errors.invitation_code
+                'border-amber-400 focus:border-amber-400 focus:ring-amber-400': !invitationValidation.valid && invitationValidation.message
               }"
               :placeholder="t('auth.invitationCodePlaceholder')"
               @input="handleInvitationCodeInput"
@@ -152,8 +152,8 @@
             <div v-else-if="invitationValidation.valid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
               <Icon name="checkCircle" size="md" class="text-green-500" />
             </div>
-            <div v-else-if="invitationValidation.invalid || errors.invitation_code" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <Icon name="exclamationCircle" size="md" class="text-red-500" />
+            <div v-else-if="invitationValidation.message" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <Icon name="exclamationCircle" size="md" class="text-amber-500" />
             </div>
           </div>
           <!-- Invitation code validation result -->
@@ -164,7 +164,16 @@
                 {{ t('auth.invitationCodeValid') }}
               </span>
             </div>
+            <div v-else-if="invitationValidation.message" class="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-900/20">
+              <Icon name="exclamationCircle" size="sm" class="text-amber-600 dark:text-amber-400" />
+              <span class="text-sm text-amber-700 dark:text-amber-400">
+                {{ invitationValidation.message }}
+              </span>
+            </div>
           </transition>
+          <p v-if="!invitationValidation.valid && !invitationValidation.message" class="mt-2 text-xs text-gray-500 dark:text-dark-400">
+            {{ t('auth.invitationCodeOptionalHint') }}
+          </p>
         </div>
 
         <!-- Affiliate Invitation Code Input (Optional) -->
@@ -507,7 +516,6 @@ let promoValidateTimeout: ReturnType<typeof setTimeout> | null = null
 const invitationValidating = ref<boolean>(false)
 const invitationValidation = reactive({
   valid: false,
-  invalid: false,
   message: ''
 })
 let invitationValidateTimeout: ReturnType<typeof setTimeout> | null = null
@@ -535,7 +543,6 @@ const validationToastMessage = computed(() =>
   errors.email ||
   errors.password ||
   errors.confirmPassword ||
-  (invitationValidation.invalid ? invitationValidation.message : '') ||
   errors.invitation_code ||
   (promoValidation.invalid ? promoValidation.message : '') ||
   errors.turnstile ||
@@ -603,7 +610,6 @@ async function syncInvitationCodeFromRoute(validate = false): Promise<string> {
   if (formData.invitation_code.trim() !== code) {
     formData.invitation_code = code
     invitationValidation.valid = false
-    invitationValidation.invalid = false
     invitationValidation.message = ''
     errors.invitation_code = ''
   }
@@ -857,7 +863,6 @@ function handleInvitationCodeInput(): void {
 
   // Clear previous validation
   invitationValidation.valid = false
-  invitationValidation.invalid = false
   invitationValidation.message = ''
   errors.invitation_code = ''
 
@@ -895,17 +900,15 @@ async function validateInvitationCodeDebounced(code: string): Promise<void> {
 
     if (result.valid) {
       invitationValidation.valid = true
-      invitationValidation.invalid = false
       invitationValidation.message = ''
     } else {
+      // 邀请码校验只用于提示：任何结果都不阻断注册。
       invitationValidation.valid = false
-      invitationValidation.invalid = true
       invitationValidation.message = getInvitationErrorMessage(result.error_code)
     }
   } catch {
     invitationValidation.valid = false
-    invitationValidation.invalid = true
-    invitationValidation.message = t('auth.invitationCodeInvalid')
+    invitationValidation.message = t('auth.invitationCodeCheckFailed')
   } finally {
     invitationValidating.value = false
   }
@@ -913,16 +916,17 @@ async function validateInvitationCodeDebounced(code: string): Promise<void> {
 
 function getInvitationErrorMessage(errorCode?: string): string {
   switch (errorCode) {
-    case 'INVITATION_CODE_NOT_FOUND':
-      return t('auth.invitationCodeInvalid')
-    case 'INVITATION_CODE_INVALID':
-      return t('auth.invitationCodeInvalid')
     case 'INVITATION_CODE_USED':
-      return t('auth.invitationCodeInvalid')
+      return t('auth.invitationCodeUsedHint')
+    case 'INVITATION_CODE_EXPIRED':
+      return t('auth.invitationCodeExpiredHint')
+    case 'INVITATION_CODE_INVALID':
+      return t('auth.invitationCodeInvalidHint')
     case 'INVITATION_CODE_DISABLED':
-      return t('auth.invitationCodeInvalid')
+      return t('auth.invitationCodeDisabledHint')
+    case 'INVITATION_CODE_NOT_FOUND':
     default:
-      return t('auth.invitationCodeInvalid')
+      return t('auth.invitationCodeAffiliateHint')
   }
 }
 
@@ -1115,31 +1119,6 @@ async function handleRegister(): Promise<void> {
     if (promoValidation.invalid) {
       errorMessage.value = t('auth.promoCodeInvalidCannotRegister')
       return
-    }
-  }
-
-  // Check invitation code validation status when the optional code is provided
-  const invitationCodeForSubmission = resolveInvitationCodeForSubmission()
-  if (invitationCodeEnabled.value && invitationCodeForSubmission) {
-    // If still validating, wait
-    if (invitationValidating.value) {
-      errorMessage.value = t('auth.invitationCodeValidating')
-      return
-    }
-    // If invitation code is invalid, block submission
-    if (invitationValidation.invalid) {
-      errorMessage.value = t('auth.invitationCodeInvalidCannotRegister')
-      return
-    }
-    // If invitation code was provided but not validated yet
-    if (!invitationValidation.valid) {
-      errorMessage.value = t('auth.invitationCodeValidating')
-      // Trigger validation
-      await validateInvitationCodeDebounced(invitationCodeForSubmission)
-      if (!invitationValidation.valid) {
-        errorMessage.value = t('auth.invitationCodeInvalidCannotRegister')
-        return
-      }
     }
   }
 

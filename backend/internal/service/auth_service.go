@@ -170,22 +170,15 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	if isReservedEmail(email) {
 		return "", nil, ErrEmailReserved
 	}
-	// 邀请码注册开启时展示邀请码入口；邀请码本身为可选，只有填写后才校验和消费。
-	var invitationRedeemCode *RedeemCode
-	invitationCode = strings.TrimSpace(invitationCode)
-	if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) && invitationCode != "" {
-		// 验证邀请码
-		redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
-		if err != nil {
-			logger.LegacyPrintf("service.auth", "[Auth] Invalid invitation code: %s, error: %v", invitationCode, err)
-			return "", nil, ErrInvitationCodeInvalid
-		}
-		// 检查类型和状态
-		if redeemCode.Type != RedeemTypeInvitation || !redeemCode.CanUse() {
-			logger.LegacyPrintf("service.auth", "[Auth] Invitation code invalid: type=%s, status=%s", redeemCode.Type, redeemCode.Status)
-			return "", nil, ErrInvitationCodeInvalid
-		}
-		invitationRedeemCode = redeemCode
+	// 邀请码字段同时承载邀请型兑换码与好友返利邀请码；任何取值都不阻断注册。
+	invite, err := s.resolveRegistrationInvite(ctx, invitationCode)
+	if err != nil {
+		logger.LegacyPrintf("service.auth", "[Auth] Failed to resolve invitation code: %v", err)
+		return "", nil, ErrServiceUnavailable
+	}
+	invitationRedeemCode := invite.Redeem
+	if strings.TrimSpace(affiliateCode) == "" {
+		affiliateCode = invite.AffiliateCode
 	}
 
 	// 检查是否需要邮件验证
@@ -295,6 +288,50 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	}
 
 	return token, user, nil
+}
+
+// RegistrationInvite 是注册邀请码字段的解析结果。
+// Redeem 非空表示命中可一次性消费的邀请型兑换码；AffiliateCode 非空表示按好友返利邀请码候选处理。
+type RegistrationInvite struct {
+	Redeem        *RedeemCode
+	AffiliateCode string
+}
+
+// resolveRegistrationInvite 解析注册邀请码字段。
+// 该字段同时承载邀请型兑换码与好友返利邀请码：
+//   - 命中可用的邀请型兑换码：返回待消费的码；
+//   - 命中已用/已过期或其它类型的兑换码：忽略且不阻断注册；
+//   - 字符串不在 redeem_codes 中（含返利邀请码）：作为返利邀请码候选；
+//   - 邀请码功能关闭：同样按返利邀请码候选处理。
+//
+// 任何输入都不会作为注册失败原因。
+func (s *AuthService) resolveRegistrationInvite(ctx context.Context, raw string) (RegistrationInvite, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return RegistrationInvite{}, nil
+	}
+	if s == nil || s.settingService == nil || !s.settingService.IsInvitationCodeEnabled(ctx) {
+		return RegistrationInvite{AffiliateCode: raw}, nil
+	}
+	if s.redeemRepo == nil && s.oauthEmailFlowClient(ctx) == nil {
+		return RegistrationInvite{AffiliateCode: raw}, nil
+	}
+
+	code, err := s.loadOAuthRegistrationInvitation(ctx, raw)
+	if err != nil {
+		if errors.Is(err, ErrRedeemCodeNotFound) {
+			return RegistrationInvite{AffiliateCode: raw}, nil
+		}
+		return RegistrationInvite{}, err
+	}
+	if code == nil || code.Type != RedeemTypeInvitation {
+		return RegistrationInvite{}, nil
+	}
+	if !code.CanUse() {
+		logger.LegacyPrintf("service.auth", "[Auth] Invitation code %s is not usable (status=%s), registration continues", code.Code, code.Status)
+		return RegistrationInvite{}, nil
+	}
+	return RegistrationInvite{Redeem: code}, nil
 }
 
 // SendVerifyCodeResult 发送验证码返回结果
@@ -718,18 +755,14 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 				return nil, nil, ErrRegDisabled
 			}
 
-			// 邀请码注册开启时展示邀请码入口；邀请码本身为可选，只有填写后才校验和消费。
-			var invitationRedeemCode *RedeemCode
-			invitationCode = strings.TrimSpace(invitationCode)
-			if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) && invitationCode != "" {
-				redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
-				if err != nil {
-					return nil, nil, ErrInvitationCodeInvalid
-				}
-				if redeemCode.Type != RedeemTypeInvitation || !redeemCode.CanUse() {
-					return nil, nil, ErrInvitationCodeInvalid
-				}
-				invitationRedeemCode = redeemCode
+			// 邀请码字段同时承载邀请型兑换码与好友返利邀请码；任何取值都不阻断注册。
+			invite, err := s.resolveRegistrationInvite(ctx, invitationCode)
+			if err != nil {
+				return nil, nil, ErrServiceUnavailable
+			}
+			invitationRedeemCode := invite.Redeem
+			if strings.TrimSpace(affiliateCode) == "" {
+				affiliateCode = invite.AffiliateCode
 			}
 
 			randomPassword, err := randomHexString(32)
@@ -787,7 +820,12 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 					}
 				} else {
 					if err := s.redeemRepo.Use(txCtx, invitationRedeemCode.ID, newUser.ID); err != nil {
-						return nil, nil, ErrInvitationCodeInvalid
+						// 并发下兑换码已被占用：放弃消费，注册继续。
+						if !errors.Is(err, ErrRedeemCodeUsed) {
+							logger.LegacyPrintf("service.auth", "[Auth] Failed to claim invitation code %s: %v", invitationRedeemCode.Code, err)
+							return nil, nil, ErrServiceUnavailable
+						}
+						logger.LegacyPrintf("service.auth", "[Auth] Invitation code %s already claimed, registration continues", invitationRedeemCode.Code)
 					}
 					if err := tx.Commit(); err != nil {
 						logger.LegacyPrintf("service.auth", "[Auth] Failed to commit oauth registration transaction: %v", err)
@@ -823,7 +861,12 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 					s.bindOAuthAffiliate(ctx, user.ID, affiliateCode)
 					if invitationRedeemCode != nil {
 						if err := s.redeemRepo.Use(ctx, invitationRedeemCode.ID, user.ID); err != nil {
-							return nil, nil, ErrInvitationCodeInvalid
+							// 并发下兑换码已被占用：放弃消费，注册继续。
+							if !errors.Is(err, ErrRedeemCodeUsed) {
+								logger.LegacyPrintf("service.auth", "[Auth] Failed to claim invitation code %s: %v", invitationRedeemCode.Code, err)
+								return nil, nil, ErrServiceUnavailable
+							}
+							logger.LegacyPrintf("service.auth", "[Auth] Invitation code %s already claimed, registration continues", invitationRedeemCode.Code)
 						}
 					}
 				}
@@ -1316,6 +1359,12 @@ func (s *AuthService) createUserAndClaimInvitation(ctx context.Context, user *Us
 	defer func() { _ = tx.Rollback() }()
 	execCtx := dbent.NewTxContext(ctx, tx)
 	if err := commitUser(execCtx); err != nil {
+		if errors.Is(err, ErrInvitationCodeInvalid) {
+			// 并发下邀请码被其他注册占用：事务已整体回滚，放弃邀请码重建用户，注册不因此失败。
+			_ = tx.Rollback()
+			user.ID = 0
+			return s.createUserAndClaimInvitation(ctx, user, nil)
+		}
 		return err
 	}
 	if err := tx.Commit(); err != nil {

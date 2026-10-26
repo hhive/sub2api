@@ -118,6 +118,94 @@ func (s *raceSafeRedeemRepo) Use(_ context.Context, id, userID int64) error {
 	return ErrRedeemCodeNotFound
 }
 
+// invitationAffiliateRepoStub 覆盖返利绑定所需的仓储方法，其余走嵌入接口。
+type invitationAffiliateRepoStub struct {
+	AffiliateRepository
+
+	mu       sync.Mutex
+	profiles map[int64]*AffiliateSummary
+	byCode   map[string]*AffiliateSummary
+	lookups  []string
+	binds    []struct {
+		userID    int64
+		inviterID int64
+	}
+}
+
+func (s *invitationAffiliateRepoStub) EnsureUserAffiliate(_ context.Context, userID int64) (*AffiliateSummary, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	profile, ok := s.profiles[userID]
+	if !ok {
+		profile = &AffiliateSummary{UserID: userID, AffCode: fmt.Sprintf("SELF%d", userID)}
+		s.profiles[userID] = profile
+	}
+	cloned := *profile
+	return &cloned, nil
+}
+
+func (s *invitationAffiliateRepoStub) GetAffiliateByCode(_ context.Context, code string) (*AffiliateSummary, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lookups = append(s.lookups, code)
+	profile, ok := s.byCode[code]
+	if !ok {
+		return nil, ErrAffiliateProfileNotFound
+	}
+	cloned := *profile
+	return &cloned, nil
+}
+
+func (s *invitationAffiliateRepoStub) BindInviter(_ context.Context, userID, inviterID int64) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	profile, ok := s.profiles[userID]
+	if !ok {
+		profile = &AffiliateSummary{UserID: userID}
+		s.profiles[userID] = profile
+	}
+	if profile.InviterID != nil {
+		return false, nil
+	}
+	profile.InviterID = &inviterID
+	s.binds = append(s.binds, struct {
+		userID    int64
+		inviterID int64
+	}{userID: userID, inviterID: inviterID})
+	return true, nil
+}
+
+// TestCreateEmailOAuthUserBindsAffiliateFromInvitationField OAuth 首次注册同样接受返利码。
+func TestCreateEmailOAuthUserBindsAffiliateFromInvitationField(t *testing.T) {
+	const affiliateCode = "4W52TTV5G5A3"
+	const inviterUserID int64 = 9002
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+		"affiliate_enabled":       "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		&userRepoStub{nextID: 501, usersByEmail: map[string]*User{}},
+		&redeemCodeRepoStub{codesByCode: map[string]*RedeemCode{}},
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+	inviter := &AffiliateSummary{UserID: inviterUserID, AffCode: affiliateCode}
+	affiliateRepo := &invitationAffiliateRepoStub{
+		profiles: map[int64]*AffiliateSummary{inviterUserID: inviter},
+		byCode:   map[string]*AffiliateSummary{affiliateCode: inviter},
+	}
+	svc.affiliateService = NewAffiliateService(affiliateRepo, svc.settingService, nil, nil, nil)
+
+	user, err := svc.createEmailOAuthUser(context.Background(), "oauth-aff@example.com", "oauth", "wechat", affiliateCode, "")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Len(t, affiliateRepo.binds, 1, "OAuth 首次注册时邀请码字段里的返利码必须绑定邀请人")
+	require.Equal(t, inviterUserID, affiliateRepo.binds[0].inviterID)
+}
+
 // TestAuthService_Register_InvitationCodeSingleUseUnderConcurrency 回归测试：
 // 同一邀请码并发注册必须恰好成功 1 次，其余请求以 INVITATION_CODE_INVALID 拒绝。
 //
@@ -184,9 +272,9 @@ func TestAuthService_Register_InvitationCodeSingleUseUnderConcurrency(t *testing
 	require.NotNil(t, claimed.UsedBy, "used_by 必须记录实际注册用户")
 }
 
-// TestAuthService_Register_InvitationCodeRejectedWhenAlreadyUsed 顺序路径回归：
-// 已使用过的邀请码再次注册（即便换邮箱）必须被拒绝。
-func TestAuthService_Register_InvitationCodeRejectedWhenAlreadyUsed(t *testing.T) {
+// TestAuthService_Register_InvitationCodeAlreadyUsedDoesNotBlock 顺序路径：
+// 已使用过的邀请型兑换码再次出现在邀请码字段时不阻断注册，也不会被重复消费。
+func TestAuthService_Register_InvitationCodeAlreadyUsedDoesNotBlock(t *testing.T) {
 	const code = "INV-RACE-002"
 	userRepo := newRaceSafeUserRepo()
 	redeemRepo := &raceSafeRedeemRepo{codes: map[string]*RedeemCode{
@@ -205,8 +293,172 @@ func TestAuthService_Register_InvitationCodeRejectedWhenAlreadyUsed(t *testing.T
 		&userPlatformQuotaRepoStub{},
 	)
 
-	_, _, err := svc.RegisterWithVerification(context.Background(), "later@example.com", "Password123!", "", "", code, "")
-	require.ErrorIs(t, err, ErrInvitationCodeInvalid)
+	_, user, err := svc.RegisterWithVerification(context.Background(), "later@example.com", "Password123!", "", "", code, "")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+
+	existing, err := redeemRepo.GetByCode(context.Background(), code)
+	require.NoError(t, err)
+	require.Equal(t, StatusUsed, existing.Status, "已使用的邀请码不得被重复消费")
+}
+
+// TestAuthService_Register_InvitationCodeExpiredDoesNotBlock 过期邀请码不阻断注册，也不会被消费。
+func TestAuthService_Register_InvitationCodeExpiredDoesNotBlock(t *testing.T) {
+	const code = "INV-EXPIRED-001"
+	expiredAt := time.Now().Add(-time.Hour)
+	userRepo := newRaceSafeUserRepo()
+	redeemRepo := &raceSafeRedeemRepo{codes: map[string]*RedeemCode{
+		code: {ID: 3, Code: code, Type: RedeemTypeInvitation, Status: StatusUnused, ExpiresAt: &expiredAt},
+	}}
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		userRepo,
+		redeemRepo,
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+
+	_, user, err := svc.RegisterWithVerification(context.Background(), "expired-invite@example.com", "Password123!", "", "", code, "")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+
+	existing, err := redeemRepo.GetByCode(context.Background(), code)
+	require.NoError(t, err)
+	require.Equal(t, StatusUnused, existing.Status, "过期邀请码不得被消费")
+}
+
+// TestAuthService_Register_AffiliateCodeInInvitationFieldBindsInviter 回归：
+// 注册页邀请码字段里填好友返利码时必须注册成功并绑定邀请人。
+func TestAuthService_Register_AffiliateCodeInInvitationFieldBindsInviter(t *testing.T) {
+	const affiliateCode = "4W52TTV5G5A3"
+	const inviterUserID int64 = 9001
+	userRepo := newRaceSafeUserRepo()
+	redeemRepo := &raceSafeRedeemRepo{codes: map[string]*RedeemCode{}}
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+		"affiliate_enabled":       "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		userRepo,
+		redeemRepo,
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+	inviter := &AffiliateSummary{UserID: inviterUserID, AffCode: affiliateCode}
+	affiliateRepo := &invitationAffiliateRepoStub{
+		profiles: map[int64]*AffiliateSummary{inviterUserID: inviter},
+		byCode:   map[string]*AffiliateSummary{affiliateCode: inviter},
+	}
+	svc.affiliateService = NewAffiliateService(affiliateRepo, svc.settingService, nil, nil, nil)
+
+	_, user, err := svc.RegisterWithVerification(context.Background(), "manual-aff@example.com", "Password123!", "", "", affiliateCode, "")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Len(t, affiliateRepo.binds, 1, "邀请码字段里的返利码必须绑定邀请人")
+	require.Equal(t, user.ID, affiliateRepo.binds[0].userID)
+	require.Equal(t, inviterUserID, affiliateRepo.binds[0].inviterID)
+}
+
+// TestAuthService_Register_UnknownInvitationCodeDoesNotBlock 未知字符串不阻断注册，
+// 且会作为返利邀请码候选透传（查找失败只记日志）。
+func TestAuthService_Register_UnknownInvitationCodeDoesNotBlock(t *testing.T) {
+	const unknownCode = "AAAA2222BBBB"
+	userRepo := newRaceSafeUserRepo()
+	redeemRepo := &raceSafeRedeemRepo{codes: map[string]*RedeemCode{}}
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+		"affiliate_enabled":       "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		userRepo,
+		redeemRepo,
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+	affiliateRepo := &invitationAffiliateRepoStub{
+		profiles: map[int64]*AffiliateSummary{},
+		byCode:   map[string]*AffiliateSummary{},
+	}
+	svc.affiliateService = NewAffiliateService(affiliateRepo, svc.settingService, nil, nil, nil)
+
+	_, user, err := svc.RegisterWithVerification(context.Background(), "unknown-code@example.com", "Password123!", "", "", unknownCode, "")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Equal(t, []string{unknownCode}, affiliateRepo.lookups, "未知码必须作为返利邀请码候选透传")
+	require.Empty(t, affiliateRepo.binds, "无法识别的码不得产生邀请绑定")
+}
+
+// TestAuthService_OAuthCompleteRegistration_AffiliateCodeInInvitationField 覆盖
+// Linux.do / OIDC / 钉钉 / 微信 complete-registration 共用路径。
+func TestAuthService_OAuthCompleteRegistration_AffiliateCodeInInvitationField(t *testing.T) {
+	const affiliateCode = "4W52TTV5G5A3"
+	const inviterUserID int64 = 9003
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+		"affiliate_enabled":       "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		&userRepoStub{nextID: 601, usersByEmail: map[string]*User{}},
+		&raceSafeRedeemRepo{codes: map[string]*RedeemCode{}},
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+	inviter := &AffiliateSummary{UserID: inviterUserID, AffCode: affiliateCode}
+	affiliateRepo := &invitationAffiliateRepoStub{
+		profiles: map[int64]*AffiliateSummary{inviterUserID: inviter},
+		byCode:   map[string]*AffiliateSummary{affiliateCode: inviter},
+	}
+	svc.affiliateService = NewAffiliateService(affiliateRepo, svc.settingService, nil, nil, nil)
+
+	_, user, err := svc.LoginOrRegisterOAuthWithTokenPair(context.Background(), "oauth-complete@example.com", "oauth", affiliateCode, "", "wechat")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Len(t, affiliateRepo.binds, 1, "complete-registration 路径必须接受邀请码字段里的返利码")
+	require.Equal(t, inviterUserID, affiliateRepo.binds[0].inviterID)
+}
+
+// TestFinalizeOAuthEmailAccount_BindsAffiliateFromInvitationField 覆盖 pending create-account 收尾路径。
+func TestFinalizeOAuthEmailAccount_BindsAffiliateFromInvitationField(t *testing.T) {
+	const affiliateCode = "4W52TTV5G5A3"
+	const inviterUserID int64 = 9004
+	settings := map[string]string{
+		"registration_enabled":    "true",
+		"invitation_code_enabled": "true",
+		"affiliate_enabled":       "true",
+	}
+	svc := newOAuthEmailFlowAuthService(
+		newRaceSafeUserRepo(),
+		&raceSafeRedeemRepo{codes: map[string]*RedeemCode{}},
+		&refreshTokenCacheStub{},
+		settings,
+		nil,
+		&userPlatformQuotaRepoStub{},
+	)
+	inviter := &AffiliateSummary{UserID: inviterUserID, AffCode: affiliateCode}
+	affiliateRepo := &invitationAffiliateRepoStub{
+		profiles: map[int64]*AffiliateSummary{inviterUserID: inviter},
+		byCode:   map[string]*AffiliateSummary{affiliateCode: inviter},
+	}
+	svc.affiliateService = NewAffiliateService(affiliateRepo, svc.settingService, nil, nil, nil)
+
+	user := &User{ID: 777, Email: "pending-aff@example.com", Status: StatusActive}
+	require.NoError(t, svc.FinalizeOAuthEmailAccount(context.Background(), user, affiliateCode, "wechat", ""))
+	require.Len(t, affiliateRepo.binds, 1, "pending create-account 收尾时必须绑定返利邀请人")
+	require.Equal(t, inviterUserID, affiliateRepo.binds[0].inviterID)
 }
 
 // TestAuthService_Register_InvitationCodeOptionalWhenEnabled 保留本地产品契约：

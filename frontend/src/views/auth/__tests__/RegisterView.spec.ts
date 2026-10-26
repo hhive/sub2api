@@ -194,6 +194,59 @@ describe('RegisterView', () => {
     expect(registerMock.mock.calls[0][0]).not.toHaveProperty('invitation_code')
   })
 
+  it('submits a manually entered affiliate code even when it is not an invitation code', async () => {
+    routeState.query = { invitation_code: '4W52TTV5G5A3' }
+    validateInvitationCodeMock.mockResolvedValue({
+      valid: false,
+      error_code: 'INVITATION_CODE_NOT_FOUND'
+    })
+
+    const wrapper = mountRegisterView()
+    await flushPromises()
+
+    expect(validateInvitationCodeMock).toHaveBeenCalledWith('4W52TTV5G5A3')
+    expect(wrapper.text()).toContain('auth.invitationCodeAffiliateHint')
+
+    await wrapper.get<HTMLInputElement>('#email').setValue('manual-aff@example.com')
+    await wrapper.get<HTMLInputElement>('#password').setValue('secret-123')
+    await wrapper.get<HTMLInputElement>('#confirmPassword').setValue('secret-123')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(registerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'manual-aff@example.com',
+        invitation_code: '4W52TTV5G5A3'
+      })
+    )
+  })
+
+  it('does not block registration when the invitation code was already used', async () => {
+    routeState.query = { invitation_code: 'INV-USED' }
+    validateInvitationCodeMock.mockResolvedValue({
+      valid: false,
+      error_code: 'INVITATION_CODE_USED'
+    })
+
+    const wrapper = mountRegisterView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('auth.invitationCodeUsedHint')
+
+    await wrapper.get<HTMLInputElement>('#email').setValue('used-code@example.com')
+    await wrapper.get<HTMLInputElement>('#password').setValue('secret-123')
+    await wrapper.get<HTMLInputElement>('#confirmPassword').setValue('secret-123')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(registerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'used-code@example.com',
+        invitation_code: 'INV-USED'
+      })
+    )
+  })
+
   it('does not flash the promo-code field before disabled settings finish loading', async () => {
     let resolveSettings!: (settings: typeof publicSettings) => void
     getPublicSettingsMock.mockReturnValueOnce(

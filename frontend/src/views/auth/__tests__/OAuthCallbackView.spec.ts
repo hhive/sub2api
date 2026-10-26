@@ -188,6 +188,66 @@ describe('OAuthCallbackView', () => {
     expect(setTokenMock).toHaveBeenCalledWith('token-1')
   })
 
+  it('completes registration without an invitation code when the field is optional', async () => {
+    routeState.path = '/auth/oauth/callback'
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      error: 'invitation_required',
+      provider: 'google',
+      redirect: '/dashboard',
+      resolved_email: 'no-code@example.com',
+      invitation_required: true,
+    })
+    apiPostMock.mockResolvedValue({
+      data: {
+        access_token: 'token-no-code',
+      },
+    })
+
+    const wrapper = mount(OAuthCallbackView)
+    await vi.dynamicImportSettled()
+    const passwordInputs = wrapper.findAll('input[type="password"]')
+    await passwordInputs[0].setValue('secret-123')
+    await passwordInputs[1].setValue('secret-123')
+    await wrapper.findAll('button').at(0)?.trigger('click')
+
+    expect(apiPostMock).toHaveBeenCalledWith('/auth/oauth/google/complete-registration', {
+      password: 'secret-123',
+    })
+  })
+
+  it('shows the optional invitation field when invitation is not flagged as required', async () => {
+    routeState.path = '/auth/oauth/callback'
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      error: 'registration_completion_required',
+      provider: 'github',
+      redirect: '/dashboard',
+      resolved_email: 'optional-aff@example.com',
+      invitation_required: false,
+    })
+    apiPostMock.mockResolvedValue({
+      data: {
+        access_token: 'token-optional-aff',
+      },
+    })
+
+    const wrapper = mount(OAuthCallbackView)
+    await vi.dynamicImportSettled()
+
+    const invitationInput = wrapper.find('input[type="text"]')
+    expect(invitationInput.exists()).toBe(true)
+    await invitationInput.setValue('4W52TTV5G5A3')
+
+    const passwordInputs = wrapper.findAll('input[type="password"]')
+    await passwordInputs[0].setValue('secret-123')
+    await passwordInputs[1].setValue('secret-123')
+    await wrapper.findAll('button').at(0)?.trigger('click')
+
+    expect(apiPostMock).toHaveBeenCalledWith('/auth/oauth/github/complete-registration', {
+      password: 'secret-123',
+      invitation_code: '4W52TTV5G5A3',
+    })
+  })
+
   it('completes email oauth registration with readonly email and without posting email', async () => {
     routeState.path = '/auth/oauth/callback'
     exchangePendingOAuthCompletionMock.mockResolvedValue({

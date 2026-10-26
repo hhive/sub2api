@@ -93,7 +93,7 @@
             </div>
             <button
               class="btn btn-primary w-full"
-              :disabled="isSubmitting || !invitationCode.trim()"
+              :disabled="isSubmitting"
               @click="handleSubmitInvitation"
             >
               {{

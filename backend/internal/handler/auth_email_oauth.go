@@ -300,22 +300,16 @@ func (h *AuthHandler) createEmailOAuthRegistrationPendingSession(
 		}
 	}
 
-	invitationRequired := h != nil && h.settingSvc != nil && h.settingSvc.IsInvitationCodeEnabled(c.Request.Context())
-	pendingError := "registration_completion_required"
-	choiceReason := "registration_completion_required"
-	if invitationRequired {
-		pendingError = "invitation_required"
-		choiceReason = "invitation_required"
-	}
+	// 邀请码字段不再作为注册前置条件：可填邀请型兑换码或好友返利邀请码，也可留空。
 	completionResponse := map[string]any{
 		"step":                      oauthPendingChoiceStep,
-		"error":                     pendingError,
-		"choice_reason":             choiceReason,
+		"error":                     "registration_completion_required",
+		"choice_reason":             "registration_completion_required",
 		"adoption_required":         false,
 		"create_account_allowed":    true,
 		"existing_account_bindable": false,
 		"force_email_on_signup":     true,
-		"invitation_required":       invitationRequired,
+		"invitation_required":       false,
 		"email":                     email,
 		"resolved_email":            email,
 		"provider":                  provider,

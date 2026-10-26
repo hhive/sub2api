@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
@@ -533,6 +535,7 @@ type ValidateInvitationCodeRequest struct {
 // ValidateInvitationCodeResponse 验证邀请码响应
 type ValidateInvitationCodeResponse struct {
 	Valid     bool   `json:"valid"`
+	Kind      string `json:"kind,omitempty"` // invitation=邀请型兑换码；affiliate_candidate=按好友返利邀请码提交
 	ErrorCode string `json:"error_code,omitempty"`
 }
 
@@ -557,14 +560,19 @@ func (h *AuthHandler) ValidateInvitationCode(c *gin.Context) {
 	// 验证邀请码
 	redeemCode, err := h.redeemService.GetByCode(c.Request.Context(), req.Code)
 	if err != nil {
+		if !errors.Is(err, service.ErrRedeemCodeNotFound) {
+			slog.Error("validate invitation code: lookup failed", "error", err)
+		}
+		// 非兑换码：按好友返利邀请码候选处理，注册不受影响。
 		response.Success(c, ValidateInvitationCodeResponse{
 			Valid:     false,
+			Kind:      "affiliate_candidate",
 			ErrorCode: "INVITATION_CODE_NOT_FOUND",
 		})
 		return
 	}
 
-	// 检查类型和状态
+	// 检查类型：其它类型兑换码不作为邀请码，也不阻断注册。
 	if redeemCode.Type != service.RedeemTypeInvitation {
 		response.Success(c, ValidateInvitationCodeResponse{
 			Valid:     false,
@@ -573,16 +581,43 @@ func (h *AuthHandler) ValidateInvitationCode(c *gin.Context) {
 		return
 	}
 
-	if redeemCode.Status != service.StatusUnused {
+	switch redeemCode.Status {
+	case service.StatusUsed:
 		response.Success(c, ValidateInvitationCodeResponse{
 			Valid:     false,
+			Kind:      "invitation",
 			ErrorCode: "INVITATION_CODE_USED",
+		})
+		return
+	case service.StatusExpired:
+		response.Success(c, ValidateInvitationCodeResponse{
+			Valid:     false,
+			Kind:      "invitation",
+			ErrorCode: "INVITATION_CODE_EXPIRED",
+		})
+		return
+	case service.StatusUnused:
+	default:
+		response.Success(c, ValidateInvitationCodeResponse{
+			Valid:     false,
+			Kind:      "invitation",
+			ErrorCode: "INVITATION_CODE_INVALID",
+		})
+		return
+	}
+
+	if redeemCode.IsExpiredAt(time.Now()) {
+		response.Success(c, ValidateInvitationCodeResponse{
+			Valid:     false,
+			Kind:      "invitation",
+			ErrorCode: "INVITATION_CODE_EXPIRED",
 		})
 		return
 	}
 
 	response.Success(c, ValidateInvitationCodeResponse{
 		Valid: true,
+		Kind:  "invitation",
 	})
 }
 

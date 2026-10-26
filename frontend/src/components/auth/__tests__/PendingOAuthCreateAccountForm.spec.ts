@@ -236,6 +236,42 @@ describe('PendingOAuthCreateAccountForm', () => {
     ])
   })
 
+  it('submits without an invitation code when the field is optional', async () => {
+    getPublicSettings.mockResolvedValue({
+      invitation_code_enabled: true,
+      email_verify_enabled: false,
+      turnstile_enabled: false,
+      turnstile_site_key: ''
+    })
+
+    const wrapper = mount(PendingOAuthCreateAccountForm, {
+      props: {
+        providerName: 'LinuxDo',
+        testIdPrefix: 'linuxdo',
+        initialEmail: 'prefill@example.com',
+        isSubmitting: false
+      }
+    })
+
+    await flushPromises()
+    await wrapper.get('[data-testid="linuxdo-create-account-password"]').setValue('secret-123')
+    const submit = wrapper.get('[data-testid="linuxdo-create-account-submit"]')
+    expect(submit.attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('form').trigger('submit.prevent')
+
+    expect(wrapper.emitted('submit')).toEqual([
+      [
+        {
+          email: 'prefill@example.com',
+          password: 'secret-123',
+          verifyCode: '',
+          invitationCode: undefined
+        }
+      ]
+    ])
+  })
+
   it('sends a verify code for the trimmed email value', async () => {
     sendPendingOAuthVerifyCode.mockResolvedValue({
       message: 'sent',
