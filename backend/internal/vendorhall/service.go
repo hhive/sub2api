@@ -66,28 +66,49 @@ type rawAccount struct {
 }
 
 // 供应商大厅的上游余额与倍率取账号历史上最近一次非空快照，与所选窗口无关。
-const (
-	latestBalanceSQL    = `SELECT DISTINCT ON ("accountId") "accountId", "balanceUsd" FROM "AccountMetricMinute" WHERE "accountId" = ANY($1) AND "balanceUsd" IS NOT NULL ORDER BY "accountId", "bucketStart" DESC`
-	latestMultiplierSQL = `SELECT DISTINCT ON ("accountId") "accountId", "upstreamRateMultiplier" FROM "AccountMetricMinute" WHERE "accountId" = ANY($1) AND "upstreamRateMultiplier" IS NOT NULL ORDER BY "accountId", "bucketStart" DESC`
+const latestSnapshotSQL = `WITH latest AS (
+	SELECT "accountId",
+	       max("bucketStart") FILTER (WHERE "balanceUsd" IS NOT NULL) AS "balanceAt",
+	       max("bucketStart") FILTER (WHERE "upstreamRateMultiplier" IS NOT NULL) AS "multiplierAt"
+	FROM "AccountMetricMinute"
+	WHERE "accountId" = ANY($1)
+	GROUP BY "accountId"
 )
+SELECT l."accountId", b."balanceUsd", m."upstreamRateMultiplier"
+FROM latest l
+LEFT JOIN "AccountMetricMinute" b ON b."accountId" = l."accountId" AND b."bucketStart" = l."balanceAt"
+LEFT JOIN "AccountMetricMinute" m ON m."accountId" = l."accountId" AND m."bucketStart" = l."multiplierAt"`
 
-// latestSnapshotValues 返回每个账号最近一次非空的快照值，查询走 (accountId, bucketStart) 唯一索引反向扫描。
-func latestSnapshotValues(ctx context.Context, db *sql.DB, query string, monitorIDs []int64) (map[int]float64, error) {
-	rows, err := db.QueryContext(ctx, query, pq.Array(monitorIDs))
+// snapshotValue 是单个账号最近一次非空的余额与倍率，两列各自独立。
+type snapshotValue struct {
+	balance    *float64
+	multiplier *float64
+}
+
+// latestSnapshotValues 一次扫描求出每个账号最近一次非空的余额与倍率。
+// 按账号分组求两列各自最近的非空时间点，再按 (accountId, bucketStart) 唯一索引回查取值；
+// 不使用需要混合方向排序的 DISTINCT ON，避免整表扫描后排序。
+func latestSnapshotValues(ctx context.Context, db *sql.DB, monitorIDs []int64) (map[int]snapshotValue, error) {
+	rows, err := db.QueryContext(ctx, latestSnapshotSQL, pq.Array(monitorIDs))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	values := make(map[int]float64, len(monitorIDs))
+	values := make(map[int]snapshotValue, len(monitorIDs))
 	for rows.Next() {
 		var accountID int
-		var value sql.NullFloat64
-		if err := rows.Scan(&accountID, &value); err != nil {
+		var balance, multiplier sql.NullFloat64
+		if err := rows.Scan(&accountID, &balance, &multiplier); err != nil {
 			return nil, err
 		}
-		if value.Valid {
-			values[accountID] = value.Float64
+		var value snapshotValue
+		if balance.Valid {
+			value.balance = ptrFloat(balance.Float64)
 		}
+		if multiplier.Valid {
+			value.multiplier = ptrFloat(multiplier.Float64)
+		}
+		values[accountID] = value
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -204,25 +225,22 @@ func (s *Service) List(ctx context.Context, params ListParams) (*ListResult, err
 			return nil, fmt.Errorf("%w: metric rows failed", ErrUnavailable)
 		}
 	}
-	latestBalance := map[int]float64{}
-	latestMultiplier := map[int]float64{}
+	latestSnapshots := map[int]snapshotValue{}
 	if len(monitorIDs) > 0 {
-		latestBalance, err = latestSnapshotValues(queryCtx, db, latestBalanceSQL, monitorIDs)
+		latestSnapshots, err = latestSnapshotValues(queryCtx, db, monitorIDs)
 		if err != nil {
-			return nil, fmt.Errorf("%w: latest balance query failed", ErrUnavailable)
-		}
-		latestMultiplier, err = latestSnapshotValues(queryCtx, db, latestMultiplierSQL, monitorIDs)
-		if err != nil {
-			return nil, fmt.Errorf("%w: latest rate query failed", ErrUnavailable)
+			return nil, fmt.Errorf("%w: latest snapshot query failed", ErrUnavailable)
 		}
 	}
 	for monitorID, index := range monitorToIndex {
 		metrics := aggregateMinutes(minutesByAccount[monitorID], start, end, 48)
-		if value, ok := latestBalance[monitorID]; ok {
-			metrics.BalanceUSD = ptrFloat(value)
-		}
-		if value, ok := latestMultiplier[monitorID]; ok {
-			metrics.UpstreamMultiplier = ptrFloat(value)
+		if value, ok := latestSnapshots[monitorID]; ok {
+			if value.balance != nil {
+				metrics.BalanceUSD = value.balance
+			}
+			if value.multiplier != nil {
+				metrics.UpstreamMultiplier = value.multiplier
+			}
 		}
 		accounts[index].metrics = metrics
 		applyMetrics(&accounts[index], now)
