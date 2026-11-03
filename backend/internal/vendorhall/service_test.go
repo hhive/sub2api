@@ -108,13 +108,17 @@ func TestServiceAppliesSnapshotColumnsIndependently(t *testing.T) {
 	windowEnd := now.Truncate(time.Minute)
 	accountColumns := []string{"id", "sourceAccountId", "name", "platform", "type", "remoteStatus", "schedulable", "priority", "groupProjection", "tempUnschedulableUntil", "tempUnschedulableReason", "lastSyncedAt"}
 	mock.ExpectQuery(`SELECT "id", "sourceAccountId"`).WillReturnRows(sqlmock.NewRows(accountColumns).
-		AddRow(1, "7", "Alpha", "openai", "apikey", "active", true, 50, `[]`, nil, nil, now))
+		AddRow(1, "7", "Alpha", "openai", "apikey", "active", true, 50, `[]`, nil, nil, now).
+		AddRow(2, "9", "Beta", "openai", "apikey", "active", true, 50, `[]`, nil, nil, now))
 	metricColumns := []string{"accountId", "bucketStart", "successCount", "upstreamErrorCount", "eligibleCount", "durationCount", "durationSumMs", "durationHistogram", "firstTokenHistogram", "inputTokens", "cacheReadTokens", "cacheCreationTokens", "upstreamRateMultiplier", "balanceUsd"}
 	mock.ExpectQuery(`SELECT "accountId", "bucketStart"`).WithArgs(windowEnd.Add(-24*time.Hour), windowEnd, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(metricColumns).
-		AddRow(1, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil))
-	// 只有倍率有历史值：余额必须保持 nil，不能被倍率的命中带出来。
+		AddRow(1, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil).
+		AddRow(2, windowEnd.Add(-time.Minute), 1, 0, 1, 0, 0, `{}`, `{}`, 0, 0, 0, nil, nil))
+	// 每个账号只有一列有历史值：另一列必须保持 nil，不能被同账号的命中带出来。
 	mock.ExpectQuery(`WITH latest AS`).WithArgs(sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"accountId", "balanceUsd", "upstreamRateMultiplier"}).AddRow(1, nil, 1.25))
+		WillReturnRows(sqlmock.NewRows([]string{"accountId", "balanceUsd", "upstreamRateMultiplier"}).
+			AddRow(1, 12.34, nil).
+			AddRow(2, nil, 1.25))
 	service := NewServiceWithDB(db)
 	service.now = func() time.Time { return now }
 	params, err := ParseListParams(nil)
@@ -123,10 +127,13 @@ func TestServiceAppliesSnapshotColumnsIndependently(t *testing.T) {
 	result, err := service.List(context.Background(), params)
 
 	require.NoError(t, err)
-	require.Len(t, result.Items, 1)
-	require.Nil(t, result.Items[0].BalanceUSD)
-	require.NotNil(t, result.Items[0].RateMultiplier)
-	require.InDelta(t, 1.25, *result.Items[0].RateMultiplier, .0001)
+	require.Len(t, result.Items, 2)
+	require.NotNil(t, result.Items[0].BalanceUSD)
+	require.InDelta(t, 12.34, *result.Items[0].BalanceUSD, .0001)
+	require.Nil(t, result.Items[0].RateMultiplier)
+	require.Nil(t, result.Items[1].BalanceUSD)
+	require.NotNil(t, result.Items[1].RateMultiplier)
+	require.InDelta(t, 1.25, *result.Items[1].RateMultiplier, .0001)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -156,6 +163,9 @@ func TestServiceFacetsCoverEveryVisibleAccountBeforeFilters(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Total)
+	// 快照查询返回空结果集：两列都必须保持 nil。
+	require.Nil(t, result.Items[0].BalanceUSD)
+	require.Nil(t, result.Items[0].RateMultiplier)
 	require.Equal(t, []string{"anthropic", "openai"}, result.Facets.Platforms)
 	require.Equal(t, []Group{{ID: 1, Name: "Beta"}, {ID: 3, Name: "Premium"}}, result.Facets.Groups)
 	require.Equal(t, []FacetAccount{

@@ -86,8 +86,7 @@ type snapshotValue struct {
 }
 
 // latestSnapshotValues 一次扫描求出每个账号最近一次非空的余额与倍率。
-// 按账号分组求两列各自最近的非空时间点，再按 (accountId, bucketStart) 唯一索引回查取值；
-// 不使用需要混合方向排序的 DISTINCT ON，避免整表扫描后排序。
+// 按账号分组求两列各自最近的非空时间点，再按 (accountId, bucketStart) 唯一索引回查取值。
 func latestSnapshotValues(ctx context.Context, db *sql.DB, monitorIDs []int64) (map[int]snapshotValue, error) {
 	rows, err := db.QueryContext(ctx, latestSnapshotSQL, pq.Array(monitorIDs))
 	if err != nil {
