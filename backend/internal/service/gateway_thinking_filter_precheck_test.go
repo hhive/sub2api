@@ -82,7 +82,12 @@ func TestFilterThinkingBlocksSignedHistorySkipsDecode(t *testing.T) {
 			t.Fatal("valid signed history must be returned unchanged")
 		}
 	})
-	require.Less(t, allocs, float64(16), "allocs: %v", allocs)
+	decodedAllocs := testing.AllocsPerRun(5, func() {
+		_ = filterThinkingBlocksDecoded(body, false)
+	})
+	// 解码路径的分配量远高于预检查路径，用相对上限判定「未解码」，
+	// 避免包内后台协程的分配噪声造成误判。
+	require.Less(t, allocs*8, decodedAllocs, "fast path allocs: %v, decoded path allocs: %v", allocs, decodedAllocs)
 }
 
 func FuzzThinkingBlocksNeedFiltering(f *testing.F) {
