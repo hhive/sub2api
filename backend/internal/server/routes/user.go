@@ -43,6 +43,13 @@ func RegisterUserRoutes(
 		{
 			user.GET("/profile", h.User.GetProfile)
 			user.GET("/balance-credits", h.User.GetBalanceCredits)
+			if h.MCPOAuth != nil {
+				user.GET("/mcp/config", h.MCPOAuth.ConnectionConfig)
+				user.GET("/mcp/grants", h.MCPOAuth.ListGrants)
+				user.DELETE("/mcp/grants/:id", h.MCPOAuth.RevokeGrant)
+				user.GET("/mcp/authorize", h.MCPOAuth.Preview)
+				user.POST("/mcp/authorize", h.MCPOAuth.Decide)
+			}
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)
 			user.GET("/aff", h.User.GetAffiliate)
@@ -188,7 +195,7 @@ func announcementAuth(jwtAuth middleware.JWTAuthMiddleware, apiKeyAuth middlewar
 		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
 			token = strings.TrimSpace(token[len("bearer "):])
 		}
-		if strings.HasPrefix(strings.ToLower(token), "sk-") {
+		if apiKeyAuth != nil && strings.HasPrefix(strings.ToLower(token), "sk-") {
 			// API Key announcement reads are not management operations and the
 			// audit contract has no API Key auth-method classification.
 			middleware.SkipAudit(c)

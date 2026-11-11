@@ -86,6 +86,8 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		billingCacheSvc,
 		&service.UsageRecordWorkerPool{},
 		(*service.ImagePlaygroundTaskWorkerPool)(nil), // imagePlaygroundTaskWorkerPool
+		service.ProvideBalanceNotifyService(nil, nil, nil, nil),
+		service.NewDigestSessionStore(),
 		&service.SubscriptionService{},
 		oauthSvc,
 		openAIOAuthSvc,

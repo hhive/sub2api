@@ -302,6 +302,7 @@ import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { buildCodexModelCatalogUrl, fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform, UseKeyConfig } from '@/types'
+import { buildCodexApiKeyAuthConfig } from '@/utils/codexAuthConfig'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -347,7 +348,7 @@ const copiedIndex = ref<number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
 type CodexAuthMode = 'legacy' | 'api-key'
-const codexAuthMode = ref<CodexAuthMode>('legacy')
+const codexAuthMode = ref<CodexAuthMode>('api-key')
 type CodexModelManifestState = 'idle' | 'loading' | 'ready' | 'error'
 const codexModelManifestState = ref<CodexModelManifestState>('idle')
 const codexModelManifestContent = ref('')
@@ -405,12 +406,12 @@ const defaultClientTab = computed(() => {
 watch(() => [props.platform, props.claudeCodeOnly], () => {
   activeTab.value = 'unix'
   activeClientTab.value = defaultClientTab.value
-  codexAuthMode.value = 'legacy'
+  codexAuthMode.value = 'api-key'
 }, { immediate: true })
 
 watch(() => props.show, (show) => {
   if (show) {
-    codexAuthMode.value = 'legacy'
+    codexAuthMode.value = 'api-key'
   } else {
     resetCodexModelManifest()
   }
@@ -903,7 +904,7 @@ function resolveOpenAiCodexConfig(): {
   reasoningEffortLine: string
 } {
   const overrides = useKeyOpenAiOverrides.value
-  const model = overrides.model || selectCodexCatalogModel('gpt-5.5')
+  const model = overrides.model || selectCodexCatalogModel('gpt-6.1-sol')
   return {
     // provider_id 同时驱动 model_provider 与 [model_providers.<id>]，两行永远一致。
     providerId: overrides.providerId || 'OpenAI',
@@ -1232,6 +1233,7 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const configContent = `model_provider = "${providerId}"
 model = "${escapeTomlBasicString(model)}"
 review_model = "${escapeTomlBasicString(reviewModel)}"
+web_search = "live"
 ${reasoningEffortLine}disable_response_storage = true
 ${codexLocalCatalogToml.value}network_access = "enabled"
 windows_wsl_setup_acknowledged = true
@@ -1243,16 +1245,14 @@ ${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlB
 ${generateCodexProviderAuthConfig(apiKey)}
 
 [features]
-${codexModelCatalogMode.value === 'remote' ? 'api_key_model_discovery = true\n' : ''}goals = true`
+${codexModelCatalogMode.value === 'remote' ? 'api_key_model_discovery = true\n' : ''}${codexAuthMode.value === 'api-key' ? 'image_generation = true\n' : ''}goals = true`
 
   return buildOpenAICodexFileConfigs(configDir, configContent, apiKey)
 }
 
 function generateCodexProviderAuthConfig(apiKey: string): string {
   if (codexAuthMode.value === 'api-key') {
-    return `requires_openai_auth = false
-experimental_bearer_token = "${escapeTomlBasicString(apiKey)}"
-http_headers = { "x-openai-actor-authorization" = "local-image-extension" }`
+    return buildCodexApiKeyAuthConfig(apiKey)
   }
 
   return 'requires_openai_auth = true'
@@ -1507,7 +1507,7 @@ function generateRoutedCodexFiles(
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
   const preferredModels: Partial<Record<GroupPlatform, string>> = {
-    openai: 'gpt-5.5',
+    openai: 'gpt-6.1-sol',
     anthropic: 'claude-sonnet-4-6',
     gemini: 'gemini-2.5-pro',
     antigravity: 'claude-sonnet-4-6',
@@ -1517,7 +1517,7 @@ function generateRoutedCodexFiles(
     deepseek: 'deepseek-v4-pro',
     minimax: 'MiniMax-M3',
     opencode_go: 'glm-5.3',
-    composite: 'gpt-5.5'
+    composite: 'gpt-6.1-sol'
   }
   const preferredModel = preferredModels[platform] || ''
   const model = selectCodexCatalogModel(preferredModel)
@@ -1579,6 +1579,7 @@ function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const configContent = `model_provider = "${providerId}"
 model = "${escapeTomlBasicString(model)}"
 review_model = "${escapeTomlBasicString(reviewModel)}"
+web_search = "live"
 ${reasoningEffortLine}disable_response_storage = true
 ${codexLocalCatalogToml.value}network_access = "enabled"
 windows_wsl_setup_acknowledged = true
@@ -1591,7 +1592,7 @@ supports_websockets = true
 ${generateCodexProviderAuthConfig(apiKey)}
 
 [features]
-${codexModelCatalogMode.value === 'remote' ? 'api_key_model_discovery = true\n' : ''}responses_websockets_v2 = true
+${codexModelCatalogMode.value === 'remote' ? 'api_key_model_discovery = true\n' : ''}${codexAuthMode.value === 'api-key' ? 'image_generation = true\n' : ''}responses_websockets_v2 = true
 goals = true`
 
   return buildOpenAICodexFileConfigs(configDir, configContent, apiKey)
@@ -2198,7 +2199,34 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     provider[platform].models = geminiModels
   } else if (platform === 'anthropic') {
     provider[platform].npm = '@ai-sdk/anthropic'
+    // Mythos requires an eligible Anthropic account; configuration does not grant access.
     provider[platform].models = {
+      'claude-fable-5-2': {
+        name: 'Claude Fable 5.2',
+        limit: { context: 1000000, output: 128000 },
+        modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
+        options: { thinking: { type: 'adaptive' }, effort: 'high' },
+        variants: {
+          low: { effort: 'low' },
+          medium: { effort: 'medium' },
+          high: { effort: 'high' },
+          xhigh: { effort: 'xhigh' },
+          max: { effort: 'max' }
+        }
+      },
+      'claude-mythos-5-2': {
+        name: 'Claude Mythos 5.2',
+        limit: { context: 1000000, output: 128000 },
+        modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
+        options: { thinking: { type: 'adaptive' }, effort: 'high' },
+        variants: {
+          low: { effort: 'low' },
+          medium: { effort: 'medium' },
+          high: { effort: 'high' },
+          xhigh: { effort: 'xhigh' },
+          max: { effort: 'max' }
+        }
+      },
       'claude-opus-5-5': {
         name: 'Claude Opus 5.5',
         limit: { context: 1000000, output: 128000 },
