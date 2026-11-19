@@ -2066,6 +2066,7 @@ export interface RedeemCode {
   used_by: number | null
   used_at: string | null
   created_at: string
+  balance_credit_validity_days?: number
   expires_at?: string | null
   updated_at?: string
   notes?: string
@@ -2083,6 +2084,7 @@ export interface GenerateRedeemCodesRequest {
   validity_days?: number // 订阅类型专用
   expires_at?: string | null
   expires_in_days?: number
+  balance_credit_validity_days?: number
 }
 
 export interface BatchUpdateRedeemCodeFields {

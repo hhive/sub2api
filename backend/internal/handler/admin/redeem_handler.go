@@ -41,6 +41,8 @@ type GenerateRedeemCodesRequest struct {
 	ValidityDays  int        `json:"validity_days"` // 订阅类型使用，正数增加/负数退款扣减
 	ExpiresAt     *time.Time `json:"expires_at"`
 	ExpiresInDays *int       `json:"expires_in_days" binding:"omitempty,min=1,max=3650"`
+
+	BalanceCreditValidityDays *int `json:"balance_credit_validity_days,omitempty"`
 }
 
 // CreateAndRedeemCodeRequest represents creating a fixed code and redeeming it for a target user.
@@ -144,12 +146,13 @@ func (h *RedeemHandler) Generate(c *gin.Context) {
 
 	executeAdminIdempotentJSON(c, "admin.redeem_codes.generate", req, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
 		codes, execErr := h.adminService.GenerateRedeemCodes(ctx, &service.GenerateRedeemCodesInput{
-			Count:        req.Count,
-			Type:         req.Type,
-			Value:        req.Value,
-			GroupID:      req.GroupID,
-			ValidityDays: req.ValidityDays,
-			ExpiresAt:    expiresAt,
+			Count:                     req.Count,
+			Type:                      req.Type,
+			Value:                     req.Value,
+			GroupID:                   req.GroupID,
+			ValidityDays:              req.ValidityDays,
+			ExpiresAt:                 expiresAt,
+			BalanceCreditValidityDays: req.BalanceCreditValidityDays,
 		})
 		if execErr != nil {
 			return nil, execErr

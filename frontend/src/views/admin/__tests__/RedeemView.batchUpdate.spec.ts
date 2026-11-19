@@ -3,8 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import RedeemView from '../RedeemView.vue'
 
-const { listRedeemCodes, batchUpdateRedeemCodes, getAllGroups, showSuccess, showError, showInfo } =
+const { post, listRedeemCodes, batchUpdateRedeemCodes, getAllGroups, showSuccess, showError, showInfo } =
   vi.hoisted(() => ({
+    post: vi.fn(),
     listRedeemCodes: vi.fn(),
     batchUpdateRedeemCodes: vi.fn(),
     getAllGroups: vi.fn(),
@@ -13,11 +14,13 @@ const { listRedeemCodes, batchUpdateRedeemCodes, getAllGroups, showSuccess, show
     showInfo: vi.fn()
   }))
 
-vi.mock('@/api/admin', () => ({
+vi.mock('@/api/client', () => ({ apiClient: { post } }))
+
+vi.mock('@/api/admin', async () => ({
   adminAPI: {
     redeem: {
       list: listRedeemCodes,
-      generate: vi.fn(),
+      generate: (await import('@/api/admin/redeem')).generate,
       delete: vi.fn(),
       batchDelete: vi.fn(),
       batchUpdate: batchUpdateRedeemCodes,
@@ -99,11 +102,37 @@ const SelectStub = {
   `
 }
 
-describe('admin RedeemView batch update', () => {
+const mountRedeemView = (stubSelect = true) => mount(RedeemView, {
+  attachTo: document.body,
+  global: {
+    stubs: {
+      AppLayout: { template: '<div><slot /></div>' },
+      TablePageLayout: {
+        template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+      },
+      DataTable: DataTableStub,
+      Pagination: true,
+      ConfirmDialog: true,
+      Select: stubSelect ? SelectStub : false,
+      GroupBadge: true,
+      GroupOptionItem: true,
+      Icon: true,
+      Teleport: true
+    }
+  }
+})
+
+const balanceValidity = '#generate-balance-credit-validity-days'
+
+const openGenerateForm = (wrapper: ReturnType<typeof mountRedeemView>) =>
+  wrapper.findAll('button').find((button) => button.text() === 'admin.redeem.generateCodes')!.trigger('click')
+
+describe('admin RedeemView', () => {
   beforeEach(() => {
     localStorage.clear()
     document.body.innerHTML = ''
 
+    post.mockReset().mockResolvedValue({ data: [] })
     listRedeemCodes.mockReset()
     batchUpdateRedeemCodes.mockReset()
     getAllGroups.mockReset()
@@ -146,25 +175,7 @@ describe('admin RedeemView batch update', () => {
   })
 
   it('submits only checked fields for selected redeem codes', async () => {
-    const wrapper = mount(RedeemView, {
-      attachTo: document.body,
-      global: {
-        stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
-          TablePageLayout: {
-            template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
-          },
-          DataTable: DataTableStub,
-          Pagination: true,
-          ConfirmDialog: true,
-          Select: SelectStub,
-          GroupBadge: true,
-          GroupOptionItem: true,
-          Icon: true,
-          Teleport: true
-        }
-      }
-    })
+    const wrapper = mountRedeemView()
 
     await flushPromises()
     await wrapper.findAll('[data-test="select-code"]')[0].setValue(true)
@@ -183,5 +194,69 @@ describe('admin RedeemView batch update', () => {
       notes: 'maintenance'
     })
     expect(showSuccess).toHaveBeenCalledWith('admin.redeem.batchUpdateSuccess')
+    wrapper.unmount()
+  })
+
+  it.each([
+    { input: '', type: 'balance', expected: {} },
+    { input: '30', type: 'balance', expected: { balance_credit_validity_days: 30 } },
+    { input: '0', type: 'balance', expected: { balance_credit_validity_days: 0 } },
+    { input: '36500', type: 'balance', expected: { balance_credit_validity_days: 36500 } },
+    { input: '30', type: 'concurrency', expected: {} }
+  ])('generates $type codes with balance validity "$input"', async ({ input, type, expected }) => {
+    const wrapper = mountRedeemView(false)
+    await flushPromises()
+
+    await openGenerateForm(wrapper)
+    const inputField = wrapper.get<HTMLInputElement>(balanceValidity)
+    expect(inputField.element.value).toBe('')
+    await inputField.setValue(input)
+    const selectType = async (selectedType: string) => {
+      const currentForm = wrapper.get('form')
+      await currentForm.get('button[aria-haspopup="true"]').trigger('click')
+      const option = currentForm.findAll('[role="option"]')
+        .find((item) => item.text() === `admin.redeem.${selectedType}`)
+      await option!.trigger('click')
+    }
+    if (type !== 'balance') {
+      await selectType(type)
+    }
+    const form = wrapper.get('form')
+    expect(form.find(balanceValidity).exists()).toBe(type === 'balance')
+    await form.findAll('button').find((button) => button.text() === 'admin.redeem.expiryPresetDays')!.trigger('click')
+    await form.trigger('submit')
+    await flushPromises()
+
+    expect(post).toHaveBeenCalledOnce()
+    expect(post).toHaveBeenCalledWith('/admin/redeem-codes/generate', {
+      count: 1,
+      value: 10,
+      type,
+      expires_in_days: 1,
+      ...expected
+    })
+
+    await openGenerateForm(wrapper)
+    if (type !== 'balance') {
+      await selectType('balance')
+    }
+    expect(wrapper.get<HTMLInputElement>(balanceValidity).element.value).toBe('')
+    wrapper.unmount()
+  })
+
+  it.each(['-1', '1.5', '36501'])('rejects invalid balance validity %s', async (input) => {
+    const wrapper = mountRedeemView()
+    await flushPromises()
+
+    await openGenerateForm(wrapper)
+    const field = wrapper.get<HTMLInputElement>(balanceValidity)
+    await field.setValue(input)
+    expect(field.element.checkValidity()).toBe(false)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(post).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith('admin.redeem.invalidBalanceCreditValidityDays')
+    wrapper.unmount()
   })
 })

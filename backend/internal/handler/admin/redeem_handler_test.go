@@ -2,17 +2,92 @@ package admin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type generateRedeemAdminStub struct {
+	*stubAdminService
+	input *service.GenerateRedeemCodesInput
+}
+
+func (s *generateRedeemAdminStub) GenerateRedeemCodes(_ context.Context, input *service.GenerateRedeemCodesInput) ([]service.RedeemCode, error) {
+	s.input = input
+	return []service.RedeemCode{{BalanceCreditValidityDays: input.BalanceCreditValidityDays}}, nil
+}
+
+func TestGenerateRedeemCodesRequiresAdminAuthentication(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	stub := &generateRedeemAdminStub{stubAdminService: newStubAdminService()}
+	handler := &RedeemHandler{adminService: stub}
+	router := gin.New()
+	adminAuth := middleware.NewAdminAuthMiddleware(nil, nil, nil, nil)
+	router.POST("/api/v1/admin/redeem-codes/generate", gin.HandlerFunc(adminAuth), handler.Generate)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/redeem-codes/generate", bytes.NewBufferString(`{"count":1,"type":"balance","value":10,"balance_credit_validity_days":7}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	require.Nil(t, stub.input)
+}
+
+func TestGenerateRedeemCodesPassesBalanceCreditValidity(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tt := range []struct {
+		name   string
+		field  string
+		status int
+		want   any
+	}{
+		{"omitted", "", http.StatusOK, nil},
+		{"null", `,"balance_credit_validity_days":null`, http.StatusOK, nil},
+		{"permanent", `,"balance_credit_validity_days":0`, http.StatusOK, float64(0)},
+		{"custom", `,"balance_credit_validity_days":7`, http.StatusOK, float64(7)},
+		{"fraction", `,"balance_credit_validity_days":1.5`, http.StatusBadRequest, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stub := &generateRedeemAdminStub{stubAdminService: newStubAdminService()}
+			h := &RedeemHandler{adminService: stub}
+			router := gin.New()
+			router.POST("/api/v1/admin/redeem-codes/generate", h.Generate)
+			body := `{"count":1,"type":"balance","value":10` + tt.field + "}"
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/redeem-codes/generate", bytes.NewBufferString(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			require.Equal(t, tt.status, w.Code, w.Body.String())
+			if tt.status == http.StatusBadRequest {
+				require.Nil(t, stub.input)
+				return
+			}
+			require.NotNil(t, stub.input)
+			var response struct {
+				Data []map[string]any `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+			require.Len(t, response.Data, 1)
+			if tt.want == nil {
+				require.Nil(t, stub.input.BalanceCreditValidityDays)
+				require.NotContains(t, response.Data[0], "balance_credit_validity_days")
+				return
+			}
+			require.NotNil(t, stub.input.BalanceCreditValidityDays)
+			require.Equal(t, tt.want, float64(*stub.input.BalanceCreditValidityDays))
+			require.Equal(t, tt.want, response.Data[0]["balance_credit_validity_days"])
+		})
+	}
+}
 
 // newCreateAndRedeemHandler creates a RedeemHandler with a non-nil (but minimal)
 // RedeemService so that CreateAndRedeem's nil guard passes and we can test the

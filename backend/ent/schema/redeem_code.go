@@ -72,6 +72,10 @@ func (RedeemCode) Fields() []ent.Field {
 			Nillable(),
 		field.Int("validity_days").
 			Default(30),
+		field.Int("balance_credit_validity_days").
+			Optional().
+			Nillable().
+			Immutable(),
 	}
 }
 

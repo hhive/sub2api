@@ -170,6 +170,20 @@ func (_c *RedeemCodeCreate) SetNillableValidityDays(v *int) *RedeemCodeCreate {
 	return _c
 }
 
+// SetBalanceCreditValidityDays sets the "balance_credit_validity_days" field.
+func (_c *RedeemCodeCreate) SetBalanceCreditValidityDays(v int) *RedeemCodeCreate {
+	_c.mutation.SetBalanceCreditValidityDays(v)
+	return _c
+}
+
+// SetNillableBalanceCreditValidityDays sets the "balance_credit_validity_days" field if the given value is not nil.
+func (_c *RedeemCodeCreate) SetNillableBalanceCreditValidityDays(v *int) *RedeemCodeCreate {
+	if v != nil {
+		_c.SetBalanceCreditValidityDays(*v)
+	}
+	return _c
+}
+
 // SetUserID sets the "user" edge to the User entity by ID.
 func (_c *RedeemCodeCreate) SetUserID(id int64) *RedeemCodeCreate {
 	_c.mutation.SetUserID(id)
@@ -348,6 +362,10 @@ func (_c *RedeemCodeCreate) createSpec() (*RedeemCode, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ValidityDays(); ok {
 		_spec.SetField(redeemcode.FieldValidityDays, field.TypeInt, value)
 		_node.ValidityDays = value
+	}
+	if value, ok := _c.mutation.BalanceCreditValidityDays(); ok {
+		_spec.SetField(redeemcode.FieldBalanceCreditValidityDays, field.TypeInt, value)
+		_node.BalanceCreditValidityDays = &value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -610,6 +628,9 @@ func (u *RedeemCodeUpsertOne) UpdateNewValues() *RedeemCodeUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(redeemcode.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.BalanceCreditValidityDays(); exists {
+			s.SetIgnore(redeemcode.FieldBalanceCreditValidityDays)
 		}
 	}))
 	return u
@@ -1009,6 +1030,9 @@ func (u *RedeemCodeUpsertBulk) UpdateNewValues() *RedeemCodeUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(redeemcode.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.BalanceCreditValidityDays(); exists {
+				s.SetIgnore(redeemcode.FieldBalanceCreditValidityDays)
 			}
 		}
 	}))

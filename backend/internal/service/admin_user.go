@@ -1322,6 +1322,11 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 	if input.ExpiresAt != nil && !input.ExpiresAt.After(time.Now()) {
 		return nil, ErrRedeemCodeExpired
 	}
+	if days := input.BalanceCreditValidityDays; days != nil {
+		if input.Type != RedeemTypeBalance || input.Value <= 0 || *days < 0 || *days > 36500 {
+			return nil, infraerrors.BadRequest("REDEEM_BALANCE_CREDIT_VALIDITY_INVALID", "balance_credit_validity_days must be between 0 and 36500 and applies to positive balance codes")
+		}
+	}
 
 	// 如果是订阅类型，验证必须有 GroupID
 	if input.Type == RedeemTypeSubscription {
@@ -1345,11 +1350,12 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 			return nil, err
 		}
 		code := RedeemCode{
-			Code:      codeValue,
-			Type:      input.Type,
-			Value:     input.Value,
-			Status:    StatusUnused,
-			ExpiresAt: input.ExpiresAt,
+			Code:                      codeValue,
+			Type:                      input.Type,
+			Value:                     input.Value,
+			Status:                    StatusUnused,
+			ExpiresAt:                 input.ExpiresAt,
+			BalanceCreditValidityDays: input.BalanceCreditValidityDays,
 		}
 		// 订阅类型专用字段
 		if input.Type == RedeemTypeSubscription {

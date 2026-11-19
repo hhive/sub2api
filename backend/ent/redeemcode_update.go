@@ -353,6 +353,9 @@ func (_u *RedeemCodeUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.AddedValidityDays(); ok {
 		_spec.AddField(redeemcode.FieldValidityDays, field.TypeInt, value)
 	}
+	if _u.mutation.BalanceCreditValidityDaysCleared() {
+		_spec.ClearField(redeemcode.FieldBalanceCreditValidityDays, field.TypeInt)
+	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -783,6 +786,9 @@ func (_u *RedeemCodeUpdateOne) sqlSave(ctx context.Context) (_node *RedeemCode, 
 	}
 	if value, ok := _u.mutation.AddedValidityDays(); ok {
 		_spec.AddField(redeemcode.FieldValidityDays, field.TypeInt, value)
+	}
+	if _u.mutation.BalanceCreditValidityDaysCleared() {
+		_spec.ClearField(redeemcode.FieldBalanceCreditValidityDays, field.TypeInt)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

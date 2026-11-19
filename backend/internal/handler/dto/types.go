@@ -573,7 +573,8 @@ type RedeemCode struct {
 type AdminRedeemCode struct {
 	RedeemCode
 
-	Notes string `json:"notes"`
+	Notes                     string `json:"notes"`
+	BalanceCreditValidityDays *int   `json:"balance_credit_validity_days,omitempty"`
 }
 
 type UserBalanceCredit struct {

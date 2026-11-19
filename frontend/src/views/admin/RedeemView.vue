@@ -277,7 +277,7 @@
       <div v-if="showGenerateDialog" class="fixed inset-0 z-50 flex items-center justify-center">
         <div class="fixed inset-0 bg-black/50" @click="showGenerateDialog = false"></div>
         <div
-          class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-dark-800"
+          class="relative z-10 max-h-full w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-dark-800"
         >
           <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
             {{ t('admin.redeem.generateCodesTitle') }}
@@ -304,6 +304,24 @@
                 required
                 class="input"
               />
+            </div>
+            <div v-if="generateForm.type === 'balance'">
+              <label for="generate-balance-credit-validity-days" class="input-label">
+                {{ t('admin.redeem.balanceCreditValidityDays') }}
+              </label>
+              <input
+                id="generate-balance-credit-validity-days"
+                v-model.number="generateForm.balance_credit_validity_days"
+                type="number"
+                min="0"
+                :max="maxBalanceCreditValidityDays"
+                step="1"
+                aria-describedby="generate-balance-credit-validity-hint"
+                class="input"
+              />
+              <p id="generate-balance-credit-validity-hint" class="input-hint">
+                {{ t('admin.redeem.balanceCreditValidityHint') }}
+              </p>
             </div>
             <!-- 邀请码类型：显示提示信息 -->
             <div v-if="generateForm.type === 'invitation'" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
@@ -835,12 +853,15 @@ const redeemCodeExpiryOptions = computed<{ value: RedeemCodeExpiryOption; label:
   { value: 'custom', label: t('admin.redeem.customExpiry') }
 ])
 
+const maxBalanceCreditValidityDays = 36500
+
 const generateForm = reactive({
   type: 'balance' as RedeemCodeType,
   value: 10,
   count: 1,
   group_id: null as number | null,
   validity_days: 30,
+  balance_credit_validity_days: '' as number | '',
   expiry_option: 'never' as RedeemCodeExpiryOption,
   custom_expiry_days: 7
 })
@@ -1038,6 +1059,19 @@ const handleGenerateCodes = async () => {
     return
   }
 
+  const balanceCreditValidityDays = generateForm.type === 'balance'
+    ? generateForm.balance_credit_validity_days
+    : ''
+  if (
+    balanceCreditValidityDays !== '' &&
+    (!Number.isInteger(balanceCreditValidityDays) ||
+      balanceCreditValidityDays < 0 ||
+      balanceCreditValidityDays > maxBalanceCreditValidityDays)
+  ) {
+    appStore.showError(t('admin.redeem.invalidBalanceCreditValidityDays', { max: maxBalanceCreditValidityDays }))
+    return
+  }
+
   generating.value = true
   try {
     const result = await adminAPI.redeem.generate(
@@ -1046,7 +1080,8 @@ const handleGenerateCodes = async () => {
       generateForm.value,
       generateForm.type === 'subscription' ? generateForm.group_id : undefined,
       generateForm.type === 'subscription' ? generateForm.validity_days : undefined,
-      expiresInDays
+      expiresInDays,
+      balanceCreditValidityDays === '' ? undefined : balanceCreditValidityDays
     )
     showGenerateDialog.value = false
     generatedCodes.value = result
@@ -1054,6 +1089,7 @@ const handleGenerateCodes = async () => {
     // 重置表单
     generateForm.group_id = null
     generateForm.validity_days = 30
+    generateForm.balance_credit_validity_days = ''
     generateForm.expiry_option = 'never'
     generateForm.custom_expiry_days = 7
     loadCodes()

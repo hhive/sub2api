@@ -87,6 +87,92 @@ func TestRedeemServiceCreateBalanceCreditPermanentWhenValidityZero(t *testing.T)
 	require.Nil(t, repo.created[0].ExpiresAt)
 }
 
+type generateBalanceRedeemRepoStub struct {
+	RedeemCodeRepository
+	codes []RedeemCode
+}
+
+func (r *generateBalanceRedeemRepoStub) Create(_ context.Context, code *RedeemCode) error {
+	r.codes = append(r.codes, *code)
+	return nil
+}
+
+func TestGenerateRedeemCodesBalanceCreditValidity(t *testing.T) {
+	zero, custom, maxDays, negative, tooMany := 0, 7, 36500, -1, 36501
+	for _, tt := range []struct {
+		name  string
+		kind  string
+		value float64
+		days  *int
+		valid bool
+	}{
+		{"global", RedeemTypeBalance, 10, nil, true},
+		{"permanent", RedeemTypeBalance, 10, &zero, true},
+		{"custom", RedeemTypeBalance, 10, &custom, true},
+		{"max", RedeemTypeBalance, 10, &maxDays, true},
+		{"negative", RedeemTypeBalance, 10, &negative, false},
+		{"too many days", RedeemTypeBalance, 10, &tooMany, false},
+		{"concurrency code", RedeemTypeConcurrency, 10, &custom, false},
+		{"zero amount", RedeemTypeBalance, 0, &custom, false},
+		{"negative amount", RedeemTypeBalance, -10, &custom, false},
+		{"legacy adjustment", RedeemTypeBalance, -10, nil, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &generateBalanceRedeemRepoStub{}
+			svc := &adminServiceImpl{redeemCodeRepo: repo}
+			codes, err := svc.GenerateRedeemCodes(context.Background(), &GenerateRedeemCodesInput{
+				Count: 2, Type: tt.kind, Value: tt.value, BalanceCreditValidityDays: tt.days,
+			})
+			if !tt.valid {
+				require.Error(t, err)
+				require.Empty(t, repo.codes)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, repo.codes, 2)
+			require.Len(t, codes, 2)
+			for i := range codes {
+				require.Equal(t, tt.days, repo.codes[i].BalanceCreditValidityDays)
+				require.Equal(t, tt.days, codes[i].BalanceCreditValidityDays)
+			}
+		})
+	}
+}
+
+func TestRedeemServiceBalanceCreditValidityUsesOverride(t *testing.T) {
+	zero, custom := 0, 7
+	for _, tt := range []struct {
+		name string
+		days *int
+		want int
+	}{
+		{"global", nil, 30},
+		{"permanent", &zero, 0},
+		{"custom", &custom, 7},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &redeemBalanceCreditRepoStub{}
+			svc := &RedeemService{
+				balanceCreditRepo: repo,
+				settingService:    newAdminBalanceSettingService("30"),
+			}
+			start := time.Now()
+			err := svc.createBalanceCredit(context.Background(), 42, &RedeemCode{
+				ID: 1, Code: "CREDIT", BalanceCreditValidityDays: tt.days,
+			}, 10)
+			require.NoError(t, err)
+			require.Len(t, repo.created, 1)
+			expiresAt := repo.created[0].ExpiresAt
+			if tt.want == 0 {
+				require.Nil(t, expiresAt)
+				return
+			}
+			require.NotNil(t, expiresAt)
+			require.WithinDuration(t, start.AddDate(0, 0, tt.want), *expiresAt, time.Second)
+		})
+	}
+}
+
 func TestRedeemServiceFirstRechargeBonusSkipsAfterPriorPositiveSubscriptionRedeem(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)

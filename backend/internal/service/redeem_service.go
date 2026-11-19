@@ -600,14 +600,23 @@ func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, r
 }
 
 func (s *RedeemService) createBalanceCredit(ctx context.Context, userID int64, redeemCode *RedeemCode, amount float64) error {
-	if s == nil || s.balanceCreditRepo == nil || s.settingService == nil || redeemCode == nil || amount <= 0 {
+	if s == nil || s.balanceCreditRepo == nil || redeemCode == nil || amount <= 0 {
 		return nil
 	}
-	settings, err := s.settingService.GetAllSettings(ctx)
-	if err != nil {
-		return err
+	var validityDays int
+	if redeemCode.BalanceCreditValidityDays != nil {
+		validityDays = *redeemCode.BalanceCreditValidityDays
+	} else {
+		if s.settingService == nil {
+			return nil
+		}
+		settings, err := s.settingService.GetAllSettings(ctx)
+		if err != nil {
+			return err
+		}
+		validityDays = settings.BalanceCreditValidityDays
 	}
-	expiresAt := balanceCreditExpiresAt(settings.BalanceCreditValidityDays, time.Now())
+	expiresAt := balanceCreditExpiresAt(validityDays, time.Now())
 	return s.balanceCreditRepo.CreateCredit(ctx, BalanceCreditCreate{
 		UserID:     userID,
 		SourceType: BalanceCreditSourceRedeem,
