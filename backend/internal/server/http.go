@@ -12,6 +12,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/websearch"
+	"github.com/Wei-Shaw/sub2api/internal/repository"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -25,6 +26,8 @@ import (
 var ProviderSet = wire.NewSet(
 	ProvideRouter,
 	ProvideHTTPServer,
+	repository.NewUserAppIntegrationStore,
+	service.NewUserAppIntegrationService,
 )
 
 // ProvideRouter 提供路由器
@@ -43,6 +46,7 @@ func ProvideRouter(
 	settingService *service.SettingService,
 	compositeResolver *service.CompositeRouteResolver,
 	redisClient *redis.Client,
+	appIntegrations *service.UserAppIntegrationService,
 ) *gin.Engine {
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -88,7 +92,7 @@ func ProvideRouter(
 		service.SetWebSearchManager(websearch.NewManager(configs, redisClient))
 	})
 
-	return SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient)
+	return SetupRouter(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient, appIntegrations)
 }
 
 func configureTrustedProxies(r *gin.Engine, cfg config.ServerConfig) {

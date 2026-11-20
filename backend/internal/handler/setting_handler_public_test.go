@@ -105,7 +105,7 @@ func TestSettingHandler_GetPublicSettings_PreservesEnabledVictoryMenuItem(t *tes
 				Label   string `json:"label"`
 				Enabled bool   `json:"enabled"`
 			} `json:"victory_menu_items"`
-	} `json:"data"`
+		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
 	require.Len(t, resp.Data.VictoryMenuItems, 1)
@@ -114,6 +114,7 @@ func TestSettingHandler_GetPublicSettings_PreservesEnabledVictoryMenuItem(t *tes
 }
 
 func TestSettingHandler_GetPublicSettings_OmitsRemovedLobeHubAllowedEmails(t *testing.T) {
+	t.Setenv("CHAT_INTEGRATION_APP_ID", "")
 	gin.SetMode(gin.TestMode)
 
 	repo := &settingHandlerPublicRepoStub{
@@ -143,6 +144,25 @@ func TestSettingHandler_GetPublicSettings_OmitsRemovedLobeHubAllowedEmails(t *te
 	require.JSONEq(t, `"Lobe Chat"`, string(resp.Data["lobehub_menu_label"]))
 	require.JSONEq(t, `"/api/v1/lobehub/launch"`, string(resp.Data["lobehub_launch_path"]))
 	require.NotContains(t, resp.Data, "lobehub_allowed_emails")
+	require.NotContains(t, resp.Data, "chat_integration_app_id")
+}
+
+func TestSettingHandler_GetPublicSettings_ExposesChatIntegrationAppID(t *testing.T) {
+	t.Setenv("CHAT_INTEGRATION_APP_ID", "onyx")
+	repo := &settingHandlerPublicRepoStub{values: map[string]string{}}
+	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{}), "test-version")
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+
+	h.GetPublicSettings(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp struct {
+		Data map[string]json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.JSONEq(t, `"onyx"`, string(resp.Data["chat_integration_app_id"]))
 }
 
 func TestSettingHandler_GetPublicSettings_ExposesComplianceNotice(t *testing.T) {

@@ -434,6 +434,7 @@ type PublicSettings struct {
 	LobeHubEnabled                      bool
 	LobeHubMenuLabel                    string
 	LobeHubLaunchPath                   string
+	ChatIntegrationAppID                string
 	MediaPlaygroundEnabled              bool
 	MediaPlaygroundMenuLabel            string
 	MediaPlaygroundLaunchPath           string

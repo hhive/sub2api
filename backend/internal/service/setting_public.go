@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -374,6 +375,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		LobeHubEnabled:                      settings[SettingKeyLobeHubEnabled] == "true",
 		LobeHubMenuLabel:                    s.getStringOrDefault(settings, SettingKeyLobeHubMenuLabel, "LobeHub"),
 		LobeHubLaunchPath:                   "/api/v1/lobehub/launch",
+		ChatIntegrationAppID:                strings.TrimSpace(os.Getenv("CHAT_INTEGRATION_APP_ID")),
 		MediaPlaygroundEnabled:              mediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:            "图片与视频",
 		MediaPlaygroundLaunchPath:           "/api/v1/media-playground/launch",
@@ -656,6 +658,7 @@ type PublicSettingsInjectionPayload struct {
 	LobeHubEnabled                      bool                     `json:"lobehub_enabled"`
 	LobeHubMenuLabel                    string                   `json:"lobehub_menu_label"`
 	LobeHubLaunchPath                   string                   `json:"lobehub_launch_path"`
+	ChatIntegrationAppID                string                   `json:"chat_integration_app_id,omitempty"`
 	MediaPlaygroundEnabled              bool                     `json:"media_playground_enabled"`
 	MediaPlaygroundMenuLabel            string                   `json:"media_playground_menu_label"`
 	MediaPlaygroundLaunchPath           string                   `json:"media_playground_launch_path"`
@@ -774,6 +777,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		LobeHubEnabled:                      settings.LobeHubEnabled,
 		LobeHubMenuLabel:                    settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                   settings.LobeHubLaunchPath,
+		ChatIntegrationAppID:                settings.ChatIntegrationAppID,
 		MediaPlaygroundEnabled:              settings.MediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:            settings.MediaPlaygroundMenuLabel,
 		MediaPlaygroundLaunchPath:           settings.MediaPlaygroundLaunchPath,

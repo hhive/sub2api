@@ -16,6 +16,7 @@ import {
   launchAdminExternalApp,
   launchMediaPlayground,
   launchLobeHub,
+  launchUserAppIntegration,
   launchVictoryMenu,
   listAdminExternalApps,
 } from '@/api/launch'
@@ -50,6 +51,33 @@ describe('launch api', () => {
 
     expect(post).toHaveBeenCalledWith('/lobehub/launch')
     expect(result.redirect_url).toBe('https://example.com/launch?token=abc')
+  })
+
+  it('submits a registered app ticket as a form without putting it in the callback URL', async () => {
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
+      expect(this.method).toBe('post')
+      expect(this.action).toBe('https://chat.example.com/api/sub2api/launch')
+      expect(new FormData(this).get('ticket')).toBe('single-use-ticket')
+    })
+    post.mockResolvedValueOnce({
+      data: { launch_url: 'https://chat.example.com/api/sub2api/launch', ticket: 'single-use-ticket' },
+    })
+
+    try {
+      await launchUserAppIntegration('onyx')
+
+      expect(post).toHaveBeenCalledWith('/app-integrations/onyx/launch')
+      expect(submit).toHaveBeenCalledOnce()
+      expect(document.querySelector('form')).toBeNull()
+
+      post.mockResolvedValueOnce({
+        data: { launch_url: 'https://chat.example.com/launch?ticket=bad', ticket: 'single-use-ticket' },
+      })
+      await expect(launchUserAppIntegration('onyx')).rejects.toThrow()
+      expect(submit).toHaveBeenCalledOnce()
+    } finally {
+      submit.mockRestore()
+    }
   })
 
   it('launches a victory menu item through the backend launch endpoint', async () => {

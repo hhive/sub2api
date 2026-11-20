@@ -27,6 +27,17 @@ func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionS
 	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg))
 }
 
+type appIntegrationKeyBinding struct {
+	userID int64
+	keyID  int64
+}
+
+type appIntegrationKeyContext struct{}
+
+func WithAppIntegrationKey(ctx context.Context, userID, keyID int64) context.Context {
+	return context.WithValue(ctx, appIntegrationKeyContext{}, appIntegrationKeyBinding{userID: userID, keyID: keyID})
+}
+
 // apiKeyAuthWithSubscription API Key认证中间件（支持订阅验证）
 //
 // 中间件职责分为两层：
@@ -102,9 +113,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		// ── 2. 验证 Key 存在 ─────────────────────────────────────────
 
+		binding, delegated := c.Request.Context().Value(appIntegrationKeyContext{}).(appIntegrationKeyBinding)
 		apiKey, err := apiKeyService.GetByKey(c.Request.Context(), apiKeyString)
 		if err != nil {
 			if errors.Is(err, service.ErrAPIKeyNotFound) {
+				if delegated {
+					AbortWithError(c, http.StatusForbidden, "INTEGRATION_KEY_UNAVAILABLE", "Key unavailable")
+					return
+				}
 				recordInvalidAuthFailure(c, apiKeyService)
 				MarkIngressRejected(c, IngressRejectInvalidAPIKey)
 				AbortWithError(c, 401, "INVALID_API_KEY", "Invalid API key")
@@ -120,6 +136,18 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			}
 			AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to validate API key")
 			return
+		}
+
+		if delegated {
+			if apiKey.UserID != binding.userID || apiKey.ID != binding.keyID || apiKey.Group == nil ||
+				len(apiKey.IPWhitelist) != 0 || len(apiKey.IPBlacklist) != 0 {
+				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalPolicyDenied)
+				AbortWithError(c, http.StatusForbidden, "INTEGRATION_KEY_UNAVAILABLE", "Key unavailable")
+				return
+			}
+			if c.Request.URL.Path == "/v1/models" {
+				c.Header("X-Sub2API-Key-Platform", apiKey.Group.Platform)
+			}
 		}
 
 		// apiKey 已加载（含 User/Group）。即便后续因分组停用/Key 停用/用户停用/

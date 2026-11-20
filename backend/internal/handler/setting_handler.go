@@ -98,6 +98,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		LobeHubEnabled:                      settings.LobeHubEnabled,
 		LobeHubMenuLabel:                    settings.LobeHubMenuLabel,
 		LobeHubLaunchPath:                   settings.LobeHubLaunchPath,
+		ChatIntegrationAppID:                settings.ChatIntegrationAppID,
 		MediaPlaygroundEnabled:              settings.MediaPlaygroundEnabled,
 		MediaPlaygroundMenuLabel:            settings.MediaPlaygroundMenuLabel,
 		MediaPlaygroundLaunchPath:           settings.MediaPlaygroundLaunchPath,

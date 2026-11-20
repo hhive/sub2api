@@ -71,11 +71,13 @@ describe('AppSidebar header styles', () => {
 })
 
 describe('AppSidebar chat menu wiring', () => {
-  it('exposes only the LobeHub chat launch', () => {
+  it('uses the configured integration from the existing chat menu', () => {
+    expect(componentSource).toContain('appStore.cachedPublicSettings?.chat_integration_app_id')
+    expect(componentSource).toContain('launchUserAppIntegration(appID)')
     expect(componentSource).toContain('launchLobeHub,')
     expect(componentSource).toContain('launchLobeHub()')
     expect(componentSource).toContain('FeatureFlags.lobehub')
-    expect(componentSource).toContain("const launchWindow = window.open('', '_blank')")
+    expect(componentSource).toContain("const launchWindow = appID ? null : window.open('', '_blank')")
     expect(componentSource).toContain('launchWindow.opener = null')
     expect(componentSource).toContain('launchWindow.location.href = result.redirect_url')
     expect(componentSource).not.toContain("t('nav.chat')")

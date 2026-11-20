@@ -36,6 +36,7 @@ func SetupRouter(
 	compositeResolver *service.CompositeRouteResolver,
 	cfg *config.Config,
 	redisClient *redis.Client,
+	appIntegrations *service.UserAppIntegrationService,
 ) *gin.Engine {
 	middleware2.SetIngressRejectRecorder(opsService)
 	// 缓存 iframe 页面的 origin 列表，用于动态注入 CSP frame-src
@@ -55,6 +56,11 @@ func SetupRouter(
 	}
 	refreshFrameOrigins() // 启动时初始化
 
+	var integrationFormActions []string
+	if appIntegrations != nil {
+		integrationFormActions = appIntegrations.LaunchFormActions()
+	}
+
 	// 应用中间件
 	r.Use(middleware2.RequestLogger())
 	// 将客户端 IP + UA 注入 request context，供 token 签发/会话绑定/审计日志统一读取。
@@ -67,7 +73,7 @@ func SetupRouter(
 			return *p
 		}
 		return nil
-	}))
+	}, integrationFormActions...))
 	r.Use(middleware2.ServerTiming(cfg.Server.EnableServerTiming))
 
 	// Serve embedded frontend with settings injection if available
@@ -90,7 +96,7 @@ func SetupRouter(
 	}
 
 	// 注册路由
-	registerRoutes(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient)
+	registerRoutes(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient, appIntegrations)
 
 	return r
 }
@@ -112,6 +118,7 @@ func registerRoutes(
 	compositeResolver *service.CompositeRouteResolver,
 	cfg *config.Config,
 	redisClient *redis.Client,
+	appIntegrations *service.UserAppIntegrationService,
 ) {
 	// 通用路由（健康检查、状态等）
 	routes.RegisterCommonRoutes(r)
@@ -132,6 +139,7 @@ func registerRoutes(
 	routes.RegisterMCPRoutes(v1, h, auditLog, stepUpAuth, settingService, panelRateLimiter, cfg.CORS.AllowedOrigins, redisClient)
 	routes.RegisterMCPOAuthRoutes(r, v1, h, redisClient)
 	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg)
+	routes.RegisterApplicationIntegrationRoutes(v1, r, appIntegrations, apiKeyService, jwtAuth, settingService)
 	routes.RegisterPaymentRoutes(v1, h.Payment, h.PaymentWebhook, h.Admin.Payment, jwtAuth, adminAuth, auditLog, settingService, panelRateLimiter, redisClient)
 
 	handler.RegisterPageRoutes(v1, cfg.Pricing.DataDir, gin.HandlerFunc(jwtAuth), gin.HandlerFunc(adminAuth), settingService)

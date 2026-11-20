@@ -107,8 +107,8 @@ func GetNonceFromContext(c *gin.Context) string {
 
 // SecurityHeaders sets baseline security headers for all responses.
 // getFrameSrcOrigins is an optional function that returns extra origins to inject into frame-src;
-// pass nil to disable dynamic frame-src injection.
-func SecurityHeaders(cfg config.CSPConfig, getFrameSrcOrigins func() []string) gin.HandlerFunc {
+// pass nil to disable dynamic frame-src injection. Form actions come from the validated app registry.
+func SecurityHeaders(cfg config.CSPConfig, getFrameSrcOrigins func() []string, formActions ...string) gin.HandlerFunc {
 	policy := strings.TrimSpace(cfg.Policy)
 	if policy == "" {
 		policy = config.DefaultCSPPolicy
@@ -116,6 +116,13 @@ func SecurityHeaders(cfg config.CSPConfig, getFrameSrcOrigins func() []string) g
 
 	// Enhance policy with required directives (nonce placeholder and Cloudflare Insights)
 	policy = enhanceCSPPolicy(policy)
+	if _, present := cspDirectiveEnd(policy, "form-action"); present && !directiveHasValue(policy, "form-action", "'none'") {
+		for _, target := range formActions {
+			if !directiveHasValue(policy, "form-action", target) {
+				policy = addToDirective(policy, "form-action", target)
+			}
+		}
+	}
 
 	return func(c *gin.Context) {
 		finalPolicy := policy

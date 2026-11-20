@@ -38,6 +38,31 @@ export async function launchLobeHub(): Promise<LaunchResponse> {
   return data
 }
 
+export async function launchUserAppIntegration(appID: string): Promise<void> {
+  const { data } = await apiClient.post<{ launch_url: string; ticket: string }>(
+    `/app-integrations/${encodeURIComponent(appID)}/launch`,
+  )
+  const action = new URL(data.launch_url)
+  if (action.protocol !== 'https:' || action.username || action.password || action.search || action.hash || !data.ticket) {
+    throw new Error('Invalid app launch response')
+  }
+
+  const form = document.createElement('form')
+  form.method = 'post'
+  form.action = action.href
+  const ticket = document.createElement('input')
+  ticket.type = 'hidden'
+  ticket.name = 'ticket'
+  ticket.value = data.ticket
+  form.appendChild(ticket)
+  document.body.appendChild(form)
+  try {
+    form.submit()
+  } finally {
+    form.remove()
+  }
+}
+
 export async function launchVictoryMenu(menuId: string): Promise<LaunchResponse> {
   const { data } = await apiClient.post<LaunchResponse>('/menu-launch/victory', { menu_id: menuId })
   return data

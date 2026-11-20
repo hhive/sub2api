@@ -415,6 +415,7 @@ import {
   launchAdminExternalApp,
   launchMediaPlayground,
   launchLobeHub,
+  launchUserAppIntegration,
   launchVictoryMenu,
   listAdminExternalApps,
 } from '@/api/launch'
@@ -1224,12 +1225,17 @@ function handleMenuItemClick(itemPath: string) {
 async function handleLobeHubLaunch() {
   if (lobeHubLaunching.value) return
   handleMenuItemClick('__lobehub__')
-  const launchWindow = window.open('', '_blank')
+  const appID = appStore.cachedPublicSettings?.chat_integration_app_id
+  const launchWindow = appID ? null : window.open('', '_blank')
   if (launchWindow) {
     launchWindow.opener = null
   }
   lobeHubLaunching.value = true
   try {
+    if (appID) {
+      await launchUserAppIntegration(appID)
+      return
+    }
     const result = await launchLobeHub()
     if (launchWindow) {
       launchWindow.location.href = result.redirect_url
