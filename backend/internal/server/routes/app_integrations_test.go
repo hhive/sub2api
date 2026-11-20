@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 
@@ -166,4 +167,65 @@ func TestIntegrationDirectoryPaginationAndMask(t *testing.T) {
 	page := httptest.NewRecorder()
 	r.ServeHTTP(page, httptest.NewRequest(http.MethodGet, "/app-integrations/app/keys?page=2&page_size=123", nil))
 	require.JSONEq(t, `{"items":[{"id":5,"name":"","mask":"****leak","group_id":null,"group_name":"","platform":"","status":"","selectable":false}],"page":2,"page_size":100,"total":101}`, page.Body.String())
+}
+
+type integrationCredentialAuthorization struct {
+	applicationIntegrationAuth
+}
+
+func (integrationCredentialAuthorization) Authorize(_ context.Context, app, secret, token, scope string) (int64, error) {
+	if app != "onyx" || secret != "test-app-secret" || token != "test-user-grant" {
+		return 0, infraerrors.Unauthorized("INVALID_GRANT", "Invalid application grant")
+	}
+	if scope != service.UserAppScopeKeysRead {
+		return 0, infraerrors.Forbidden("INVALID_SCOPE", "Invalid scope")
+	}
+	return 3, nil
+}
+
+func TestAppIntegrationCredential(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	groupID := int64(1)
+	key := &service.APIKey{ID: 2, UserID: 3, Key: "synthetic-private-key", Status: service.StatusAPIKeyActive,
+		GroupID: &groupID, Group: &service.Group{ID: groupID, Status: service.StatusActive}}
+	router := gin.New()
+	applicationIntegrationRoutes{auth: integrationCredentialAuthorization{}, keys: integrationTestDirectory{key: key}}.
+		register(router.Group("/api/v1"), func(c *gin.Context) {}, nil)
+	call := func(app, id, secret, grant string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/app-integrations/"+app+"/keys/"+id+"/credential", nil)
+		request.Header.Set("Authorization", "Bearer "+grant)
+		request.Header.Set("X-Sub2API-App-Secret", secret)
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		require.Equal(t, "no-store", response.Header().Get("Cache-Control"))
+		return response
+	}
+	const secret = "test-app-secret"
+	const token = "test-user-grant"
+	for range 2 {
+		result := call("onyx", "2", secret, token)
+		require.Equal(t, http.StatusOK, result.Code)
+		require.JSONEq(t, `{"api_key":"synthetic-private-key"}`, result.Body.String())
+	}
+	for _, result := range []*httptest.ResponseRecorder{
+		call("onyx", "2", secret, "expired-or-revoked"),
+		call("onyx", "2", "another-app-secret", token),
+		call("another-app", "2", secret, token),
+	} {
+		require.Equal(t, http.StatusUnauthorized, result.Code)
+		require.NotContains(t, result.Body.String(), key.Key)
+	}
+	require.Equal(t, http.StatusBadRequest, call("onyx", "0", secret, token).Code)
+	missing := call("onyx", "9", secret, token)
+	key.UserID = 4
+	foreign := call("onyx", "2", secret, token)
+	require.Equal(t, http.StatusForbidden, missing.Code)
+	require.Equal(t, missing.Code, foreign.Code)
+	require.JSONEq(t, missing.Body.String(), foreign.Body.String())
+
+	key.UserID = 3
+	key.IPWhitelist = []string{"192.0.2.10"}
+	denied := call("onyx", "2", secret, token)
+	require.Equal(t, http.StatusForbidden, denied.Code)
+	require.NotContains(t, denied.Body.String(), key.Key)
 }

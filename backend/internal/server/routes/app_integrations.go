@@ -52,6 +52,7 @@ func (routes applicationIntegrationRoutes) register(v1 *gin.RouterGroup, jwt mid
 	app.POST("/revoke", routes.revoke)
 	app.GET("/keys", integrationDirectoryTimeout, routes.listKeys)
 	app.GET("/keys/:key_id/models", integrationDirectoryTimeout, routes.models)
+	app.POST("/keys/:key_id/credential", integrationDirectoryTimeout, routes.credential)
 	app.POST("/chat/completions", routes.chat)
 }
 
@@ -182,31 +183,47 @@ func (a applicationIntegrationRoutes) chat(c *gin.Context) {
 	a.forward(c, service.UserAppScopeChatInvoke, c.GetHeader("X-Sub2API-Key-ID"), "/v1/chat/completions")
 }
 
-func (a applicationIntegrationRoutes) forward(c *gin.Context, scope, rawID, path string) {
+func (a applicationIntegrationRoutes) credential(c *gin.Context) {
+	key := a.authorizedKey(c, service.UserAppScopeKeysRead, c.Param("key_id"))
+	if key == nil {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"api_key": key.Key})
+}
+
+func (a applicationIntegrationRoutes) authorizedKey(c *gin.Context, scope, rawID string) *service.APIKey {
 	userID, ok := a.authorize(c, scope)
 	if !ok {
-		return
+		return nil
 	}
 	keyID, err := strconv.ParseInt(rawID, 10, 64)
 	if err != nil || keyID < 1 {
 		response.BadRequest(c, "Invalid Key ID")
-		return
+		return nil
 	}
 	key, err := a.keys.GetByID(c.Request.Context(), keyID)
 	if err != nil && !errors.Is(err, service.ErrAPIKeyNotFound) {
 		response.ErrorFrom(c, err)
-		return
+		return nil
 	}
 	if key == nil || key.UserID != userID {
 		response.Forbidden(c, "Key unavailable")
-		return
+		return nil
 	}
 	if item := describeIntegrationKey(key); !item.Selectable {
 		slog.InfoContext(c.Request.Context(), "app_integration.key_denied", "key_id", key.ID, "platform", item.Platform, "reason", item.Status, "request_id", c.Writer.Header().Get("X-Request-Id"))
 		response.ErrorWithDetails(c, http.StatusForbidden, "Key unavailable", item.Status, nil)
+		return nil
+	}
+	return key
+}
+
+func (a applicationIntegrationRoutes) forward(c *gin.Context, scope, rawID, path string) {
+	key := a.authorizedKey(c, scope, rawID)
+	if key == nil {
 		return
 	}
-	ctx := middleware.WithAppIntegrationKey(c.Request.Context(), userID, key.ID)
+	ctx := middleware.WithAppIntegrationKey(c.Request.Context(), key.UserID, key.ID)
 	forwarded := integrationGatewayRequest(c.Request.WithContext(ctx), path, key.Key)
 	if requestID := c.Writer.Header().Get("X-Request-Id"); requestID != "" {
 		forwarded.Header.Set("X-Request-Id", requestID)
