@@ -45,7 +45,7 @@ func (*scopedUserResponses) GetUser(context.Context, int64) (*service.User, erro
 func (*scopedUserResponses) GetUserIncludeDeleted(context.Context, int64) (*service.User, error) {
 	return scopedUserFixture(), nil
 }
-func (*scopedUserResponses) UpdateUserBalance(context.Context, int64, float64, string, string) (*service.User, error) {
+func (*scopedUserResponses) UpdateUserBalance(context.Context, int64, float64, string, string, *int) (*service.User, error) {
 	return scopedUserFixture(), nil
 }
 
@@ -74,7 +74,7 @@ func TestScopedAdminUserResponsesRequireIndependentPermissions(t *testing.T) {
 			r := gin.New()
 			RegisterAdminRoutes(r.Group("/api/v1"), &handler.Handlers{Admin: &handler.AdminHandlers{
 				Account: &adminhandler.AccountHandler{}, User: adminhandler.NewUserHandler(stub, nil, nil, nil, nil, nil, nil),
-				Setting: adminhandler.NewSettingHandler(settings, nil, nil, nil, nil, nil, nil),
+				Setting: adminhandler.NewSettingHandler(settings, nil, nil, nil, nil, nil, nil, nil),
 			}}, auth, middleware.AuditLogMiddleware(func(c *gin.Context) { c.Next() }), middleware.StepUpAuthMiddleware(func(c *gin.Context) { c.Next() }), nil, nil)
 			paths := []string{"/users", "/users?include_subscriptions=true", "/users/7", "/users/7?include_deleted=true"}
 			balanceWrite := tc.name == "仅余额写入"
